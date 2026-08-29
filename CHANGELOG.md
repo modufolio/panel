@@ -5,6 +5,16 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-08-29
+
+### Changed
+
+- `.gitattributes` now marks `/ui`, `/tests` and other development files
+  `export-ignore`, so Composer dist installs no longer copy the Vue source
+  into `vendor/`. The `v0.1.0` tag predates this, which is why this release
+  exists: Composer builds its archive from the tagged tree, so the exclusion
+  only takes effect from a tag that contains it.
+
 ## [0.1.0] - 2026-08-26
 
 Initial extraction from appkit-portfolio, where this was ~8,500 lines of
