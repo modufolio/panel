@@ -3,7 +3,6 @@
     "description": "Schema-driven admin panel for Appkit: resources, table schemas, drawers and blueprint forms, emitted as JSON for @modufolio/panel to render.",
     "license": "MIT",
     "type": "library",
-    "version": "0.1.0",
     "authors": [
         {
             "name": "Maarten Thiebou"
