@@ -1,0 +1,15 @@
+/**
+ * @modufolio/panel styles entry.
+ *
+ * Import from the consumer's Tailwind CSS entry, inside the components layer:
+ *
+ *   @import '@modufolio/panel/styles' layer(components);
+ *
+ * and add the package to Tailwind's content scanning so component classes
+ * survive the build:
+ *
+ *   @source "../node_modules/@modufolio/panel";
+ */
+@import './tokens.css';
+@import './buttons.css';
+@import './form.css';

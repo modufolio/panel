@@ -1,0 +1,150 @@
+{
+  "name": "@modufolio/panel",
+  "version": "0.1.0",
+  "description": "Schema-driven admin panel components for Inertia.js + Vue 3 — tables, blueprint forms, filters, actions, drawers, widgets.",
+  "license": "MIT",
+  "type": "module",
+  "author": "Maarten Thiebou",
+  "sideEffects": [
+    "*.css"
+  ],
+  "files": [
+    "dist",
+    "styles",
+    "docs",
+    "README.md"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./styles": "./styles/index.css",
+    "./styles/*": "./styles/*"
+  },
+  "scripts": {
+    "build": "vite build",
+    "prepublishOnly": "npm run build",
+    "test": "vitest --run --config vitest.config.ts",
+    "type-check": "vue-tsc --noEmit -p tsconfig.json",
+    "lint": "eslint src"
+  },
+  "peerDependencies": {
+    "@heroicons/vue": "^2.0.0",
+    "@inertiajs/vue3": "^3.0.0",
+    "@vueuse/core": ">=10",
+    "lodash": "^4.17.0",
+    "prosemirror-commands": "^1.7.1",
+    "prosemirror-dropcursor": "^1.8.3",
+    "prosemirror-gapcursor": "^1.4.1",
+    "prosemirror-history": "^1.5.0",
+    "prosemirror-inputrules": "^1.5.1",
+    "prosemirror-keymap": "^1.2.3",
+    "prosemirror-model": "^1.25.11",
+    "prosemirror-schema-list": "^1.5.1",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-view": "^1.42.2",
+    "vue": "^3.5.0",
+    "vuedraggable": "^4.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@vueuse/core": {
+      "optional": true
+    },
+    "lodash": {
+      "optional": true
+    },
+    "prosemirror-commands": {
+      "optional": true
+    },
+    "prosemirror-dropcursor": {
+      "optional": true
+    },
+    "prosemirror-gapcursor": {
+      "optional": true
+    },
+    "prosemirror-history": {
+      "optional": true
+    },
+    "prosemirror-inputrules": {
+      "optional": true
+    },
+    "prosemirror-keymap": {
+      "optional": true
+    },
+    "prosemirror-model": {
+      "optional": true
+    },
+    "prosemirror-schema-list": {
+      "optional": true
+    },
+    "prosemirror-state": {
+      "optional": true
+    },
+    "prosemirror-view": {
+      "optional": true
+    },
+    "vuedraggable": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@heroicons/vue": "^2.2.0",
+    "@inertiajs/vue3": "3.0.0",
+    "@types/lodash": "^4.17.24",
+    "@typescript-eslint/eslint-plugin": "^8.68.0",
+    "@typescript-eslint/parser": "^8.68.0",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "@vue/test-utils": "^2.4.6",
+    "@vueuse/core": "^13.0.0",
+    "eslint": "^9.39.5",
+    "eslint-plugin-vue": "^10.10.0",
+    "happy-dom": "^20.6.1",
+    "lodash": "^4.17.21",
+    "prosemirror-commands": "^1.7.1",
+    "prosemirror-dropcursor": "^1.8.3",
+    "prosemirror-gapcursor": "^1.4.1",
+    "prosemirror-history": "^1.5.0",
+    "prosemirror-inputrules": "^1.5.1",
+    "prosemirror-keymap": "^1.2.3",
+    "prosemirror-model": "^1.25.11",
+    "prosemirror-schema-list": "^1.5.1",
+    "prosemirror-state": "^1.4.4",
+    "prosemirror-view": "^1.42.2",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.1",
+    "vite-plugin-dts": "^5.0.3",
+    "vitest": "^4.0.18",
+    "vue": "^3.5.18",
+    "vue-eslint-parser": "^10.4.1",
+    "vue-tsc": "^3.2.4",
+    "vuedraggable": "^4.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/modufolio/panel.git",
+    "directory": "ui"
+  },
+  "homepage": "https://github.com/modufolio/panel/tree/main/ui#readme",
+  "bugs": "https://github.com/modufolio/panel/issues",
+  "keywords": [
+    "vue",
+    "inertia",
+    "admin",
+    "panel",
+    "crud",
+    "table",
+    "form",
+    "blueprint",
+    "filament-alternative"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@floating-ui/vue": "^2.0.1"
+  }
+}
