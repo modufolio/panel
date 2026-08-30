@@ -24,6 +24,15 @@ final class BlueprintRegistry
     /** @var array<string, AbstractBlueprint|null> */
     private array $resolved = [];
 
+    /**
+     * @param string $namespace Where the application keeps its blueprints.
+     *                          Defaults to the documented convention; pass a
+     *                          different namespace to house them elsewhere.
+     */
+    public function __construct(
+        private readonly string $namespace = 'App\\Panel\\Blueprint',
+    ) {}
+
     public function for(string $template): ?AbstractBlueprint
     {
         if (array_key_exists($template, $this->resolved)) {
@@ -35,7 +44,7 @@ final class BlueprintRegistry
 
     private function locate(string $template): ?AbstractBlueprint
     {
-        $class = self::OVERRIDES[$template] ?? self::conventionalClass($template);
+        $class = self::OVERRIDES[$template] ?? $this->conventionalClass($template);
 
         if ($class === null || !class_exists($class) || !is_a($class, AbstractBlueprint::class, true)) {
             return null;
@@ -53,7 +62,7 @@ final class BlueprintRegistry
      *
      * @return class-string<AbstractBlueprint>|null
      */
-    private static function conventionalClass(string $template): ?string
+    private function conventionalClass(string $template): ?string
     {
         $safe = preg_replace('/[^a-z0-9_-]/i', '', $template) ?? '';
 
@@ -64,6 +73,6 @@ final class BlueprintRegistry
         $studly = str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', strtolower($safe))));
 
         /** @var class-string<AbstractBlueprint> */
-        return __NAMESPACE__ . '\\' . $studly . 'Blueprint';
+        return $this->namespace . '\\' . $studly . 'Blueprint';
     }
 }
