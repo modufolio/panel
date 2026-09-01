@@ -2,7 +2,7 @@
  * @modufolio/panel — schema-driven admin panel components for
  * Inertia.js + Vue 3.
  */
-export const VERSION = '0.1.0'
+export const VERSION = '0.2.0'
 
 // Plugin / configuration
 export { createPanel, type CreatePanelOptions } from './plugin'
