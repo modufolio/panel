@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Modufolio\Panel\Tests\Resource;
 
 use Modufolio\Panel\Resource\PanelResourceConfigurator;
+use Modufolio\Panel\Resource\PanelResourceOptions;
+use Modufolio\Panel\Tests\Routing\ReadOnlyResource;
+use Modufolio\Panel\Tests\Routing\WritableResource;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -16,11 +19,11 @@ use PHPUnit\Framework\TestCase;
  */
 final class PanelResourceConfiguratorTest extends TestCase
 {
-    private function options(): object
+    private function options(): PanelResourceOptions
     {
         $configurator = new PanelResourceConfigurator();
 
-        return $configurator->resource('App\\Panel\\EventResource');
+        return $configurator->resource(ReadOnlyResource::class);
     }
 
     public function testEverythingIsGeneratedByDefault(): void
@@ -84,12 +87,12 @@ final class PanelResourceConfiguratorTest extends TestCase
     public function testRegisteredResourcesAreReturnedFromTheConfig(): void
     {
         $configurator = new PanelResourceConfigurator();
-        $configurator->resource('App\\Panel\\EventResource')->roles(['ROLE_USER']);
-        $configurator->resource('App\\Panel\\ActorResource');
+        $configurator->resource(ReadOnlyResource::class)->roles(['ROLE_USER']);
+        $configurator->resource(WritableResource::class);
 
         $config = $configurator->buildConfig();
 
         self::assertCount(2, $config);
-        self::assertArrayHasKey('App\\Panel\\EventResource', $config);
+        self::assertArrayHasKey(ReadOnlyResource::class, $config);
     }
 }

@@ -8,6 +8,10 @@ use Modufolio\JsonApi\JsonApiSerializer;
 
 trait JsonApiPaginationTrait
 {
+    /**
+     * @param  array<string, mixed> $queryParams
+     * @return array{limit: int, offset: int, page: int, perPage: int}
+     */
     protected function getJsonApiPagination(array $queryParams): array
     {
         $pagination = JsonApiSerializer::parsePaginationParams($queryParams);
@@ -23,6 +27,11 @@ trait JsonApiPaginationTrait
         ];
     }
 
+    /**
+     * @param  array<int, array<string, mixed>> $data
+     * @param  array<string, mixed>             $meta
+     * @return array<string, mixed>
+     */
     protected function wrapWithJsonApiPagination(
         array $data,
         int $totalCount,

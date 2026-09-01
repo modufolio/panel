@@ -36,6 +36,12 @@ final class PanelResourceRouteLoaderTest extends TestCase
         $this->tempFiles = [];
     }
 
+    /** The named route, failing the test rather than dereferencing null. */
+    private function route(RouteCollection $routes, string $name): Route
+    {
+        return $routes->get($name) ?? self::fail(sprintf('Route "%s" was not generated.', $name));
+    }
+
     /**
      * Writes a real config file, because that is what the loader consumes —
      * `include`-ing a closure that configures a PanelResourceConfigurator.
@@ -49,7 +55,7 @@ final class PanelResourceRouteLoaderTest extends TestCase
         $locator = new class ($file) implements FileLocatorInterface {
             public function __construct(private readonly string $file) {}
 
-            public function locate(string $name, ?string $currentPath = null, bool $first = true): string|array
+            public function locate(string $name, ?string $currentPath = null, bool $first = true): string
             {
                 return $this->file;
             }
@@ -126,7 +132,7 @@ final class PanelResourceRouteLoaderTest extends TestCase
      */
     public function testShowRequiresAUuidSoItCannotSwallowNamedRoutes(): void
     {
-        $show = $this->load($this->readOnlyConfig())->get('events_show');
+        $show = $this->route($this->load($this->readOnlyConfig()), 'events_show');
 
         self::assertSame('/panel/events/{uuid}', $show->getPath());
         self::assertSame(Uuid::PATTERN, $show->getRequirement('uuid'));
@@ -246,7 +252,7 @@ final class PanelResourceRouteLoaderTest extends TestCase
 
     public function testAResourceWithoutRolesCarriesNoRoleGate(): void
     {
-        $route = $this->load($this->readOnlyConfig())->get('events');
+        $route = $this->route($this->load($this->readOnlyConfig()), 'events');
 
         self::assertNull($route->getDefault('_is_granted_roles'));
     }
@@ -257,14 +263,14 @@ final class PanelResourceRouteLoaderTest extends TestCase
             $panel->resource(\\' . ReadOnlyResource::class . '::class)->prefix(\'/admin\');
         }');
 
-        self::assertSame('/admin/events', $routes->get('events')->getPath());
+        self::assertSame('/admin/events', $this->route($routes, 'events')->getPath());
     }
 
     public function testTheDefaultPrefixComesFromTheLoader(): void
     {
         $routes = $this->load($this->readOnlyConfig(), prefix: '/backoffice');
 
-        self::assertSame('/backoffice/events', $routes->get('events')->getPath());
+        self::assertSame('/backoffice/events', $this->route($routes, 'events')->getPath());
     }
 
     // ── Refusals ─────────────────────────────────────────────────────────────
@@ -297,7 +303,7 @@ final class PanelResourceRouteLoaderTest extends TestCase
     public function testTheLoaderOnlySupportsItsOwnType(): void
     {
         $locator = new class implements FileLocatorInterface {
-            public function locate(string $name, ?string $currentPath = null, bool $first = true): string|array
+            public function locate(string $name, ?string $currentPath = null, bool $first = true): string
             {
                 return $name;
             }

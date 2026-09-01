@@ -115,6 +115,24 @@ abstract class PanelResource
     }
 
     /**
+     * Per-field access for a hand-written {@see formFields()}, keyed by field:
+     * `['secret' => ['read' => fn($user, $record) => …, 'write' => …]]`.
+     *
+     * The guesser path carries this on the blueprint builder and hands it back
+     * through {@see \Modufolio\Panel\Blueprint\FormDefinition}; a resource
+     * that builds its own fields has no builder to ask, so it declares the map
+     * here. Closures never travel to the client — a read-denied field is
+     * removed from the definitions, a write-denied one has its submitted value
+     * stripped. See {@see \Modufolio\Panel\Blueprint\FieldAccess}.
+     *
+     * @return array<string, array{read?: callable, write?: callable}>
+     */
+    public function formAccess(): array
+    {
+        return [];
+    }
+
+    /**
      * The lighter alternative to formFields(): name only *which* fields the
      * form edits (plus any overrides), and FormFieldGuesser derives the rest
      * from Doctrine's metadata — types from column types, `max` from column
@@ -168,7 +186,10 @@ abstract class PanelResource
             }
         }
 
-        return (string) reset($this->recordRouteParams($entity));
+        $params = $this->recordRouteParams($entity);
+        $first  = reset($params);
+
+        return $first === false ? '' : (string) $first;
     }
 
     // ── Permissions ──────────────────────────────────────────────────────────
@@ -205,6 +226,17 @@ abstract class PanelResource
     public function canDelete(?object $record = null, ?object $user = null): bool
     {
         return true;
+    }
+
+    /**
+     * A singleton resource holds exactly one record — a homepage, a settings
+     * blob. The generated listing route skips the table and goes straight to
+     * that record; with no record yet, the ordinary listing renders so the
+     * empty state can offer creation.
+     */
+    public function singleton(): bool
+    {
+        return false;
     }
 
     /**
@@ -275,7 +307,17 @@ abstract class PanelResource
      */
     public function recordRouteParams(object $entity): array
     {
-        return ['uuid' => $entity->getUuid()->toString()];
+        $uuid = method_exists($entity, 'getUuid') ? $entity->getUuid() : null;
+
+        if (is_string($uuid) || $uuid instanceof \Stringable) {
+            return ['uuid' => (string) $uuid];
+        }
+
+        throw new \LogicException(sprintf(
+            '%s has no getUuid() returning a string or Stringable uuid; '
+            . 'override recordRouteParams() to address its records another way.',
+            $entity::class,
+        ));
     }
 
     /**

@@ -241,7 +241,8 @@ final class PanelResourceRouteLoader extends Loader
      * instantiating it is the only way to ask, and a PanelResource is a
      * declaration object with no side effects.
      *
-     * @param class-string<PanelResource> $resourceClass
+     * @param string $resourceClass A name from the config file, verified here
+     *                              rather than trusted.
      */
     private function instantiate(string $resourceClass): PanelResource
     {

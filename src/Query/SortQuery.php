@@ -8,6 +8,10 @@ use Doctrine\ORM\QueryBuilder;
 
 final class SortQuery extends AbstractQuery
 {
+    /**
+     * @param array<string, string> $sort         Column => direction
+     * @param array<string, string> $fieldMapping Public column name => entity property
+     */
     public function __construct(
         private readonly array $sort = [],
         private readonly ?string $defaultField = null,

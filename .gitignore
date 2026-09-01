@@ -1,5 +1,6 @@
 /vendor/
 /.phpunit.cache/
+/.phpstan.cache/
 composer.lock
 
 
@@ -19,3 +20,4 @@ ui/dist/
 
 # Visual Studio Code
 .vscode/
+/.phpstan.cache

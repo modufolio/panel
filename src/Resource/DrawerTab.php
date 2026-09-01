@@ -253,8 +253,9 @@ final class DrawerTab
      * Resolution happens here rather than in {@see toArray()} because a tab
      * naming a sibling by key cannot see its siblings on its own.
      *
-     * @param  list<self>           $tabs
-     * @param  array<string, mixed> $record
+     * @param  list<self>                 $tabs
+     * @param  array<string, mixed>       $record
+     * @param  list<array<string, mixed>> $formFields
      * @return list<array<string, mixed>>
      */
     public static function collect(array $tabs, array $record, array $formFields = []): array
@@ -336,7 +337,7 @@ final class DrawerTab
 
             if (($field['type'] ?? null) === 'repeater') {
                 return [
-                    'addFields' => is_array($field['fields'] ?? null) ? $field['fields'] : [],
+                    'addFields' => self::rowFields($field['fields'] ?? null),
                     'addTarget' => $key,
                 ];
             }
@@ -364,6 +365,28 @@ final class DrawerTab
         }
 
         return ['addFields' => [], 'addTarget' => null];
+    }
+
+    /**
+     * A repeater's row declarations, or nothing when it carries none.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function rowFields(mixed $fields): array
+    {
+        if (!is_array($fields)) {
+            return [];
+        }
+
+        $rows = [];
+
+        foreach ($fields as $row) {
+            if (is_array($row)) {
+                $rows[] = $row;
+            }
+        }
+
+        return $rows;
     }
 
     /**

@@ -48,6 +48,9 @@ abstract class AbstractListQuery extends AbstractQuery implements ListQueryInter
      */
     protected const FIELD_MAPPING = [];
 
+    /**
+     * @param array<string, string>|null $sort Column => direction
+     */
     public function __construct(
         protected readonly ?string $search = null,
         protected readonly ?string $trashed = null,

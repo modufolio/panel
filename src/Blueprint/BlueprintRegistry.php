@@ -14,23 +14,20 @@ namespace Modufolio\Panel\Blueprint;
  */
 final class BlueprintRegistry
 {
-    /**
-     * Templates whose class name does not follow from their slug.
-     *
-     * @var array<string, class-string<AbstractBlueprint>>
-     */
-    private const OVERRIDES = [];
-
     /** @var array<string, AbstractBlueprint|null> */
     private array $resolved = [];
 
     /**
-     * @param string $namespace Where the application keeps its blueprints.
-     *                          Defaults to the documented convention; pass a
-     *                          different namespace to house them elsewhere.
+     * @param string                                          $namespace Where the application keeps its
+     *                                                                   blueprints. Defaults to the documented
+     *                                                                   convention; pass a different namespace
+     *                                                                   to house them elsewhere.
+     * @param array<string, class-string<AbstractBlueprint>> $overrides Templates whose class name does not
+     *                                                                   follow from their slug.
      */
     public function __construct(
         private readonly string $namespace = 'App\\Panel\\Blueprint',
+        private readonly array $overrides = [],
     ) {}
 
     public function for(string $template): ?AbstractBlueprint
@@ -44,7 +41,7 @@ final class BlueprintRegistry
 
     private function locate(string $template): ?AbstractBlueprint
     {
-        $class = self::OVERRIDES[$template] ?? $this->conventionalClass($template);
+        $class = $this->overrides[$template] ?? $this->conventionalClass($template);
 
         if ($class === null || !class_exists($class) || !is_a($class, AbstractBlueprint::class, true)) {
             return null;
@@ -60,7 +57,8 @@ final class BlueprintRegistry
      * value arriving from a filename can never be coerced into naming an
      * unrelated class.
      *
-     * @return class-string<AbstractBlueprint>|null
+     * The result is a name, not a proven class: {@see locate()} checks that it
+     * exists and is a blueprint before instantiating it.
      */
     private function conventionalClass(string $template): ?string
     {
@@ -72,7 +70,6 @@ final class BlueprintRegistry
 
         $studly = str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', strtolower($safe))));
 
-        /** @var class-string<AbstractBlueprint> */
         return $this->namespace . '\\' . $studly . 'Blueprint';
     }
 }

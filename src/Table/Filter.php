@@ -320,10 +320,13 @@ final class Filter
      */
     private function relationSubquery(string $param, bool $in = false): string
     {
+        $relation = $this->relation
+            ?? throw new \LogicException('A relation subquery needs a filter sourced from a relation.');
+
         $rel = "rel_{$param}";
         $op = $in ? "IN (:{$param})" : "= :{$param}";
 
-        return "SELECT {$rel} FROM {$this->relation->entityClass} {$rel} WHERE {$rel}.{$this->relation->valueField} {$op}";
+        return "SELECT {$rel} FROM {$relation->entityClass} {$rel} WHERE {$rel}.{$relation->valueField} {$op}";
     }
 
     private function isEmpty(mixed $value): bool

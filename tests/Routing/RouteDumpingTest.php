@@ -54,7 +54,7 @@ final class RouteDumpingTest extends TestCase
         $locator = new class ($file) implements FileLocatorInterface {
             public function __construct(private readonly string $file) {}
 
-            public function locate(string $name, ?string $currentPath = null, bool $first = true): string|array
+            public function locate(string $name, ?string $currentPath = null, bool $first = true): string
             {
                 return $this->file;
             }
@@ -125,6 +125,7 @@ final class RouteDumpingTest extends TestCase
      * Every scalar in a nested array, so an assertion can look for a value
      * without knowing the compiled layout.
      *
+     * @param  array<mixed> $values
      * @return list<mixed>
      */
     private function flatten(array $values): array

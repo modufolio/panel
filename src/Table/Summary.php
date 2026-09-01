@@ -19,12 +19,14 @@ final class Summary
     public const MIN = 'min';
     public const MAX = 'max';
 
+    private readonly string $label;
+
     /** @param self::SUM|self::AVERAGE|self::COUNT|self::MIN|self::MAX $type */
     private function __construct(
         private readonly string $type,
-        private ?string $label = null,
+        ?string $label = null,
     ) {
-        $this->label ??= ucfirst($type);
+        $this->label = $label ?? ucfirst($type);
     }
 
     public static function sum(?string $label = 'Total'): self

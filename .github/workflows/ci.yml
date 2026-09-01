@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+# composer.json resolves the sibling packages through path repositories
+# (../appkit, ../psr7, ../json-api), the same layout the package is developed
+# in. The PHP jobs recreate that layout: this repo goes into panel/ and each
+# sibling beside it, so no CI-only composer configuration is needed.
+
+jobs:
+  php:
+    name: PHP ${{ matrix.php }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.4']
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          path: panel
+
+      - name: Checkout sibling packages
+        uses: actions/checkout@v6
+        with:
+          repository: modufolio/appkit
+          path: appkit
+      - uses: actions/checkout@v6
+        with:
+          repository: modufolio/Psr7
+          path: psr7
+      - uses: actions/checkout@v6
+        with:
+          repository: modufolio/json-api
+          path: json-api
+
+      - name: Set up PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          # appkit's own platform requirements.
+          extensions: curl, dom, fileinfo, intl, libxml, pdo, pdo_sqlite, simplexml, sqlite3, zip
+
+      - name: Install dependencies
+        working-directory: panel
+        run: composer update --no-interaction --prefer-dist --no-progress
+
+      - name: Run tests
+        working-directory: panel
+        run: composer test
+
+  phpstan:
+    name: PHPStan (level 8)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          path: panel
+
+      - name: Checkout sibling packages
+        uses: actions/checkout@v6
+        with:
+          repository: modufolio/appkit
+          path: appkit
+      - uses: actions/checkout@v6
+        with:
+          repository: modufolio/Psr7
+          path: psr7
+      - uses: actions/checkout@v6
+        with:
+          repository: modufolio/json-api
+          path: json-api
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          extensions: curl, dom, fileinfo, intl, libxml, pdo, pdo_sqlite, simplexml, sqlite3, zip
+
+      - name: Install dependencies
+        working-directory: panel
+        run: composer update --no-interaction --prefer-dist --no-progress
+
+      - name: Run PHPStan
+        working-directory: panel
+        run: composer stan -- --no-progress
+
+  ui:
+    name: UI (lint, types, tests, build)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ui
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build

@@ -207,6 +207,7 @@ final class ResourceListing
 
         $alias        = $this->resource->queryAlias();
         $currentValue = $this->resource->sortValue($entity, $sortField);
+        $currentId    = $this->identifierOf($entity);
 
         // $sortField comes from the list query's hardcoded allowlist, so it is
         // safe to interpolate; the compared values stay bound parameters.
@@ -219,7 +220,7 @@ final class ResourceListing
             $sortField,
             $forward,
             $currentValue,
-            $entity->getId(),
+            $currentId,
         );
 
         // Walking backwards means reversing the *effective* sort, otherwise an
@@ -237,7 +238,7 @@ final class ResourceListing
             $sortField,
             $backward,
             $currentValue,
-            $entity->getId(),
+            $currentId,
         );
 
         return [
@@ -454,13 +455,13 @@ final class ResourceListing
                 $rows = array_slice($rows, 0, RelationOptions::AUTO_SEARCH_THRESHOLD);
             }
 
-            return $filter->withResolvedOptions(array_map(
+            return $filter->withResolvedOptions(array_values(array_map(
                 static fn (array $row): array => [
                     'value' => (string)$row['value'],
                     'label' => (string)$row['label'],
                 ],
                 $rows
-            ), $truncated);
+            )), $truncated);
         }, $schema->declaredFilters());
 
         return $schema->withFilters($filters);
@@ -614,6 +615,10 @@ final class ResourceListing
         }
     }
 
+    /**
+     * @param  array<string, mixed> $params
+     * @return array<string, list<array{type: string, label: string, value: float|null}>>
+     */
     private function summaries(ListQueryInterface $query, string $alias, array $params): array
     {
         $schema = $this->resource->tableSchema();
@@ -675,6 +680,7 @@ final class ResourceListing
         return $summaries;
     }
 
+    /** @return EntityRepository<object> */
     private function repository(): EntityRepository
     {
         return $this->entityManager->getRepository($this->resource->entityClass());
@@ -716,6 +722,27 @@ final class ResourceListing
         }
 
         return [$mapped, $sort[$requested]];
+    }
+
+    /**
+     * The surrogate id keyset navigation breaks ties on.
+     *
+     * The tiebreak compares against `{alias}.id`, so an entity without an
+     * integer id is a declaration error, not a value to coerce.
+     */
+    private function identifierOf(object $entity): int
+    {
+        $id = method_exists($entity, 'getId') ? $entity->getId() : null;
+
+        if (!is_int($id)) {
+            throw new \LogicException(sprintf(
+                'Keyset navigation needs %s::getId() to return an int, got %s.',
+                $entity::class,
+                get_debug_type($id),
+            ));
+        }
+
+        return $id;
     }
 
     private function findAdjacent(

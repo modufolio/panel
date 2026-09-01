@@ -49,17 +49,29 @@ differently.
 
 ## Authorization
 
-Four layers, all plain methods on the resource:
+Five layers, all declared rather than coded:
 
 | Layer | Hook |
 |---|---|
 | Route | roles declared where the resource is registered |
 | Operation | `canCreate()` / `canEdit()` / `canDelete()` |
 | Row | `scopeQuery($qb, $user)` |
-| Field | `readonlyFields($record, $user)` — enforced by dropping fields from the submission |
+| Field, per record | `readonlyFields($record, $user)` — dropped from the submission |
+| Field, per user | `'access' => ['read' => …, 'write' => …]` on the field itself |
 
-Field-level permission is per record *and* per user, and the server drops the
-field rather than trusting a disabled input.
+The server drops the field rather than trusting a disabled input, and a
+read-denied field is never serialised at all. The two field layers answer
+different questions — "frozen on this record" and "visible to this user" — and
+the access callables are held apart from the field definitions, since closures
+cannot cross the JSON boundary. See
+[docs/fields.md](docs/fields.md#per-field-access).
+
+> These guards are declared here and **called by the application**: the package
+> owns no request cycle, so `FieldValidator::stripHidden()`,
+> `FieldAccess::stripDenied()` and `Defaults::resolve()` are helpers a
+> controller invokes, in that order. Declaring them and never calling them
+> yields a form that looks guarded and is not —
+> [the wiring](docs/fields.md#wiring-the-guards).
 
 ## Read-only resources
 
@@ -75,6 +87,7 @@ composer path repositories, so it installs and tests on its own:
 ```bash
 composer install
 composer test
+composer stan   # PHPStan, level 8
 ```
 
 Those `repositories` entries apply only when this package is the root; a
@@ -88,6 +101,8 @@ consuming application resolves the siblings its own way.
   from a generated resource to a fully custom page, one rung at a time
 - [docs/panel-resources.md](docs/panel-resources.md) — why resources are
   composed rather than inherited, and what `ResourceListing` emits
+- [docs/fields.md](docs/fields.md) — blueprint forms: field types, conditions,
+  defaults, per-field access, and the guards an application has to call
 - [docs/table-schema.md](docs/table-schema.md) — columns, filters, groups,
   constraints
 

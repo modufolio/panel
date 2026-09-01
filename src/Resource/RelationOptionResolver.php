@@ -104,7 +104,7 @@ final class RelationOptionResolver
         $rows      = array_slice($rows, 0, $limit);
 
         return [
-            'data' => array_map(fn (object $row): array => $this->toOption($relation, $row), $rows),
+            'data' => array_values(array_map(fn (object $row): array => $this->toOption($relation, $row), $rows)),
             'meta' => [
                 'total'     => count($rows),
                 'limit'     => $limit,
