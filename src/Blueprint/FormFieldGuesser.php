@@ -73,6 +73,19 @@ final class FormFieldGuesser
      */
     public function guess(PanelResource $resource): ?array
     {
+        return $this->guessForm($resource)?->fields;
+    }
+
+    /**
+     * The same guess, with the per-field access callables kept.
+     *
+     * `guess()` returns only what can be serialised to the client, which is
+     * why a declared `access` used to end here: the builder collected it and
+     * the return value had nowhere to carry it. Callers that enforce access
+     * want both halves, so they ask for the definition rather than the fields.
+     */
+    public function guessForm(PanelResource $resource): ?FormDefinition
+    {
         $keys = $resource->formFieldKeys();
 
         if ($keys === null) {
@@ -88,7 +101,7 @@ final class FormFieldGuesser
             $builder->add($key, $type, $options);
         }
 
-        return $builder->fields();
+        return new FormDefinition($builder->fields(), $builder->access());
     }
 
     /**
@@ -105,7 +118,13 @@ final class FormFieldGuesser
 
         foreach ($keys as $key => $value) {
             if (is_int($key)) {
-                $normalized[(string) $value] = [];
+                if (!is_string($value)) {
+                    throw new \InvalidArgumentException(
+                        'formFieldKeys(): a plain entry must be a field name; use `key => [overrides]` to pass options.',
+                    );
+                }
+
+                $normalized[$value] = [];
             } else {
                 $normalized[$key] = is_array($value) ? $value : [];
             }
@@ -354,7 +373,7 @@ final class FormFieldGuesser
             // hid the difference until a child grew a two-word one, whose
             // rows then round-tripped as `unitCost` against a presenter
             // sending `unit_cost` — an always-empty field.
-            $options['label'] ??= ucfirst(strtolower(trim(preg_replace('/(?<!^)[A-Z]/', ' $0', $field))));
+            $options['label'] ??= ucfirst(strtolower(trim(preg_replace('/(?<!^)[A-Z]/', ' $0', $field) ?? $field)));
 
             $builder->add(Str::snake($field), $type, [...$options, 'width' => $width]);
         }

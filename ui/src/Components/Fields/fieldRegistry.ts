@@ -32,6 +32,10 @@ const fieldRegistry: Record<string, FieldLoader> = {
   'repeater':       () => import('./RepeaterField.vue'),
   'tags':           () => import('./TagsField.vue'),
   'toggle-buttons': () => import('./ToggleButtonsField.vue'),
+  'hidden':         () => import('./HiddenField.vue'),
+  'data':           () => import('./DataField.vue'),
+  'embed':          () => import('./EmbedField.vue'),
+  'set':            () => import('./SetField.vue'),
 }
 
 // Cache resolved components so each type is only imported once

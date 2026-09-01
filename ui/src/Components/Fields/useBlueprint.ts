@@ -60,6 +60,8 @@ export interface FieldDef {
   props?: Record<string, unknown>
   /** Conditional visibility — the field is hidden when this evaluates false */
   when?: Condition
+  /** Conditionally required — same shape as `when`, server-mirrored. */
+  requiredWhen?: Condition
   /** Client-side validation, evaluated in order; the first failure is shown */
   rules?: ValidationRule[]
   /** Sub-field declarations, for container types such as `repeater` */
@@ -96,6 +98,7 @@ export type Condition =
   | ConditionTuple
   | { all: Condition[] }
   | { any: Condition[] }
+  | { not: Condition }
 
 const isEmpty = (value: unknown): boolean =>
   value === undefined || value === null || value === '' ||
@@ -151,6 +154,10 @@ export function evaluateCondition(condition: Condition, form: Record<string, unk
 
   if ('all' in condition) {
     return condition.all.every((member) => evaluateCondition(member, form))
+  }
+
+  if ('not' in condition) {
+    return !evaluateCondition(condition.not, form)
   }
 
   return condition.any.some((member) => evaluateCondition(member, form))
@@ -248,7 +255,8 @@ export function useBlueprint(
     const base: Record<string, unknown> = {
       label:       field.label,
       width:       field.width ?? 'full',
-      required:    field.required ?? false,
+      required:    field.required
+        ?? (field.requiredWhen !== undefined && evaluateCondition(field.requiredWhen, readForm())),
       error:       errors[field.key] ?? '',
       ...(field.help        ? { help: field.help }               : {}),
       ...(field.placeholder ? { placeholder: field.placeholder } : {}),

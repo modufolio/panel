@@ -6,6 +6,7 @@ namespace Modufolio\Panel\Tests\Resource;
 
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Table\TableSchema;
+use Modufolio\Panel\Tests\Fixture\StubListQuery;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -22,8 +23,8 @@ final class PanelResourceTest extends TestCase
     {
         return new class extends PanelResource {
             public function key(): string { return 'events'; }
-            public function entityClass(): string { return 'App\\Entity\\Event'; }
-            public function listQueryClass(): string { return 'App\\Query\\EventListQuery'; }
+            public function entityClass(): string { return \stdClass::class; }
+            public function listQueryClass(): string { return StubListQuery::class; }
             public function present(array $entities): array { return []; }
         };
     }
@@ -70,8 +71,8 @@ final class PanelResourceTest extends TestCase
     {
         $resource = new class extends PanelResource {
             public function key(): string { return 'events'; }
-            public function entityClass(): string { return 'App\\Entity\\Event'; }
-            public function listQueryClass(): string { return 'App\\Query\\EventListQuery'; }
+            public function entityClass(): string { return \stdClass::class; }
+            public function listQueryClass(): string { return StubListQuery::class; }
             public function present(array $entities): array { return []; }
 
             public function canCreate(?object $user = null): bool { return false; }
@@ -93,8 +94,8 @@ final class PanelResourceTest extends TestCase
     {
         $resource = new class extends PanelResource {
             public function key(): string { return 'orders'; }
-            public function entityClass(): string { return 'App\\Entity\\Order'; }
-            public function listQueryClass(): string { return 'App\\Query\\OrderListQuery'; }
+            public function entityClass(): string { return \stdClass::class; }
+            public function listQueryClass(): string { return StubListQuery::class; }
             public function present(array $entities): array { return []; }
 
             public function readonlyFields(?object $record = null, ?object $user = null): array
@@ -132,11 +133,11 @@ final class PanelResourceTest extends TestCase
     {
         $resource = new class extends PanelResource {
             public function key(): string { return 'events'; }
-            public function entityClass(): string { return 'App\\Entity\\Event'; }
-            public function listQueryClass(): string { return 'App\\Query\\EventListQuery'; }
+            public function entityClass(): string { return \stdClass::class; }
+            public function listQueryClass(): string { return StubListQuery::class; }
             public function present(array $entities): array { return []; }
 
-            public function tableSchema(): ?TableSchema
+            public function tableSchema(): TableSchema
             {
                 return TableSchema::make()->recordUrl('/panel/events/{id}');
             }
