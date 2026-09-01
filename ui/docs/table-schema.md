@@ -319,6 +319,11 @@ operator from that field's type, and value(s). Each operator carries its
 arity (`0`, `1` or `2`), so the UI knows how many inputs to draw. Conditions
 are ANDed and sent as `constraints[]`.
 
+The value input follows the constraint's `type`: a number spinner, a date
+picker, a Yes/No select for a boolean (whose single `is` operator takes a
+value, rather than the pair of valueless operators it used to have), and a text
+box otherwise.
+
 The server must treat both the field and the operator as allowlists — the
 client is a convenience, not a guarantee.
 

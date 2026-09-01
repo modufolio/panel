@@ -40,8 +40,21 @@
       </select>
 
       <!-- Value(s) — arity comes from the operator, so a nullary one shows none -->
+      <!-- A boolean's one operator is `is`, which takes a value: two choices,
+           not free text. -->
+      <select
+        v-if="arity(condition) >= 1 && constraintFor(condition.key)?.type === 'boolean'"
+        :value="String(condition.value ?? '1')"
+        class="ui-input w-40"
+        :aria-label="`Condition ${index + 1} value`"
+        @change="update(index, { value: ($event.target as HTMLSelectElement).value })"
+      >
+        <option value="1">Yes</option>
+        <option value="0">No</option>
+      </select>
+
       <input
-        v-if="arity(condition) >= 1"
+        v-else-if="arity(condition) >= 1"
         :type="inputType(condition.key)"
         :value="condition.value ?? ''"
         class="w-40 rounded-md border-gray-300 text-sm focus:border-primary-600 focus:ring-primary-600"
@@ -132,8 +145,18 @@ function add(): void {
 
   emitWith([
     ...props.modelValue,
-    { key: first.key, operator: first.operators[0]?.value ?? '', value: '' },
+    { key: first.key, operator: first.operators[0]?.value ?? '', value: initialValue(first) },
   ])
+}
+
+/**
+ * A fresh condition's value. Empty for everything the user types into, but a
+ * boolean's select already shows "Yes" — leaving it empty would mean the chip
+ * says one thing and the server, which drops valueless conditions, does
+ * another.
+ */
+function initialValue(constraint: SchemaConstraint): string {
+  return constraint.type === 'boolean' ? '1' : ''
 }
 
 function remove(index: number): void {
@@ -149,6 +172,13 @@ function update(index: number, patch: Partial<QueryCondition>): void {
  * for the new type, and a stale operator is silently dropped server-side.
  */
 function changeField(index: number, key: string): void {
-  update(index, { key, operator: operatorsFor(key)[0]?.value ?? '', value: '', value2: '' })
+  const constraint = constraintFor(key)
+
+  update(index, {
+    key,
+    operator: operatorsFor(key)[0]?.value ?? '',
+    value: constraint ? initialValue(constraint) : '',
+    value2: '',
+  })
 }
 </script>

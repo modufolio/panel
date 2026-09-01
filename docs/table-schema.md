@@ -283,7 +283,7 @@ DrawerStack::create()->push(
 The page renders the body through the same per-type slot a drawer uses
 (`#publish`, `#footer-publish`). Because the dialog is a stack item it is
 addressable, deep-linkable and closed by navigating away. See the
-[drawer protocol](../packages/panel/docs/drawer-protocol.md#two-frames).
+[drawer protocol](../ui/docs/drawer-protocol.md#two-frames).
 
 New interactions should reach for this before `make()`: a handler is right
 only when there is no server route behind the action at all — opening a tab,
@@ -411,15 +411,33 @@ type**:
 ])
 ```
 
+Each kind names a **field type**, and both the operator menu and the predicate
+come from there — `Constraint::text()` is `TextType`, `number()` is
+`NumberType`, `boolean()` is `ToggleType`, `date()` is `DateType`. So a
+listing's ad-hoc conditions, a field's declared filters and
+modufolio/json-api's filters all speak one vocabulary instead of three:
+
 | Type | Operators |
 |---|---|
-| `text` | contains, notContains, startsWith, endsWith, equals, notEquals, isEmpty, isNotEmpty |
-| `number` | equals, notEquals, gt, gte, lt, lte, between |
-| `boolean` | isTrue, isFalse |
-| `date` | isOn, isAfter, isBefore, between |
+| `text` | `contains`, `not_contains`, `equals`, `not_equals`, `starts_with`, `ends_with`, `empty`, `not_empty` |
+| `number` | `equals`, `not_equals`, `gt`, `gte`, `lt`, `lte`, `between`, `empty`, `not_empty` |
+| `boolean` | `is` |
+| `date` | `on`, `after`, `before`, `between`, `empty`, `not_empty` |
 
-Each operator ships its **arity** (0, 1 or 2), so the UI knows how many value
-inputs to draw. Conditions are ANDed.
+The keys deliberately match modufolio/json-api's filter strategies. `on` is a
+half-open day range rather than an equality, so the same declaration works
+against a `date` and a `datetime` column — equality on the latter matches only
+the stroke of midnight.
+
+Arity is a property of the vocabulary rather than of any one type: `between`
+takes two values, `empty` and `not_empty` take none, everything else takes one.
+It ships with each operator so the UI knows how many inputs to draw. Conditions
+are ANDed.
+
+> **Renaming, for anyone with saved URLs.** These operators were once
+> `notContains` / `isEmpty` / `isTrue` / `isOn`, from a table `Constraint` kept
+> of its own. A condition using an old name is not declared any more, and is
+> dropped.
 
 **Both halves are allowlisted**: the field comes from the declared constraints,
 the operator from its type. A condition naming an undeclared field, or an
@@ -512,5 +530,6 @@ stored value.
 ## See also
 
 - [panel-resources.md](panel-resources.md) — where a schema is declared
-- [frontend.md](frontend.md#table-component) — the underlying `Table` component
+- [ui/docs/table-schema.md](../ui/docs/table-schema.md) — the client half:
+  `SchemaTable`, cell overrides, the query builder
 - `presenters.md` (in the reference application) — computing the fields a schema references

@@ -30,17 +30,23 @@ final class FieldTypeTest extends TestCase
             \Modufolio\Panel\Field\BelongsToType::class => 'belongs-to',
             \Modufolio\Panel\Field\BuilderType::class   => 'builder',
             \Modufolio\Panel\Field\ColorType::class     => 'color',
+            \Modufolio\Panel\Field\ComputedType::class  => 'data',
+            \Modufolio\Panel\Field\DataType::class      => 'data',
             \Modufolio\Panel\Field\DateType::class      => 'date',
             \Modufolio\Panel\Field\DecimalType::class   => 'text',
+            \Modufolio\Panel\Field\EmbedType::class     => 'embed',
             \Modufolio\Panel\Field\EmailType::class     => 'text',
             \Modufolio\Panel\Field\HasManyType::class   => 'repeater',
+            \Modufolio\Panel\Field\HiddenType::class    => 'hidden',
             \Modufolio\Panel\Field\ImageType::class     => 'image',
             \Modufolio\Panel\Field\ManyToManyType::class => 'multiselect',
             \Modufolio\Panel\Field\NumberType::class    => 'text',
             \Modufolio\Panel\Field\SectionsType::class  => 'sections',
             \Modufolio\Panel\Field\SelectType::class    => 'select',
+            \Modufolio\Panel\Field\SetType::class       => 'set',
             \Modufolio\Panel\Field\StructureType::class => 'repeater',
             \Modufolio\Panel\Field\TagsType::class      => 'tags',
+            \Modufolio\Panel\Field\TemplateSelectType::class => 'select',
             \Modufolio\Panel\Field\TextType::class      => 'text',
             \Modufolio\Panel\Field\TextareaType::class  => 'textarea',
             \Modufolio\Panel\Field\ToggleType::class    => 'toggle',
@@ -85,7 +91,7 @@ final class FieldTypeTest extends TestCase
         $onDisk = [];
         foreach (glob(__DIR__ . '/../../src/Field/*.php') ?: [] as $file) {
             $name = basename($file, '.php');
-            if ($name === 'FieldTypeInterface') {
+            if (str_ends_with($name, 'Interface')) {
                 continue;
             }
             $onDisk[] = $name;

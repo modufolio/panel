@@ -5,6 +5,11 @@ declare(strict_types=1);
 namespace Modufolio\Panel\Table;
 
 use Doctrine\ORM\QueryBuilder;
+use Modufolio\Panel\Field\DateType;
+use Modufolio\Panel\Field\FilterableFieldInterface;
+use Modufolio\Panel\Field\NumberType;
+use Modufolio\Panel\Field\TextType;
+use Modufolio\Panel\Field\ToggleType;
 
 /**
  * One field a user may build an ad-hoc condition against.
@@ -14,9 +19,19 @@ use Doctrine\ORM\QueryBuilder;
  * `{key, field, type, label}` — the *operators* come from its type, so a
  * user-composable query needs no closures at all.
  *
- * Both halves are allowlisted: the field is baked in at construction, and the
- * operator must be one this type declares. A request can therefore choose
- * among conditions, but never invent one.
+ * "Its type" is now the field type itself: each of the four kinds names a
+ * {@see FilterableFieldInterface} implementation, and both the operator menu
+ * and the predicate come from there. This class used to carry a second
+ * operator table of its own — same concepts under different names
+ * (`notContains` beside `not_contains`, `isEmpty` beside `empty`), two
+ * switches to keep in step, and a listing filter that could never agree with
+ * the JSON:API layer's vocabulary. What remains here is what a *constraint*
+ * knows and a field type cannot: which entity field it points at, how many
+ * values each operator takes, and how a request's strings become bound values.
+ *
+ * Both halves are still allowlisted: the field is baked in at construction,
+ * and the operator must be one the type declares. A request can therefore
+ * choose among conditions, but never invent one.
  */
 final class Constraint
 {
@@ -25,37 +40,31 @@ final class Constraint
     public const BOOLEAN = 'boolean';
     public const DATE = 'date';
 
-    /** Operators per type, with how many values each takes. */
-    private const OPERATORS = [
-        self::TEXT => [
-            'contains'    => ['label' => 'contains', 'values' => 1],
-            'notContains' => ['label' => 'does not contain', 'values' => 1],
-            'startsWith'  => ['label' => 'starts with', 'values' => 1],
-            'endsWith'    => ['label' => 'ends with', 'values' => 1],
-            'equals'      => ['label' => 'is', 'values' => 1],
-            'notEquals'   => ['label' => 'is not', 'values' => 1],
-            'isEmpty'     => ['label' => 'is empty', 'values' => 0],
-            'isNotEmpty'  => ['label' => 'is not empty', 'values' => 0],
-        ],
-        self::NUMBER => [
-            'equals'    => ['label' => 'is', 'values' => 1],
-            'notEquals' => ['label' => 'is not', 'values' => 1],
-            'gt'        => ['label' => 'is greater than', 'values' => 1],
-            'gte'       => ['label' => 'is at least', 'values' => 1],
-            'lt'        => ['label' => 'is less than', 'values' => 1],
-            'lte'       => ['label' => 'is at most', 'values' => 1],
-            'between'   => ['label' => 'is between', 'values' => 2],
-        ],
-        self::BOOLEAN => [
-            'isTrue'  => ['label' => 'is yes', 'values' => 0],
-            'isFalse' => ['label' => 'is no', 'values' => 0],
-        ],
-        self::DATE => [
-            'isOn'     => ['label' => 'is on', 'values' => 1],
-            'isAfter'  => ['label' => 'is after', 'values' => 1],
-            'isBefore' => ['label' => 'is before', 'values' => 1],
-            'between'  => ['label' => 'is between', 'values' => 2],
-        ],
+    /**
+     * The field type behind each kind — the source of both the operator menu
+     * and the predicate.
+     *
+     * @var array<string, class-string<FilterableFieldInterface>>
+     */
+    private const TYPES = [
+        self::TEXT => TextType::class,
+        self::NUMBER => NumberType::class,
+        self::BOOLEAN => ToggleType::class,
+        self::DATE => DateType::class,
+    ];
+
+    /**
+     * How many values an operator takes.
+     *
+     * Arity is a property of the shared vocabulary, not of any one type: every
+     * type that declares `between` takes two bounds, and `empty` never takes a
+     * value. Anything not named here takes one, which is why the map lists
+     * only the exceptions.
+     */
+    private const ARITY = [
+        'between' => 2,
+        'empty' => 0,
+        'not_empty' => 0,
     ];
 
     private string $label;
@@ -110,14 +119,17 @@ final class Constraint
 
     public function supports(string $operator): bool
     {
-        return isset(self::OPERATORS[$this->type][$operator]);
+        return isset($this->operators()[$operator]);
     }
 
     /**
      * Apply one user-chosen condition.
      *
      * Silently ignores an unknown operator or a missing value — a malformed
-     * condition should narrow nothing, not error the page.
+     * condition should narrow nothing, not error the page. The field type's
+     * own `applyFilter()` throws on an undeclared operator, which is the right
+     * answer for a caller bug; here the caller is the query string, so the
+     * allowlist runs first and nothing undeclared ever reaches it.
      *
      * @param array<string, mixed> $condition {operator, value, value2}
      */
@@ -129,7 +141,7 @@ final class Constraint
             return;
         }
 
-        $arity  = self::OPERATORS[$this->type][$operator]['values'];
+        $arity  = $this->arity($operator);
         $value  = $condition['value'] ?? null;
         $value2 = $condition['value2'] ?? null;
 
@@ -146,73 +158,15 @@ final class Constraint
         $field = "{$alias}.{$this->field}";
         $p     = sprintf('c%d_%s', $index, preg_replace('/\W/', '_', $this->key));
 
-        switch ($operator) {
-            case 'contains':
-                $qb->andWhere("LOWER({$field}) LIKE :{$p}")->setParameter($p, '%' . mb_strtolower((string) $value) . '%');
-                break;
-            case 'notContains':
-                $qb->andWhere("LOWER({$field}) NOT LIKE :{$p}")->setParameter($p, '%' . mb_strtolower((string) $value) . '%');
-                break;
-            case 'startsWith':
-                $qb->andWhere("LOWER({$field}) LIKE :{$p}")->setParameter($p, mb_strtolower((string) $value) . '%');
-                break;
-            case 'endsWith':
-                $qb->andWhere("LOWER({$field}) LIKE :{$p}")->setParameter($p, '%' . mb_strtolower((string) $value));
-                break;
-            case 'equals':
-                $qb->andWhere("{$field} = :{$p}")->setParameter($p, $this->cast($value));
-                break;
-            case 'notEquals':
-                $qb->andWhere("{$field} <> :{$p}")->setParameter($p, $this->cast($value));
-                break;
-            case 'isEmpty':
-                $qb->andWhere("({$field} IS NULL OR {$field} = '')");
-                break;
-            case 'isNotEmpty':
-                $qb->andWhere("({$field} IS NOT NULL AND {$field} <> '')");
-                break;
-            case 'gt':
-                $qb->andWhere("{$field} > :{$p}")->setParameter($p, $this->cast($value));
-                break;
-            case 'gte':
-                $qb->andWhere("{$field} >= :{$p}")->setParameter($p, $this->cast($value));
-                break;
-            case 'lt':
-                $qb->andWhere("{$field} < :{$p}")->setParameter($p, $this->cast($value));
-                break;
-            case 'lte':
-                $qb->andWhere("{$field} <= :{$p}")->setParameter($p, $this->cast($value));
-                break;
-            case 'isTrue':
-                $qb->andWhere("{$field} = :{$p}")->setParameter($p, true);
-                break;
-            case 'isFalse':
-                $qb->andWhere("{$field} = :{$p}")->setParameter($p, false);
-                break;
-            case 'isOn':
-                $day = new \DateTimeImmutable((string) $value);
-                $qb->andWhere("{$field} >= :{$p}_a AND {$field} < :{$p}_b")
-                    ->setParameter("{$p}_a", $day->setTime(0, 0))
-                    ->setParameter("{$p}_b", $day->modify('+1 day')->setTime(0, 0));
-                break;
-            case 'isAfter':
-                $qb->andWhere("{$field} > :{$p}")->setParameter($p, new \DateTimeImmutable((string) $value));
-                break;
-            case 'isBefore':
-                $qb->andWhere("{$field} < :{$p}")->setParameter($p, new \DateTimeImmutable((string) $value));
-                break;
-            case 'between':
-                if ($this->type === self::DATE) {
-                    $qb->andWhere("{$field} >= :{$p}_a AND {$field} < :{$p}_b")
-                        ->setParameter("{$p}_a", new \DateTimeImmutable((string) $value))
-                        ->setParameter("{$p}_b", (new \DateTimeImmutable((string) $value2))->modify('+1 day'));
-                } else {
-                    $qb->andWhere("{$field} BETWEEN :{$p}_a AND :{$p}_b")
-                        ->setParameter("{$p}_a", $this->cast($value))
-                        ->setParameter("{$p}_b", $this->cast($value2));
-                }
-                break;
-        }
+        $bound = match ($arity) {
+            0 => null,
+            2 => [$this->cast($value), $this->cast($value2)],
+            default => $this->cast($value),
+        };
+
+        $type = self::TYPES[$this->type];
+
+        $type::applyFilter($qb, $field, $operator, $bound, $p);
     }
 
     /**
@@ -226,19 +180,44 @@ final class Constraint
             'label'     => $this->label,
             'icon'      => $this->icon,
             'operators' => array_map(
-                static fn(string $op, array $meta): array => [
+                fn(string $op, string $label): array => [
                     'value'  => $op,
-                    'label'  => $meta['label'],
-                    'values' => $meta['values'],
+                    'label'  => $label,
+                    'values' => $this->arity($op),
                 ],
-                array_keys(self::OPERATORS[$this->type]),
-                self::OPERATORS[$this->type],
+                array_keys($this->operators()),
+                array_values($this->operators()),
             ),
         ], static fn(mixed $value): bool => $value !== null);
     }
 
+    /** @return array<string, string> operator key => label, in menu order */
+    private function operators(): array
+    {
+        $type = self::TYPES[$this->type];
+
+        return $type::filterOperators();
+    }
+
+    private function arity(string $operator): int
+    {
+        return self::ARITY[$operator] ?? 1;
+    }
+
+    /**
+     * A request carries strings; the predicates compare against typed columns.
+     *
+     * Left here rather than pushed into the field types: a type filters
+     * whatever value it is handed, and knowing that this particular value
+     * arrived as text in a query string is the constraint's business.
+     */
     private function cast(mixed $value): mixed
     {
-        return $this->type === self::NUMBER ? (float) $value : $value;
+        return match ($this->type) {
+            self::NUMBER => (float) $value,
+            self::BOOLEAN => filter_var($value, FILTER_VALIDATE_BOOL),
+            self::DATE => new \DateTimeImmutable((string) $value),
+            default => $value,
+        };
     }
 }

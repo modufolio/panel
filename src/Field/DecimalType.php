@@ -12,8 +12,10 @@ namespace Modufolio\Panel\Field;
  * "2.5" for a year column, while a recipe line's 2.5 g is exactly the point.
  * The step granularity comes from the column's scale, set by the guesser.
  */
-final class DecimalType implements FieldTypeInterface
+final class DecimalType implements FieldTypeInterface, FilterableFieldInterface
 {
+    use \Modufolio\Panel\Field\Concerns\FiltersComparable;
+
     public static function component(): string
     {
         return 'text';
