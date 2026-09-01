@@ -14,10 +14,20 @@
           v-if="hasDrawerFrames"
           class="ui-drawer-stack-overlay fixed inset-0 z-50 bg-gray-900/25"
           data-testid="drawer-overlay"
-          @click="closeAll"
+          @click="guarded(0, closeAll)"
         />
       </Transition>
     </Teleport>
+
+    <!-- One guard dialog for every close path: X, back, backdrop, Escape. -->
+    <ConfirmDialog
+      :is-open="discardGuard !== null"
+      title="Discard changes?"
+      message="There are unsaved changes in this drawer. Closing it will discard them."
+      confirm-label="Discard"
+      @confirm="confirmDiscard"
+      @close="discardGuard = null"
+    />
 
     <!-- Render each stacked drawer -->
     <DrawerProvider
@@ -40,7 +50,7 @@
         :width="item.width || 'md'"
         :closable="true"
         :close-on-overlay="true"
-        @close="closeFrom(index)"
+        @close="guarded(index, () => closeFrom(index))"
       >
         <template #header v-if="$slots[`header-${item.type}`]">
           <slot :name="`header-${item.type}`" :item="item" :index="index" />
@@ -66,9 +76,9 @@
         :next-record-url="item.nextRecordUrl"
         :previous-record-url="item.previousRecordUrl"
         :stack-size="stack.length"
-        @close="closeFrom(index)"
-        @back="goBack(index)"
-        @activate="closeFrom(index + 1)"
+        @close="guarded(index, () => closeFrom(index))"
+        @back="guarded(index, () => goBack(index))"
+        @activate="guarded(index + 1, () => closeFrom(index + 1))"
       >
         <template #header v-if="$slots[`header-${item.type}`]">
           <slot :name="`header-${item.type}`" :item="item" :index="index" />
@@ -94,10 +104,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, provide, shallowRef, watchEffect, defineComponent } from 'vue'
+import { computed, provide, ref, shallowRef, watchEffect, defineComponent } from 'vue'
 import { visitDrawer } from './visitDrawer'
 import Drawer from './Drawer.vue'
 import Dialog from '../Dialogs/Dialog.vue'
+import ConfirmDialog from '../Dialogs/ConfirmDialog.vue'
 import { DRAWER_STACK_KEY, DRAWER_CONTEXT_KEY, type DrawerContext, type DrawerStackContext } from './useIsDrawer'
 import type { StackItem } from './useDrawerStack'
 
@@ -148,12 +159,61 @@ watchEffect(() => {
 
 // Provide stack context so any descendant can push/pop/close
 // without prop drilling (learned from inertia-vue3-modal's provide/inject)
+/**
+ * Unsaved-changes checks, by drawer level. A close only proceeds when every
+ * frame it would remove reports clean; otherwise the guard dialog asks once
+ * for the whole gesture. Checks are functions, not flags, so the answer is
+ * read at close time — a form that became clean again closes silently.
+ */
+const dirtyChecks = new Map<number, () => boolean>()
+
+/** The close action awaiting confirmation, or null when no guard is up. */
+const discardGuard = ref<null | (() => void)>(null)
+
+function registerDirtyCheck(level: number, isDirty: () => boolean): () => void {
+  dirtyChecks.set(level, isDirty)
+
+  return () => {
+    if (dirtyChecks.get(level) === isDirty) {
+      dirtyChecks.delete(level)
+    }
+  }
+}
+
+/** Would closing every frame at or above `fromLevel` discard edits? */
+function hasDirtyFramesFrom(fromLevel: number): boolean {
+  for (const [level, isDirty] of dirtyChecks) {
+    if (level >= fromLevel && isDirty()) {
+      return true
+    }
+  }
+
+  return false
+}
+
+/** Run `action` now, or park it behind the guard dialog when edits would be lost. */
+function guarded(fromLevel: number, action: () => void): void {
+  if (hasDirtyFramesFrom(fromLevel)) {
+    discardGuard.value = action
+    return
+  }
+
+  action()
+}
+
+function confirmDiscard(): void {
+  const action = discardGuard.value
+  discardGuard.value = null
+  action?.()
+}
+
 provide<DrawerStackContext>(DRAWER_STACK_KEY, {
   stack: stackRef,
   baseUrl: props.baseUrl,
   push,
   pop,
   closeAll,
+  registerDirtyCheck,
 })
 
 /**

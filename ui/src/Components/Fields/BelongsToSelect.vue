@@ -1,11 +1,14 @@
 <template>
-  <div ref="rootRef" class="ui-belongs-to-select" :class="widthClass">
-    <label v-if="label" :for="inputId" class="ui-field-label block text-sm font-medium text-gray-700 mb-1">
-      {{ label }}
-      <span v-if="required" class="text-danger-600">*</span>
-    </label>
-
-    <div class="relative">
+  <FieldPrimitive
+    v-bind="{ width, label, required }"
+    :id="inputId"
+    :help="helperText"
+    :error="error || createError"
+    wrapper-class="ui-belongs-to-select"
+  >
+    <!-- The click-outside check needs an element, and a `ref` on the frame
+         would hand back the component instance. -->
+    <div ref="rootRef" class="relative">
       <!-- Search/Select Input -->
       <div class="relative">
         <input
@@ -71,7 +74,7 @@
           <li
             v-for="(option, index) in filteredOptions"
             :id="optionId(index)"
-            :key="option[valueKey]"
+            :key="valueOf(option) ?? index"
             role="option"
             :aria-selected="option[valueKey] === selectedValue"
             class="ui-belongs-to-option cursor-pointer px-4 py-2 text-sm hover:bg-gray-100 transition-colors"
@@ -134,26 +137,24 @@
       </div>
     </div>
 
-    <!-- Error Message -->
-    <p v-if="error || createError" class="mt-1 text-sm text-danger-600">
-      {{ error || createError }}
-    </p>
-
-    <!-- Helper Text -->
-    <p v-else-if="helperText" class="mt-1 text-sm text-gray-500">
-      {{ helperText }}
-    </p>
-  </div>
+  </FieldPrimitive>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, type PropType } from 'vue'
 import { useRelationship } from '../Composables/useRelationship'
-import { useFieldWidth, fieldWidthProp } from './useFieldWidth'
+import FieldPrimitive from './FieldPrimitive.vue'
+import { fieldWidthProp } from './useFieldWidth'
 import { apiFetch, ApiError } from '../../Utils/apiFetch'
 import { useId } from '../../Primitives/useId'
 import { resolveNavigationIndex } from '../../Primitives/useArrowNavigation'
 import { isEscapeKey, useDismissableLayer } from '../../Primitives/useDismissableLayer'
+
+/**
+ * An option row, keyed by whatever `valueKey` / `labelKey` name — the shape
+ * is the consumer's, so only the two keys the field reads are interpreted.
+ */
+type BelongsToOption = Record<string, unknown>
 
 const props = defineProps({
   ...fieldWidthProp,
@@ -189,7 +190,7 @@ const props = defineProps({
    * Options array or endpoint for fetching options
    */
   options: {
-    type: Array as PropType<any[]>,
+    type: Array as PropType<BelongsToOption[]>,
     default: () => [],
   },
   endpoint: {
@@ -258,7 +259,6 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue', 'create'])
 
-const widthClass = useFieldWidth(() => props.width)
 
 const rootRef = ref<HTMLElement | null>(null)
 const inputId = useId(undefined, 'belongs-to')
@@ -268,6 +268,15 @@ const searchQuery = ref('')
 const showDropdown = ref(false)
 const highlightedIndex = ref(0)
 const selectedValue = ref(props.modelValue)
+
+/** The option's display text; a label is a string on the wire, anything else is shown as text. */
+const labelOf = (option: BelongsToOption): string => String(option[props.labelKey] ?? '')
+
+/** The option's identifier — a string or number, as a foreign key is. */
+const valueOf = (option: BelongsToOption): string | number | null => {
+  const value = option[props.valueKey]
+  return typeof value === 'string' || typeof value === 'number' ? value : null
+}
 
 /**
  * The held value's label, kept separately from the option lists: a remote
@@ -301,7 +310,7 @@ const relationshipComposable = props.endpoint
   : null
 
 /** Results of the current server search, plus labels for the held value. */
-const remoteOptions = ref<any[]>([])
+const remoteOptions = ref<BelongsToOption[]>([])
 const remoteLoading = ref(false)
 const remoteTruncated = ref(false)
 
@@ -332,12 +341,12 @@ const filteredOptions = computed(() => {
 
   const query = searchQuery.value.toLowerCase()
   return availableOptions.value.filter((option) =>
-    option[props.labelKey]?.toLowerCase().includes(query)
+    labelOf(option).toLowerCase().includes(query)
   )
 })
 
 /** Fetch from the relation endpoint, keyed by query string. */
-async function fetchRemote(params: string): Promise<any[]> {
+async function fetchRemote(params: string): Promise<BelongsToOption[]> {
   const url = `${props.searchUrl}${props.searchUrl!.includes('?') ? '&' : '?'}${params}`
 
   const response = await fetch(url, {
@@ -349,10 +358,11 @@ async function fetchRemote(params: string): Promise<any[]> {
     throw new Error(`Relation search failed with status ${response.status}`)
   }
 
-  const body = await response.json()
+  const body: { data?: unknown; meta?: { truncated?: unknown } } | null = await response.json()
   remoteTruncated.value = body?.meta?.truncated === true
 
-  return Array.isArray(body?.data) ? body.data : []
+  const data = body?.data
+  return Array.isArray(data) ? data : []
 }
 
 /** Debounced so typing does not issue a request per keystroke. */
@@ -391,7 +401,8 @@ const handleFocus = () => {
   showDropdown.value = true
 
   if (props.searchUrl && remoteOptions.value.length <= 1 && !remoteLoading.value) {
-    scheduleRemoteSearch(searchQuery.value === selectedOption.value?.[props.labelKey] ? '' : searchQuery.value)
+    const selected = selectedOption.value
+    scheduleRemoteSearch(selected !== undefined && searchQuery.value === labelOf(selected) ? '' : searchQuery.value)
   }
 }
 
@@ -461,10 +472,10 @@ const selectHighlighted = () => {
 }
 
 // Select an option
-const selectOption = (option: any) => {
-  selectedValue.value = option[props.valueKey]
-  selectedLabel.value = option[props.labelKey]
-  searchQuery.value = option[props.labelKey]
+const selectOption = (option: BelongsToOption) => {
+  selectedValue.value = valueOf(option)
+  selectedLabel.value = labelOf(option)
+  searchQuery.value = labelOf(option)
   showDropdown.value = false
   emit('update:modelValue', selectedValue.value)
 }
@@ -505,7 +516,7 @@ const showCreateRow = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
 
   return !filteredOptions.value.some(
-    (option: any) => String(option[props.labelKey] ?? '').toLowerCase() === query,
+    (option) => labelOf(option).toLowerCase() === query,
   )
 })
 
@@ -548,9 +559,9 @@ const handleCreate = async () => {
 
     selectOption(option)
   } catch (error) {
-    createError.value = error instanceof ApiError && typeof (error.body as any)?.error === 'string'
-      ? (error.body as any).error
-      : 'Could not create it.'
+    const body = error instanceof ApiError ? error.body : null
+    const message = body !== null && typeof body === 'object' && 'error' in body ? body.error : null
+    createError.value = typeof message === 'string' ? message : 'Could not create it.'
   } finally {
     creating.value = false
   }
@@ -568,8 +579,8 @@ useDismissableLayer(showDropdown, {
 watch(() => props.modelValue, (newValue) => {
   selectedValue.value = newValue
   if (newValue && selectedOption.value) {
-    selectedLabel.value = selectedOption.value[props.labelKey]
-    searchQuery.value = selectedOption.value[props.labelKey]
+    selectedLabel.value = labelOf(selectedOption.value)
+    searchQuery.value = labelOf(selectedOption.value)
   } else if (!newValue) {
     selectedLabel.value = ''
     searchQuery.value = ''
@@ -587,8 +598,8 @@ onMounted(async () => {
           `values=${encodeURIComponent(String(props.modelValue))}`,
         )
         if (selectedOption.value) {
-          selectedLabel.value = selectedOption.value[props.labelKey]
-          searchQuery.value = selectedOption.value[props.labelKey]
+          selectedLabel.value = labelOf(selectedOption.value)
+          searchQuery.value = labelOf(selectedOption.value)
         }
       } catch (error) {
         console.error(error)
@@ -605,8 +616,8 @@ onMounted(async () => {
 
   // Set initial search query from selected value
   if (props.modelValue && selectedOption.value) {
-    selectedLabel.value = selectedOption.value[props.labelKey]
-    searchQuery.value = selectedOption.value[props.labelKey]
+    selectedLabel.value = labelOf(selectedOption.value)
+    searchQuery.value = labelOf(selectedOption.value)
   }
 })
 

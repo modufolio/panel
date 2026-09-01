@@ -179,11 +179,17 @@ const widthClass = computed(() => {
 })
 
 const drawerStyle = computed(() => {
-  // Reverse offset: oldest drawer shifts left, newest stays at right edge
-  const offset = (props.stackSize - 1 - props.level) * 150
+  // Depth from the top of the stack: 0 = active drawer, 1 = the one beneath…
+  const depth = props.stackSize - 1 - props.level
+  // Reverse offset: oldest drawer shifts left, newest stays at right edge.
+  // The slight scale-down per level (Keystone's drawer stack used the same
+  // trick) is what reads as a *pile* rather than overlapping panels — the
+  // peeking drawer is visibly "behind", not merely beside.
+  const offset = depth * 150
   return {
     zIndex: baseZIndex + (props.level * 2) + 1,
-    transform: offset > 0 ? `translateX(-${offset}px)` : undefined,
+    transform: depth > 0 ? `translateX(-${offset}px) scale(${1 - depth * 0.04})` : undefined,
+    transformOrigin: 'center right',
     transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   }
 })

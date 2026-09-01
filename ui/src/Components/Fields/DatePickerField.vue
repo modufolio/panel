@@ -1,15 +1,14 @@
 <template>
-  <div ref="root" class="ui-field-date" :class="widthClass" @focusout="onFocusout">
-    <label
-      v-if="label"
-      :for="id"
-      class="ui-field-label block text-sm font-medium text-gray-700 mb-1.5"
-      :class="{ 'after:content-[\'*\'] after:ml-0.5 after:text-danger-600': required }"
-    >
-      {{ label }}
-    </label>
-
-    <div class="ui-field-wrapper relative">
+  <FieldPrimitive
+    v-bind="{ width, id, label, help, required }"
+    :error="errorText"
+    wrapper-class="ui-field-date"
+    v-slot="{ describedBy, invalid }"
+  >
+    <!-- The element the focus-out check measures against: `ref` on
+         FieldPrimitive would hand back the component instance, and the
+         calendar popover has to know when focus has left the whole field. -->
+    <div ref="root" class="ui-field-wrapper relative" @focusout="onFocusout">
       <input
         :id="id"
         ref="input"
@@ -58,22 +57,15 @@
         />
       </div>
     </div>
-
-    <p v-if="help" :id="`${id}-help`" class="ui-field-help mt-1.5 text-sm text-gray-600">
-      {{ help }}
-    </p>
-
-    <p v-if="errorText" :id="`${id}-error`" class="ui-field-error mt-1.5 text-sm text-danger-600" role="alert">
-      {{ errorText }}
-    </p>
-  </div>
+  </FieldPrimitive>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useId } from '../../Primitives/useId'
 import CalendarPanel from './Calendar/CalendarPanel.vue'
-import { useFieldWidth, fieldWidthProp } from './useFieldWidth'
+import FieldPrimitive from './FieldPrimitive.vue'
+import { fieldWidthProp } from './useFieldWidth'
 import { formatDisplay, formatISO, parseISO, parseUserInput } from '../../Utils/dates'
 
 const props = defineProps({
@@ -91,7 +83,6 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-const widthClass = useFieldWidth(() => props.width)
 
 const root = ref<HTMLElement | null>(null)
 const input = ref<HTMLInputElement | null>(null)
@@ -106,14 +97,12 @@ const parseError = ref(false)
 const minDate = computed(() => parseISO(props.min))
 const maxDate = computed(() => parseISO(props.max))
 
-const invalid = computed(() => props.error !== '' || parseError.value)
+/**
+ * Unparsable text is an error the field discovers itself, so what reaches
+ * FieldPrimitive is this rather than the `error` prop alone — and the frame's
+ * `invalid` / `describedBy` slot props then account for it too.
+ */
 const errorText = computed(() => props.error !== '' ? props.error : (parseError.value ? 'Not a valid date' : ''))
-const describedBy = computed(() => {
-  const ids = []
-  if (props.help) ids.push(`${props.id}-help`)
-  if (errorText.value) ids.push(`${props.id}-error`)
-  return ids.length > 0 ? ids.join(' ') : undefined
-})
 
 // ── Commit points ────────────────────────────────────────────────────────────
 // The model only changes here: date tap, Enter, focus leaving the field, Esc.

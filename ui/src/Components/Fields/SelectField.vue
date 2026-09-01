@@ -1,14 +1,9 @@
 <template>
-  <div class="ui-field-select" :class="widthClass">
-    <label
-      v-if="label"
-      :for="id"
-      class="ui-field-label block text-sm font-medium text-gray-700 mb-1.5"
-      :class="{ 'after:content-[\'*\'] after:ml-0.5 after:text-danger-600': required }"
-    >
-      {{ label }}
-    </label>
-
+  <FieldPrimitive
+    v-bind="{ width, id, label, help, error, required }"
+    wrapper-class="ui-field-select"
+    v-slot="{ describedBy, invalid }"
+  >
     <div class="ui-field-wrapper relative">
       <select
         :id="id"
@@ -16,8 +11,8 @@
         @change="handleChange"
         :disabled="disabled"
         :required="required"
-        :aria-describedby="ariaDescribedby"
-        :aria-invalid="!!error"
+        :aria-describedby="describedBy"
+        :aria-invalid="invalid"
         :aria-required="required"
         :class="selectClasses"
         class="ui-input ui-field-select block w-full pr-10 appearance-none"
@@ -25,7 +20,7 @@
         <option v-if="placeholder" value="">{{ placeholder }}</option>
         <option
           v-for="option in normalizedOptions"
-          :key="option.value"
+          :key="String(option.value)"
           :value="option.value"
           :disabled="option.disabled"
         >
@@ -40,23 +35,15 @@
         </svg>
       </div>
     </div>
-
-    <!-- Help Text -->
-    <p v-if="help" :id="`${id}-help`" class="ui-field-help mt-1.5 text-sm text-gray-600">
-      {{ help }}
-    </p>
-
-    <!-- Error Message -->
-    <p v-if="error" :id="`${id}-error`" role="alert" class="ui-field-error mt-1.5 text-sm text-danger-600">
-      {{ error }}
-    </p>
-  </div>
+  </FieldPrimitive>
 </template>
 
 <script setup lang="ts">
 import { computed, type PropType } from 'vue'
 import { useId } from '../../Primitives/useId'
-import { useFieldWidth, fieldWidthProp } from './useFieldWidth'
+import FieldPrimitive from './FieldPrimitive.vue'
+import { fieldWidthProp } from './useFieldWidth'
+import type { OptionItem } from './useBlueprint'
 
 const props = defineProps({
   ...fieldWidthProp,
@@ -77,7 +64,7 @@ const props = defineProps({
     default: '',
   },
   options: {
-    type: Array as PropType<any[]>,
+    type: Array as PropType<Array<OptionItem | string | number>>,
     required: true,
   },
   help: {
@@ -100,14 +87,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-const widthClass = useFieldWidth(() => props.width)
 
-const ariaDescribedby = computed(() => {
-  const ids = []
-  if (props.help) ids.push(`${props.id}-help`)
-  if (props.error) ids.push(`${props.id}-error`)
-  return ids.length > 0 ? ids.join(' ') : undefined
-})
 
 const normalizedOptions = computed(() => {
   return props.options.map(option => {

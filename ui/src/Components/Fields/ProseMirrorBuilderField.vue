@@ -1,14 +1,10 @@
 <template>
-  <div class="space-y-1.5" :class="widthClass">
-    <label
-      v-if="label"
-      class="block text-sm font-medium text-gray-700"
-      :class="{ 'text-danger-700': error }"
-    >
-      {{ label }}
-      <span v-if="required" class="text-danger-600">*</span>
-    </label>
-
+  <FieldPrimitive
+    v-bind="{ width, label, help, error, required }"
+    wrapper-class="ui-field-builder space-y-1.5 border-0 p-0 m-0"
+    as="fieldset"
+    label-spacing="none"
+  >
     <div
       class="ui-input overflow-hidden p-0"
       :class="{ 'border-danger-600': error || readError }"
@@ -103,12 +99,12 @@
       </div>
     </Teleport>
 
-    <p v-if="readError" class="text-sm text-danger-600">{{ readError }}</p>
-    <p v-if="help && !error" class="text-sm text-gray-500">{{ help }}</p>
-    <p v-if="error" class="text-sm text-danger-600">{{ error }}</p>
+    <!-- Not a validation message: the document could not be read at all, so
+         it stands apart from the frame's `error`. -->
+    <FieldMessage v-if="readError">{{ readError }}</FieldMessage>
 
     <MediaPickerDialog :is-open="picker.open" @close="cancelPick" @select="resolvePick" />
-  </div>
+  </FieldPrimitive>
 </template>
 
 <script setup lang="ts">
@@ -118,7 +114,8 @@ import { EditorView } from 'prosemirror-view'
 import { gapCursor } from 'prosemirror-gapcursor'
 import { dropCursor } from 'prosemirror-dropcursor'
 import { router } from '@inertiajs/vue3'
-import { useFieldWidth } from '../../Components/Fields/useFieldWidth'
+import FieldMessage from '../../Components/Fields/FieldMessage.vue'
+import FieldPrimitive from '../../Components/Fields/FieldPrimitive.vue'
 import { fieldWidthProp } from '../../Components/Fields/useFieldWidth'
 import { normalizeUrl } from '../../Utils/url'
 import { sanitizeUrl } from '../../Utils/url'
@@ -154,7 +151,6 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-const widthClass = useFieldWidth(() => props.width)
 
 // ── Block catalogue ──────────────────────────────────────────────────────────
 

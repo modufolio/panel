@@ -1,14 +1,10 @@
 <template>
-  <div class="space-y-1.5" :class="widthClass">
-    <label
-      v-if="label"
-      class="block text-sm font-medium text-gray-700"
-      :class="{ 'text-danger-700': error }"
-    >
-      {{ label }}
-      <span v-if="required" class="text-danger-600">*</span>
-    </label>
-
+  <FieldPrimitive
+    v-bind="{ width, label, help, error, required }"
+    wrapper-class="ui-field-color space-y-1.5 border-0 p-0 m-0"
+    as="fieldset"
+    label-spacing="none"
+  >
     <div class="flex gap-3">
       <!-- Color Preview Box -->
       <button
@@ -109,22 +105,13 @@
         </div>
       </div>
     </div>
-
-    <!-- Help Text -->
-    <p v-if="help && !error" class="text-sm text-gray-500">
-      {{ help }}
-    </p>
-
-    <!-- Error Message -->
-    <p v-if="error" class="text-sm text-danger-600">
-      {{ error }}
-    </p>
-  </div>
+  </FieldPrimitive>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, type PropType } from 'vue'
-import { useFieldWidth, fieldWidthProp } from './useFieldWidth'
+import FieldPrimitive from './FieldPrimitive.vue'
+import { fieldWidthProp } from './useFieldWidth'
 
 const props = defineProps({
   ...fieldWidthProp,
@@ -188,7 +175,6 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-const widthClass = useFieldWidth(() => props.width)
 
 // State
 const colorInput = ref<HTMLInputElement | null>(null)

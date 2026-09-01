@@ -1,14 +1,16 @@
 <template>
-  <div class="ui-field-range" :class="widthClass">
+  <!-- The label shares a row with the readout, so it is placed here rather
+       than left to FieldPrimitive's stacked arrangement — hence FieldLabel
+       directly, which keeps the typography and the required marker. -->
+  <FieldPrimitive
+    v-bind="{ width, id, help, error, required }"
+    wrapper-class="ui-field-range"
+    v-slot="{ describedBy }"
+  >
     <div class="flex items-baseline justify-between gap-2 mb-1.5">
-      <label
-        v-if="label"
-        :for="id"
-        class="ui-field-label block text-sm font-medium text-gray-700"
-        :class="{ 'after:content-[\'*\'] after:ml-0.5 after:text-danger-600': required }"
-      >
+      <FieldLabel v-if="label" :for="id" :required="required" spacing="none">
         {{ label }}
-      </label>
+      </FieldLabel>
 
       <!-- Live readout. A range input gives no visible value of its own, and
            the thumb position alone does not tell you that 260 is 260. -->
@@ -25,26 +27,20 @@
       :max="max"
       :step="step"
       :disabled="disabled"
-      :aria-describedby="ariaDescribedby"
+      :aria-describedby="describedBy"
       :aria-valuetext="suffix ? `${modelValue} ${suffix}` : undefined"
       class="ui-field-range-input w-full h-2 accent-primary-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
       @input="onInput"
     />
-
-    <p v-if="help" :id="`${id}-help`" class="ui-field-help mt-1.5 text-sm text-gray-600">
-      {{ help }}
-    </p>
-
-    <p v-if="error" :id="`${id}-error`" role="alert" class="ui-field-error mt-1.5 text-sm text-danger-600">
-      {{ error }}
-    </p>
-  </div>
+  </FieldPrimitive>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useId } from '../../Primitives/useId'
-import { useFieldWidth, fieldWidthProp } from './useFieldWidth'
+import FieldLabel from './FieldLabel.vue'
+import FieldPrimitive from './FieldPrimitive.vue'
+import { fieldWidthProp } from './useFieldWidth'
 
 const props = defineProps({
   ...fieldWidthProp,
@@ -64,7 +60,6 @@ const props = defineProps({
 
 const emit = defineEmits<{ 'update:modelValue': [value: number] }>()
 
-const widthClass = useFieldWidth(() => props.width)
 
 // Built here rather than interpolated in the template: Vue collapses the
 // whitespace between an expression and a following element, which would run
@@ -73,12 +68,6 @@ const displayValue = computed(() =>
   props.suffix ? `${props.modelValue} ${props.suffix}` : String(props.modelValue)
 )
 
-const ariaDescribedby = computed(() => {
-  const ids = []
-  if (props.help) ids.push(`${props.id}-help`)
-  if (props.error) ids.push(`${props.id}-error`)
-  return ids.length > 0 ? ids.join(' ') : undefined
-})
 
 // A range input's value is always a string; emit a number so consumers can
 // bind it straight to a numeric model without .number on every call site.

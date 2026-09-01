@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { EditorState, NodeSelection } from 'prosemirror-state'
 import { EditorView } from 'prosemirror-view'
 import { schema } from '../src/Builder/schema'
-import { blockDragHandle, startBlockDrag } from '../src/Builder/dragHandle'
+import { blockDragHandle, blockPosAt, startBlockDrag } from '../src/Builder/dragHandle'
 
 /**
  * The hover geometry needs a layout engine, which happy-dom does not have, so
@@ -216,6 +216,42 @@ describe('blockDragHandle', () => {
 
       expect(() => startBlockDrag(v, blockPos(v, 0), event)).not.toThrow()
       expect(v.dragging?.move).toBe(true)
+    })
+  })
+
+  describe('blockPosAt', () => {
+    // posAtCoords needs a layout engine, so the coordinates are stubbed and
+    // only what the plugin does with its answer is under test.
+    function at(v: EditorView, found: { pos: number; inside: number } | null) {
+      v.posAtCoords = () => found
+      return blockPosAt(v, 0, 0)
+    }
+
+    it('resolves a textblock from a position inside it', () => {
+      const { view: v } = view()
+      const pos = blockPos(v, 1)
+
+      expect(at(v, { pos: pos + 1, inside: pos + 1 })).toBe(pos)
+    })
+
+    it('resolves an atom block, which has no position inside it', () => {
+      const withImage = schema.node('doc', null, [
+        schema.node('paragraph', null, schema.text('before')),
+        schema.nodes.image.create({ url: '/a.jpg', thumbnail_url: '/a.jpg' }),
+      ])
+      const { view: v } = view(withImage)
+      const pos = blockPos(v, 1)
+
+      // Hovering an image resolves to the gap beside it, at depth 0 — reading
+      // that as "no block here" is what left images without a drag handle.
+      expect(at(v, { pos, inside: pos })).toBe(pos)
+    })
+
+    it('gives up when the coordinates are in no node at all', () => {
+      const { view: v } = view()
+
+      expect(at(v, { pos: 0, inside: -1 })).toBeNull()
+      expect(at(v, null)).toBeNull()
     })
   })
 

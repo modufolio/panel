@@ -1,4 +1,8 @@
 <template>
+  <!-- The label belongs beside the box, not above it, so this composes the
+       field parts itself rather than using FieldPrimitive's stacked frame.
+       The help and error keep the control's left offset, which is why they
+       are placed here too. -->
   <div class="ui-field-checkbox" :class="widthClass">
     <div class="relative flex items-start">
       <div class="flex items-center h-6">
@@ -17,33 +21,25 @@
         />
       </div>
       <div class="ml-3 text-sm leading-6">
-        <label
-          :for="id"
-          class="font-medium text-gray-700 cursor-pointer"
-          :class="{ 'after:content-[\'*\'] after:ml-0.5 after:text-danger-600': required }"
-        >
+        <FieldLabel :for="id" :required="required" spacing="none" class="cursor-pointer">
           {{ label }}
-        </label>
+        </FieldLabel>
         <p v-if="description" :id="`${id}-description`" class="text-gray-500 mt-0.5">
           {{ description }}
         </p>
       </div>
     </div>
 
-    <!-- Help Text -->
-    <p v-if="help" :id="`${id}-help`" class="ui-field-help mt-2 ml-9 text-sm text-gray-600">
-      {{ help }}
-    </p>
-
-    <!-- Error Message -->
-    <p v-if="error" :id="`${id}-error`" role="alert" class="ui-field-error mt-2 ml-9 text-sm text-danger-600">
-      {{ error }}
-    </p>
+    <FieldDescription v-if="help" :id="`${id}-help`" class="mt-2 ml-9">{{ help }}</FieldDescription>
+    <FieldMessage v-if="error" :id="`${id}-error`" class="mt-2 ml-9">{{ error }}</FieldMessage>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import FieldDescription from './FieldDescription.vue'
+import FieldLabel from './FieldLabel.vue'
+import FieldMessage from './FieldMessage.vue'
 import { useId } from '../../Primitives/useId'
 import { useFieldWidth, fieldWidthProp } from './useFieldWidth'
 

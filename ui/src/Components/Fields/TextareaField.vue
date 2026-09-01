@@ -1,14 +1,9 @@
 <template>
-  <div class="ui-field-textarea" :class="widthClass">
-    <label
-      v-if="label"
-      :for="id"
-      class="ui-field-label block text-sm font-medium text-gray-700 mb-1.5"
-      :class="{ 'after:content-[\'*\'] after:ml-0.5 after:text-danger-600': required }"
-    >
-      {{ label }}
-    </label>
-
+  <FieldPrimitive
+    v-bind="{ width, id, label, help, error, required }"
+    wrapper-class="ui-field-textarea"
+    v-slot="{ describedBy, invalid }"
+  >
     <div class="ui-field-wrapper">
       <textarea
         :id="id"
@@ -19,30 +14,21 @@
         :readonly="readonly"
         :required="required"
         :rows="rows"
-        :aria-describedby="ariaDescribedby"
-        :aria-invalid="!!error"
+        :aria-describedby="describedBy"
+        :aria-invalid="invalid"
         :aria-required="required"
         :class="textareaClasses"
         class="ui-input ui-field-textarea block w-full resize-y"
       />
     </div>
-
-    <!-- Help Text -->
-    <p v-if="help" :id="`${id}-help`" class="ui-field-help mt-1.5 text-sm text-gray-600">
-      {{ help }}
-    </p>
-
-    <!-- Error Message -->
-    <p v-if="error" :id="`${id}-error`" role="alert" class="ui-field-error mt-1.5 text-sm text-danger-600">
-      {{ error }}
-    </p>
-  </div>
+  </FieldPrimitive>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useId } from '../../Primitives/useId'
-import { useFieldWidth, fieldWidthProp } from './useFieldWidth'
+import FieldPrimitive from './FieldPrimitive.vue'
+import { fieldWidthProp } from './useFieldWidth'
 
 const props = defineProps({
   ...fieldWidthProp,
@@ -90,14 +76,7 @@ const props = defineProps({
 
 defineEmits(['update:modelValue'])
 
-const widthClass = useFieldWidth(() => props.width)
 
-const ariaDescribedby = computed(() => {
-  const ids = []
-  if (props.help) ids.push(`${props.id}-help`)
-  if (props.error) ids.push(`${props.id}-error`)
-  return ids.length > 0 ? ids.join(' ') : undefined
-})
 
 const textareaClasses = computed(() => {
   const classes = ['px-3 py-2']

@@ -1,5 +1,7 @@
 <template>
-  <div class="space-y-4">
+  <!-- A real form, so Enter in any input submits — the footer button is not
+       the only path to saving. -->
+  <form class="space-y-4" @submit.prevent="emit('submit')">
     <!-- Server-side error banner -->
     <div v-if="serverError" class="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
       {{ serverError }}
@@ -103,7 +105,11 @@
       </p>
     </div>
     </div>
-  </div>
+
+    <!-- Enter-to-submit needs a submit control inside the form; the visible
+         footer buttons live outside it in the drawer chrome. -->
+    <button type="submit" class="hidden" aria-hidden="true" tabindex="-1" />
+  </form>
 </template>
 
 <script setup lang="ts">

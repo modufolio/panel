@@ -52,6 +52,7 @@ export * from './Composables/useDragReorder'
 export * from './Composables/useLocalStoragePersistence'
 export * from './Composables/useUnsavedChangesWarning'
 export * from './Composables/useNestedDrawerForm'
+export { useDrawerDirtyGuard } from './Components/Drawer/useDrawerDirtyGuard'
 export * from './Composables/useDeleteConfirmation'
 export * from './Composables/useReconciled'
 
@@ -146,6 +147,15 @@ export { default as FieldGrid } from './Components/Fields/FieldGrid.vue'
 export { fieldsFromSpec, initialValues } from './Components/Fields/fieldsFromSpec'
 export { default as BlueprintForm } from './Components/Fields/BlueprintForm.vue'
 export { useFieldWidth, fieldWidthProp } from './Components/Fields/useFieldWidth'
+
+// The field frame and its parts. A consumer writing a field type of its own
+// composes these rather than reproducing the label/help/error markup, which is
+// how the built-in fields drifted into three different spacings for the same
+// gap.
+export { default as FieldPrimitive } from './Components/Fields/FieldPrimitive.vue'
+export { default as FieldLabel } from './Components/Fields/FieldLabel.vue'
+export { default as FieldDescription } from './Components/Fields/FieldDescription.vue'
+export { default as FieldMessage } from './Components/Fields/FieldMessage.vue'
 export {
   useBlueprint,
   defineBlueprint,

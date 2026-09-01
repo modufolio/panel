@@ -1,4 +1,6 @@
 <template>
+  <!-- Switch first, label beside it: the field parts are composed here, since
+       FieldPrimitive's frame stacks a label above its control. -->
   <div class="ui-field-toggle" :class="widthClass">
     <div class="flex items-start gap-3">
       <!-- Toggle Switch -->
@@ -22,35 +24,32 @@
 
       <!-- Label and Description -->
       <div class="flex-1">
-        <label
+        <FieldLabel
           v-if="label"
           :for="id"
-          class="ui-field-label block text-sm font-medium text-gray-700 cursor-pointer"
+          spacing="none"
+          class="cursor-pointer"
           :class="{ 'mb-1': description }"
           @click="toggle"
         >
           {{ label }}
-        </label>
+        </FieldLabel>
 
         <p v-if="description" :id="`${id}-description`" class="ui-field-description text-sm text-gray-600">
           {{ description }}
         </p>
 
-        <!-- Help Text -->
-        <p v-if="help" :id="`${id}-help`" class="ui-field-help mt-1.5 text-sm text-gray-600">
-          {{ help }}
-        </p>
-
-        <!-- Error Message -->
-        <p v-if="error" :id="`${id}-error`" role="alert" class="ui-field-error mt-1.5 text-sm text-danger-600">
-          {{ error }}
-        </p>
+        <FieldDescription v-if="help" :id="`${id}-help`">{{ help }}</FieldDescription>
+        <FieldMessage v-if="error" :id="`${id}-error`">{{ error }}</FieldMessage>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import FieldDescription from './FieldDescription.vue'
+import FieldLabel from './FieldLabel.vue'
+import FieldMessage from './FieldMessage.vue'
 import { computed } from 'vue'
 import { useId } from '../../Primitives/useId'
 import { useFieldWidth, fieldWidthProp } from './useFieldWidth'

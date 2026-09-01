@@ -1,16 +1,12 @@
 <template>
-  <div class="ui-field-repeater" :class="widthClass">
+  <FieldPrimitive
+    v-bind="{ width, label, help, error, required }"
+    wrapper-class="ui-field-repeater border-0 p-0 m-0"
+    as="fieldset"
+  >
     <!-- Visible in blueprint mode — the rows carry their own sub-labels, but
          the collection itself still needs a name; screen-reader-only in the
          legacy layouts, whose consumers render their own headings. -->
-    <label
-      v-if="label"
-      class="ui-field-label block text-sm font-medium text-gray-700 mb-2"
-      :class="{ 'sr-only': fields.length === 0 }"
-    >
-      {{ label }}
-      <span v-if="required" class="text-danger-600">*</span>
-    </label>
 
     <!--
       Blueprint mode: sub-fields arrive as serialized declarations (from the
@@ -21,7 +17,7 @@
     <div v-if="fields.length > 0" class="ui-repeater-blueprint space-y-3">
       <div
         v-for="(item, index) in items"
-        :key="item.id || `new-${index}`"
+        :key="rowKey(item, index, `new-${index}`)"
         class="ui-repeater-item relative rounded-lg border border-gray-300 bg-white p-4 shadow-sm"
       >
         <div class="grid grid-cols-12 gap-4 pr-16">
@@ -96,7 +92,7 @@
         <tbody class="bg-white divide-y divide-gray-200">
           <tr
             v-for="(item, index) in items"
-            :key="item.id || index"
+            :key="rowKey(item, index)"
             class="hover:bg-gray-50 transition-colors"
           >
             <td
@@ -108,7 +104,7 @@
                 :name="`item-${column.name}`"
                 :item="item"
                 :index="index"
-                :update="(value: any) => updateItem(index, column.name, value)"
+                :update="(value: unknown) => updateItem(index, column.name, value)"
               >
                 <component
                   v-if="column.component"
@@ -158,7 +154,7 @@
     <div v-else class="ui-repeater-simple space-y-4">
       <div
         v-for="(item, index) in items"
-        :key="item.id || index"
+        :key="rowKey(item, index)"
         class="ui-repeater-item relative rounded-lg border border-gray-300 bg-white p-4 shadow-sm"
       >
         <button
@@ -212,32 +208,39 @@
         {{ addButtonLabel }}
       </button>
     </div>
-
-    <!-- Help Text -->
-    <p v-if="help" class="ui-field-help mt-1.5 text-sm text-gray-600">
-      {{ help }}
-    </p>
-
-    <!-- Error Message -->
-    <p v-if="error" class="ui-field-error mt-1.5 text-sm text-danger-600">
-      {{ error }}
-    </p>
-  </div>
+  </FieldPrimitive>
 </template>
 
 <script setup lang="ts">
 import { computed, defineAsyncComponent, type Component, type PropType } from 'vue'
-import { useFieldWidth, fieldWidthProp } from './useFieldWidth'
+import FieldPrimitive from './FieldPrimitive.vue'
+import { fieldWidthProp } from './useFieldWidth'
 // From the registry module, not useBlueprint — the composable imports the
 // registry too, and importing it back from here re-creates the cycle the
 // registry was extracted to break.
 import { resolveFieldComponent } from './fieldRegistry'
 import type { FieldDef } from './useBlueprint'
 
+/** One row of the repeater; its keys are the consumer's columns or sub-fields. */
+type RepeaterItem = Record<string, unknown>
+
+/** A column of the table layout. */
+interface RepeaterColumn {
+  /** Key on each row the column reads and writes. */
+  name: string
+  label?: string
+  /** CSS width for the header cell. */
+  width?: string
+  required?: boolean
+  /** Editor rendered in the cell; the raw value is shown as text when absent. */
+  component?: Component | string
+  componentProps?: Record<string, unknown>
+}
+
 const props = defineProps({
   ...fieldWidthProp,
   modelValue: {
-    type: Array as PropType<any[]>,
+    type: Array as PropType<RepeaterItem[]>,
     default: () => [],
   },
   label: {
@@ -258,7 +261,7 @@ const props = defineProps({
   },
   // For table layout
   columns: {
-    type: Array as PropType<any[]>,
+    type: Array as PropType<RepeaterColumn[]>,
     default: () => [],
   },
   // Layout type: 'table' or 'simple'
@@ -305,7 +308,6 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-const widthClass = useFieldWidth(() => props.width)
 
 const items = computed({
   get: () => props.modelValue,
@@ -343,6 +345,12 @@ function addItem() {
   items.value = [...items.value, newItem]
 }
 
+/** A stable row identity: the item's id when it has one, its position otherwise. */
+function rowKey(item: RepeaterItem, index: number, fallback: string | number = index): string | number {
+  const id = item.id
+  return (typeof id === 'string' || typeof id === 'number') && id ? id : fallback
+}
+
 function moveItem(index: number, delta: number) {
   const target = index + delta
   if (target < 0 || target >= items.value.length) return
@@ -356,7 +364,7 @@ function deleteItem(index: number) {
   items.value = items.value.filter((_, i) => i !== index)
 }
 
-function updateItem(index: number, field: string, value: any) {
+function updateItem(index: number, field: string, value: unknown) {
   const updatedItems = [...items.value]
   updatedItems[index] = {
     ...updatedItems[index],

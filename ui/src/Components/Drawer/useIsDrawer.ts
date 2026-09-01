@@ -41,6 +41,14 @@ export interface DrawerStackContext {
   pop: () => void
   /** Close the entire stack */
   closeAll: () => void
+  /**
+   * Register an unsaved-changes check for the drawer at `level`. The stack
+   * consults every check covering the frames a close would remove — the X,
+   * the back arrow, the backdrop and Escape all route through the same
+   * guard, so no close path can silently discard edits. Returns an
+   * unregister function; call it when the owning form unmounts.
+   */
+  registerDirtyCheck: (level: number, isDirty: () => boolean) => () => void
 }
 
 /**

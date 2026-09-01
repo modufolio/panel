@@ -1,17 +1,13 @@
 <template>
-  <div class="ui-field-toggle-buttons" :class="widthClass">
-    <label
-      v-if="label"
-      class="ui-field-label block text-sm font-medium text-gray-700 mb-2"
-      :class="{ 'after:content-[\'*\'] after:ml-0.5 after:text-danger-600': required }"
-    >
-      {{ label }}
-    </label>
-
+  <FieldPrimitive
+    v-bind="{ width, label, help, error, required }"
+    wrapper-class="ui-field-toggle-buttons border-0 p-0 m-0"
+    as="fieldset"
+  >
     <div class="ui-toggle-buttons inline-flex rounded-lg overflow-hidden border border-gray-300 shadow-sm">
       <button
         v-for="option in normalizedOptions"
-        :key="option.value"
+        :key="String(option.value)"
         type="button"
         class="ui-toggle-button relative px-4 py-2 text-sm font-medium transition-all focus:z-10 focus:outline-none focus:ring-2 focus:ring-primary-600"
         :class="buttonClasses(option)"
@@ -30,22 +26,27 @@
         <span v-if="option.label">{{ option.label }}</span>
       </button>
     </div>
-
-    <!-- Help Text -->
-    <p v-if="help" class="ui-field-help mt-1.5 text-sm text-gray-600">
-      {{ help }}
-    </p>
-
-    <!-- Error Message -->
-    <p v-if="error" class="ui-field-error mt-1.5 text-sm text-danger-600">
-      {{ error }}
-    </p>
-  </div>
+  </FieldPrimitive>
 </template>
 
 <script setup lang="ts">
-import { computed, type PropType } from 'vue'
-import { useFieldWidth, fieldWidthProp } from './useFieldWidth'
+import { computed, type Component, type PropType } from 'vue'
+import FieldPrimitive from './FieldPrimitive.vue'
+import { fieldWidthProp } from './useFieldWidth'
+import type { OptionItem } from './useBlueprint'
+
+/** A blueprint option that may also carry an icon to render before its label. */
+interface ToggleButtonOption extends OptionItem {
+  icon?: Component | string | null
+}
+
+/** An option after bare strings and numbers have been given the object shape. */
+interface NormalizedToggleOption {
+  label: string | number
+  value: OptionItem['value']
+  disabled: boolean
+  icon: Component | string | null
+}
 
 const props = defineProps({
   ...fieldWidthProp,
@@ -58,7 +59,7 @@ const props = defineProps({
     default: '',
   },
   options: {
-    type: Array as PropType<any[]>,
+    type: Array as PropType<Array<ToggleButtonOption | string | number>>,
     required: true,
   },
   help: {
@@ -86,9 +87,8 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-const widthClass = useFieldWidth(() => props.width)
 
-const normalizedOptions = computed(() => {
+const normalizedOptions = computed<NormalizedToggleOption[]>(() => {
   return props.options.map(option => {
     if (typeof option === 'string' || typeof option === 'number') {
       return {
@@ -107,15 +107,15 @@ const normalizedOptions = computed(() => {
   })
 })
 
-function selectOption(value: any) {
+function selectOption(value: OptionItem['value']) {
   if (!props.disabled) {
     emit('update:modelValue', value)
   }
 }
 
-function buttonClasses(option: any) {
+function buttonClasses(option: NormalizedToggleOption) {
   const isSelected = props.modelValue === option.value
-  const color = props.colors[option.value]
+  const color = props.colors[String(option.value)]
 
   const classes = []
 

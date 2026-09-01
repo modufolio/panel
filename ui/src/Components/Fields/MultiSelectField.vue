@@ -1,14 +1,10 @@
 <template>
-  <div class="space-y-1.5" :class="widthClass">
-    <label
-      v-if="label"
-      class="block text-sm font-medium text-gray-700"
-      :class="{ 'text-danger-700': error }"
-    >
-      {{ label }}
-      <span v-if="required" class="text-danger-600">*</span>
-    </label>
-
+  <FieldPrimitive
+    v-bind="{ width, label, help, error, required }"
+    wrapper-class="ui-field-multiselect space-y-1.5 border-0 p-0 m-0"
+    as="fieldset"
+    label-spacing="none"
+  >
     <div ref="rootRef" class="relative">
       <!-- Selected Items Display -->
       <div
@@ -178,26 +174,17 @@
       </Transition>
     </div>
 
-    <!-- Help Text -->
-    <p v-if="help && !error" class="text-sm text-gray-500">
-      {{ help }}
-    </p>
-
-    <!-- Error Message -->
-    <p v-if="error" class="text-sm text-danger-600">
-      {{ error }}
-    </p>
-
     <!-- Selected Count -->
     <p v-if="selectedValues.length > 0 && !error" class="text-xs text-gray-500">
       {{ selectedValues.length }} item{{ selectedValues.length !== 1 ? 's' : '' }} selected
     </p>
-  </div>
+  </FieldPrimitive>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onBeforeUnmount, type PropType } from 'vue'
-import { useFieldWidth, fieldWidthProp } from './useFieldWidth'
+import FieldPrimitive from './FieldPrimitive.vue'
+import { fieldWidthProp } from './useFieldWidth'
 import { resolveNavigationIndex } from '../../Primitives/useArrowNavigation'
 import { useDismissableLayer } from '../../Primitives/useDismissableLayer'
 import { useId } from '../../Primitives/useId'
@@ -260,7 +247,6 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-const widthClass = useFieldWidth(() => props.width)
 
 // State
 const rootRef = ref<HTMLElement | null>(null)

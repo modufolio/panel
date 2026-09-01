@@ -1,14 +1,9 @@
 <template>
-  <div class="ui-field-tags" :class="widthClass">
-    <label
-      v-if="label"
-      :for="id"
-      class="ui-field-label block text-sm font-medium text-gray-700 mb-1.5"
-      :class="{ 'after:content-[\'*\'] after:ml-0.5 after:text-danger-600': required }"
-    >
-      {{ label }}
-    </label>
-
+  <FieldPrimitive
+    v-bind="{ width, id, label, help, error, required }"
+    wrapper-class="ui-field-tags"
+    v-slot="{ describedBy, invalid }"
+  >
     <!-- Clicking anywhere in the box focuses the input, so the whole control
          behaves like a text field rather than a row of buttons. -->
     <div
@@ -48,29 +43,22 @@
         class="ui-field-input flex-1 min-w-32 border-0 p-0.5 text-sm placeholder-gray-400 focus:ring-0 focus:outline-none disabled:bg-transparent"
         :placeholder="tags.length ? '' : placeholder"
         :disabled="disabled"
-        :aria-describedby="ariaDescribedby"
-        :aria-invalid="!!error"
+        :aria-describedby="describedBy"
+        :aria-invalid="invalid"
         @keydown.enter.prevent="commitDraft"
         @keydown="onKeydown"
         @blur="commitDraft"
         @paste="onPaste"
       />
     </div>
-
-    <p v-if="help" :id="`${id}-help`" class="ui-field-help mt-1.5 text-sm text-gray-600">
-      {{ help }}
-    </p>
-
-    <p v-if="error" :id="`${id}-error`" role="alert" class="ui-field-error mt-1.5 text-sm text-danger-600">
-      {{ error }}
-    </p>
-  </div>
+  </FieldPrimitive>
 </template>
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useId } from '../../Primitives/useId'
-import { useFieldWidth, fieldWidthProp } from './useFieldWidth'
+import FieldPrimitive from './FieldPrimitive.vue'
+import { fieldWidthProp } from './useFieldWidth'
 
 /**
  * Free-form tag input backed by a comma-separated string, matching how the
@@ -92,7 +80,6 @@ const props = defineProps({
 
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
-const widthClass = useFieldWidth(() => props.width)
 
 const inputEl = ref<HTMLInputElement | null>(null)
 const draft = ref('')
@@ -101,12 +88,6 @@ const tags = computed(() =>
   props.modelValue.split(',').map(t => t.trim()).filter(t => t !== ''),
 )
 
-const ariaDescribedby = computed(() => {
-  const ids = []
-  if (props.help) ids.push(`${props.id}-help`)
-  if (props.error) ids.push(`${props.id}-error`)
-  return ids.join(' ') || undefined
-})
 
 function commit(next: string[]) {
   // De-duplicate case-insensitively, keeping the first spelling entered.

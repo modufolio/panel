@@ -1,14 +1,9 @@
 <template>
-  <div class="ui-field-time" :class="widthClass">
-    <label
-      v-if="label"
-      :for="id"
-      class="ui-field-label block text-sm font-medium text-gray-700 mb-1.5"
-      :class="{ 'after:content-[\'*\'] after:ml-0.5 after:text-danger-600': required }"
-    >
-      {{ label }}
-    </label>
-
+  <FieldPrimitive
+    v-bind="{ width, id, label, help, error, required }"
+    wrapper-class="ui-field-time"
+    v-slot="{ describedBy, invalid }"
+  >
     <div class="ui-field-wrapper relative">
       <!--
         The native control, not a bespoke one: it already gives keyboard entry,
@@ -25,30 +20,22 @@
         :step="step"
         :disabled="disabled"
         :required="required"
-        :aria-invalid="error !== '' ? 'true' : undefined"
+        :aria-invalid="invalid"
         :aria-describedby="describedBy"
         class="ui-input ui-field-input block w-full"
         :class="{ 'border-danger-600 focus:border-danger-600 focus:ring-danger-600/20': error !== '' }"
         @input="onInput"
       />
     </div>
-
-    <p v-if="help" :id="`${id}-help`" class="ui-field-help mt-1.5 text-sm text-gray-600">
-      {{ help }}
-    </p>
-
-    <p v-if="error" :id="`${id}-error`" class="ui-field-error mt-1.5 text-sm text-danger-600" role="alert">
-      {{ error }}
-    </p>
-  </div>
+  </FieldPrimitive>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useId } from '../../Primitives/useId'
-import { useFieldWidth, fieldWidthProp } from './useFieldWidth'
+import FieldPrimitive from './FieldPrimitive.vue'
+import { fieldWidthProp } from './useFieldWidth'
 
-const props = defineProps({
+defineProps({
   ...fieldWidthProp,
   /** `HH:mm` in 24-hour form, whatever the viewer's locale displays. */
   modelValue: { type: String, default: '' },
@@ -66,14 +53,6 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
-const widthClass = useFieldWidth(() => props.width)
-
-const describedBy = computed(() => {
-  const ids: string[] = []
-  if (props.help) ids.push(`${props.id}-help`)
-  if (props.error) ids.push(`${props.id}-error`)
-  return ids.length > 0 ? ids.join(' ') : undefined
-})
 
 function onInput(event: Event): void {
   // A time input reports '' while it is partially filled, which is the right

@@ -151,7 +151,7 @@ The reference implementation is appkit + appkit-portfolio.
 ## Tests
 
 ```bash
-npm test            # inside packages/panel
+npm test            # inside ui/
 ```
 
 Specs live in `tests/`, one file per module or component, run by the

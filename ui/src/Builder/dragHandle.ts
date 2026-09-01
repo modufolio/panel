@@ -84,18 +84,33 @@ export function startBlockDrag(view: EditorView, pos: number, event: DragEvent):
  *
  * `x` is pulled inside the content box before asking, so hovering the gutter —
  * which is outside the editable area — still resolves the block beside it.
+ *
+ * Exported for the same reason as `startBlockDrag`: the coordinate handling
+ * around it needs a layout engine, but the position arithmetic does not.
  */
-function blockPosAt(view: EditorView, x: number, y: number): number | null {
+export function blockPosAt(view: EditorView, x: number, y: number): number | null {
   const box = view.dom.getBoundingClientRect()
-  const inside = Math.min(Math.max(x, box.left + 1), box.right - 1)
+  const clamped = Math.min(Math.max(x, box.left + 1), box.right - 1)
 
-  const found = view.posAtCoords({ left: inside, top: y })
+  const found = view.posAtCoords({ left: clamped, top: y })
   if (!found) return null
 
-  const $pos = view.state.doc.resolve(found.pos)
+  const { doc } = view.state
+  const $pos = doc.resolve(found.pos)
 
-  // depth 0 means the position is directly in the doc, with no block around it.
-  return $pos.depth === 0 ? null : $pos.before(1)
+  // Inside a textblock the position sits at depth 1 or deeper, so the block is
+  // the ancestor at depth 1.
+  if ($pos.depth > 0) return $pos.before(1)
+
+  // depth 0 means the position is directly in the doc — which is what an atom
+  // block gives us: hovering an image resolves to the gap before or after it,
+  // not to anything inside it. `inside` is the position of the node the
+  // coordinates actually fell in, so the handle can still find the image.
+  if (found.inside < 0) return null
+
+  const $inside = doc.resolve(found.inside)
+
+  return $inside.depth === 0 ? found.inside : $inside.before(1)
 }
 
 function grip(): HTMLElement {

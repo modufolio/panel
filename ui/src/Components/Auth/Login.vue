@@ -25,7 +25,6 @@
             :error="form.errors.email"
             label="Email"
             type="email"
-            placeholder="john@example.com"
             autocomplete="email"
             required
           />

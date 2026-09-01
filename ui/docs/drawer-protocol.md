@@ -71,7 +71,7 @@ stack's shared overlay stands down when no item in the stack is a drawer.
 **Frames are pointers, which is the point.** A row action can carry a dialog
 URL (`RowAction::dialog()`) instead of naming a behaviour the table has to
 implement, so a new interaction is a new route rather than a new case in the
-client. See [table-schema.md](../../../docs/table-schema.md#actions).
+client. See [table-schema.md](../../docs/table-schema.md#actions).
 
 ## Client components
 
@@ -87,6 +87,32 @@ client. See [table-schema.md](../../../docs/table-schema.md#actions).
   top stack item is showing, or -1. `SchemaTable` uses this internally when
   given a `stack` prop, so the highlighted row follows record pagination;
   reach for the composable directly only outside `SchemaTable`.
+
+## Unsaved changes
+
+Closing a frame with edits in it must ask first, and there are five ways to
+close one: the X, the back arrow, the backdrop, Escape, and clicking a frame
+further down the pile. Each used to decide for itself, so a form was protected
+on some paths and not others.
+
+They now all route through **one** discard dialog, raised whenever any frame
+the action would remove reports unsaved changes. A form opts in by reporting
+its own dirtiness:
+
+```ts
+import { useDrawerDirtyGuard } from '@modufolio/panel'
+
+const isDirty = computed(() => form.isDirty)
+useDrawerDirtyGuard(isDirty)
+```
+
+Nothing is guarded by default — a frame that never calls this closes without a
+prompt, which is right for a read-only drawer. `NestedDrawerForm` is a real
+`<form>` (so Enter submits), and its composable exposes `getChangedData()` for
+sending only the delta on edit.
+
+Background frames scale down as they recede, so a stack reads as depth rather
+than as overlapping panels.
 
 ## Never hand-write the visit
 
