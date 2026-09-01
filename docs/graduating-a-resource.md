@@ -78,7 +78,9 @@ privileged thing you fork, it is the first consumer of the same composable.
 
 > **Register the page** in `assets/panel/js/Pages/{group}.js`, or the route
 > renders a component the client cannot resolve. See
-> [adding-a-custom-page.md](adding-a-custom-page.md#3-register-the-page-module).
+> `adding-a-custom-page.md` in the consuming application, under "Register the
+> page module" — page registration is the application's concern, so that recipe
+> lives with it.
 
 ---
 
@@ -151,16 +153,20 @@ does.
 
 ---
 
-## Worked examples in this repo
+## Worked examples
+
+Resources live in the consuming application, not in this package. The ones
+below are from **appkit-playground**, the harness this package is developed
+against:
 
 | Resource | Rung | Why |
 |---|---|---|
-| `Actor`, `Event`, `Movie`, `Ingredient`, `Recipe`, `FinishedProduct`, `Supplier` | 1 | plain list-and-drawer, registered in `panel_resources.php` |
-| — | 2 | *nothing here yet — see below* |
-| `Contact`, `Organization`, `User`, `Post`, `FormSubmission` | 3 | own controller **and** own page: create/edit forms, bulk actions, bespoke drawers |
+| `Movie`, `Actor`, `Screening` | 1 | plain list-and-drawer, registered in `panel_resources.php` |
+| — | 2 | *nothing yet — see below* |
+| `User`, `FormSubmission` | 3 | own controller **and** own page: create/edit forms, bulk actions, bespoke drawers |
 
 **Rung 2 is currently empty**, and that is the point of writing this down. Every
-screen that outgrew the generic page in this repo jumped straight to rung 3 —
+screen that outgrew the generic page jumped straight to rung 3 —
 taking on a hand-written controller it may not have needed — because overriding
 `indexComponent()` used to mean forking 470 lines of `Resource/Index.vue`
 plumbing. `useResourceListing()` exists to remove that reason.

@@ -103,7 +103,9 @@ every read is "this contact's events, by date".
 
 ## 5. The list query
 
-Extends `AbstractListQuery`. It owns sorting, search and eager loading:
+Extends `Modufolio\Panel\Query\AbstractListQuery`, which the package ships —
+every consumer used to re-implement the same base class. It owns sorting,
+search and eager loading:
 
 ```php
 final class EventListQuery extends AbstractListQuery
@@ -163,7 +165,9 @@ as it receives them.
 
 ## 7. The resource
 
-Six methods are required, then the schema:
+Four are abstract; `queryAlias()` and `presentOne()` have defaults worth
+overriding here (`e` labels nothing, and a drawer usually shows more than a
+row). Then the schema:
 
 ```php
 final class EventResource extends PanelResource
@@ -237,6 +241,10 @@ So a read-only resource is one that simply declares no form fields. Overriding
 braces: it states the intent, and keeps deletes off if someone later adds form
 fields to make the listing editable.
 
+Everything the form can declare — conditions, defaults, validation messages,
+per-field access, and the field types a guessed form cannot reach — is in
+[fields.md](fields.md).
+
 ---
 
 ## 8. Register the resource
@@ -268,8 +276,8 @@ return [
 ];
 ```
 
-Icon names come from the panel's built-in set (`packages/panel/src/Components/
-Core/Icon.vue`) or anything the app registered via `registerIcons()`.
+Icon names come from the panel's built-in set (`ui/src/Components/Core/Icon.vue`
+in this package) or anything the app registered via `registerIcons()`.
 
 ---
 
@@ -283,9 +291,11 @@ Every one of these was hit while building `EventResource`. None of them throws.
 | `recordUrl` is set, still nothing clickable | No column has `->linksToRecord()` |
 | Drawer shows `Contact Id`, `Has Passed` as if they were fields | No `drawerTabs()` — the details grid prints every presenter key |
 | Route works, nothing in the panel links to it | Missing `config/areas/{key}.php` |
+| The area file exists, an admin still sees no menu item | Its `roles` are intersected literally, with no role hierarchy — a `ROLE_SUPER_ADMIN` does not match an area gated on `ROLE_ADMIN`, though the *route* admits them. Name both |
+| A `when` or `access` declaration that guards nothing | The application never calls `stripHidden()` / `stripDenied()` — see [fields.md](fields.md#wiring-the-guards) |
 | Listing fine, drawer errors | Entity has no `uuid` |
 | A create button that opens an empty form | `formFieldKeys()` returns keys the presenter/entity does not carry |
-| Blueprint form throws `Unknown field type "x"` | A PHP `FieldType` emits a type string with no component registered in `packages/panel/src/Components/Fields/fieldRegistry.ts` |
+| Blueprint form throws `Unknown field type "x"` | A PHP `FieldType` emits a type string with no component registered in `ui/src/Components/Fields/fieldRegistry.ts` |
 | A column renders as a raw value | Its `type` has no case in `SchemaTable.vue` — or register one with `registerColumnType()` |
 
 ---
@@ -338,5 +348,6 @@ they only checked that edit and delete were gone.
 - `adding-a-custom-page.md` (in the reference application) — when the screen is not a listing
 - [panel-resources.md](panel-resources.md) — why resources are composed, not inherited
 - [table-schema.md](table-schema.md) — columns, filters, groups, constraints
+- [fields.md](fields.md) — what step 7's form can declare
 - `presenters.md` (in the reference application) — shaping rows
 - `testing.md` (in the reference application) — the test case helpers used above
