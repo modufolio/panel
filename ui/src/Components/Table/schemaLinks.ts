@@ -1,4 +1,13 @@
 import { resolveRecordUrl, isEmptyValue, getPath, type SchemaColumn } from './tableSchema'
+import type { TableRecord } from './tableTypes'
+
+/** The DrawerLink props a linked cell binds; empty for a cell that is not a link. */
+export interface CellLinkProps {
+  href?: string
+  queryParams?: Record<string, unknown>
+  color?: string
+  showArrow?: boolean
+}
 
 /**
  * The cell's displayed value, honouring `valueKey` so a column can render a
@@ -7,14 +16,14 @@ import { resolveRecordUrl, isEmptyValue, getPath, type SchemaColumn } from './ta
  * Resolved here rather than using Table.vue's `value` slot prop, which always
  * reads the bare column key — that returns the relation object, not its name.
  */
-export function cellValue(column: SchemaColumn, record: Record<string, any>): unknown {
+export function cellValue(column: SchemaColumn, record: TableRecord): unknown {
   return getPath(record, column.valueKey ?? column.key)
 }
 
 /** Where a cell links to, or null when it renders as plain content. */
 export function cellLink(
   column: SchemaColumn,
-  record: Record<string, any>,
+  record: TableRecord,
   recordUrl: string | null | undefined,
 ): string | null {
   // An editable control handles its own clicks; wrapping it in a link would
@@ -36,10 +45,10 @@ export function cellLink(
  */
 export function cellLinkProps(
   column: SchemaColumn,
-  record: Record<string, any>,
+  record: TableRecord,
   recordUrl: string | null | undefined,
-  queryParams: Record<string, any>,
-): Record<string, any> {
+  queryParams: Record<string, unknown>,
+): CellLinkProps {
   const href = cellLink(column, record, recordUrl)
 
   if (!href) return {}

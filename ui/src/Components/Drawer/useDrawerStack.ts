@@ -46,7 +46,7 @@ export interface StackItemTab {
  */
 export interface StackItem {
   type: string
-  data: Record<string, any>
+  data: Record<string, unknown>
   title?: string
   description?: string
   width?: string

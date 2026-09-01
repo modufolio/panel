@@ -30,14 +30,20 @@
  */
 import { computed, type PropType } from 'vue'
 import Icon from '../Core/Icon.vue'
-import { getPath, resolveRecordUrl, visibleCellActions, type SchemaColumn, type SchemaColumnAction } from '../Table/tableSchema'
-
-type ActionHandler = (record: Record<string, any>, action: SchemaColumnAction) => unknown
+import {
+  getPath,
+  resolveRecordUrl,
+  visibleCellActions,
+  type SchemaColumn,
+  type SchemaColumnAction,
+  type CellActionHandler,
+} from '../Table/tableSchema'
+import type { TableRecord } from '../Table/tableTypes'
 
 const props = defineProps({
   column: { type: Object as PropType<SchemaColumn>, required: true },
-  record: { type: Object as PropType<Record<string, any>>, required: true },
-  handlers: { type: Object as PropType<Record<string, ActionHandler>>, default: () => ({}) },
+  record: { type: Object as PropType<TableRecord>, required: true },
+  handlers: { type: Object as PropType<Record<string, CellActionHandler>>, default: () => ({}) },
 })
 
 const actions = computed(() => visibleCellActions(props.column, props.record))

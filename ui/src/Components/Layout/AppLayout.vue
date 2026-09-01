@@ -7,10 +7,7 @@
     <Sidebar
       v-model:collapsed="sidebarCollapsed"
       :items="navigationItems"
-      :class="[
-        'hidden md:flex',
-        sidebarCollapsed ? 'w-24' : 'w-96'
-      ]"
+      class="hidden md:flex"
     />
 
     <!-- Mobile Sidebar Overlay -->
@@ -100,10 +97,11 @@
 
 <script setup lang="ts">
 import type { MenuItem } from '../../types/menu'
-import { ref, onMounted, onUnmounted, provide, watch } from 'vue'
+import { ref, onMounted, onUnmounted, provide, watch, type PropType } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import { SidebarCollapsedKey } from '../../injectionKeys'
 import Sidebar from './Sidebar.vue'
+import type { SidebarEntry } from './Sidebar.vue'
 import TopNavigation from './TopNavigation.vue'
 import Toast from '../../Components/Notifications/Toast.vue'
 import { useToast } from '../../Components/Notifications/useToast'
@@ -111,7 +109,7 @@ import { useToast } from '../../Components/Notifications/useToast'
 const props = defineProps({
   // Navigation Items
   navigationItems: {
-    type: Array,
+    type: Array as PropType<SidebarEntry[]>,
     default: () => []
   },
 
@@ -192,6 +190,12 @@ const mobileMenuOpen = ref(false)
 // window, but let it show again for a genuine later repeat (e.g. saving two
 // different records in a row that both say "Updated successfully").
 const DUPLICATE_FLASH_WINDOW_MS = 2000
+
+/** Server flash messages, surfaced through DefaultProps as `$page.props.flash`. */
+interface FlashProps {
+  success?: string | null
+  error?: string | null
+}
 const page = usePage()
 const toast = useToast()
 let lastFlashSuccess: string | null = null
@@ -207,8 +211,8 @@ function scheduleClearLastFlash() {
 }
 
 watch(
-  () => page.props.flash,
-  (flash: any) => {
+  () => page.props.flash as FlashProps | undefined,
+  (flash) => {
     if (flash?.success && flash.success !== lastFlashSuccess) {
       toast.success(flash.success)
     }

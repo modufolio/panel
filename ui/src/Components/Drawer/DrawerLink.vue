@@ -25,7 +25,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, type PropType } from 'vue'
 import { visitDrawer } from './visitDrawer'
 
 const props = defineProps({
@@ -63,7 +63,7 @@ const props = defineProps({
    * These help the backend maintain list context for navigation.
    */
   queryParams: {
-    type: Object as () => Record<string, any>,
+    type: Object as PropType<Record<string, unknown>>,
     default: () => ({}),
   },
 })

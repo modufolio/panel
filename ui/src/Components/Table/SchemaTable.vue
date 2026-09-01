@@ -83,7 +83,7 @@
         :color="action.color"
         :variant="action.variant ?? 'solid'"
         size="sm"
-        @click="runBulkAction(action, selected as Record<string, any>[])"
+        @click="runBulkAction(action, selected as TableRecord[])"
       />
     </template>
 
@@ -167,11 +167,13 @@ import {
   cellClasses,
   formatValue,
   type SchemaColumn,
-  type SchemaColumnAction,
-  type SchemaRowAction,
-  type SchemaBulkAction,
   type TableSchema,
+  type CellHandler,
+  type CellActionHandler,
+  type RowActionHandler,
+  type BulkActionHandler,
 } from './tableSchema'
+import type { TableRecord } from './tableTypes'
 
 const props = defineProps({
   /** Server-authored schema — see App\Table\TableSchema. */
@@ -180,7 +182,7 @@ const props = defineProps({
     required: true,
   },
   records: {
-    type: Array as PropType<Record<string, any>[]>,
+    type: Array as PropType<TableRecord[]>,
     default: () => [],
   },
   search: {
@@ -201,7 +203,7 @@ const props = defineProps({
   },
   /** Appended to record links so a drawer preserves the current list state. */
   queryParams: {
-    type: Object as PropType<Record<string, any>>,
+    type: Object as PropType<Record<string, unknown>>,
     default: () => ({}),
   },
   /** Null means "use the schema's toggleable defaults". */
@@ -211,12 +213,12 @@ const props = defineProps({
   },
   /** Handlers for row actions the schema declares but the table cannot service. */
   rowActionHandlers: {
-    type: Object as PropType<Record<string, (record: any, action: SchemaRowAction) => unknown>>,
+    type: Object as PropType<Record<string, RowActionHandler>>,
     default: () => ({}),
   },
   /** The same, for bulk actions. */
   bulkActionHandlers: {
-    type: Object as PropType<Record<string, (records: any[], action: SchemaBulkAction) => unknown>>,
+    type: Object as PropType<Record<string, BulkActionHandler>>,
     default: () => ({}),
   },
   externalFocusedRowIndex: {
@@ -245,7 +247,7 @@ const props = defineProps({
    * into an Inertia prop. The page injects that behaviour here.
    */
   cellHandlers: {
-    type: Object as PropType<Record<string, (record: any, column: string, value: any) => unknown>>,
+    type: Object as PropType<Record<string, CellHandler>>,
     default: () => ({}),
   },
   /**
@@ -256,7 +258,7 @@ const props = defineProps({
    * Actions that navigate declare a `urlTemplate` instead and need no entry.
    */
   cellActionHandlers: {
-    type: Object as PropType<Record<string, (record: any, action: SchemaColumnAction) => unknown>>,
+    type: Object as PropType<Record<string, CellActionHandler>>,
     default: () => ({}),
   },
   /** Current filter form values, keyed by filter key. */
@@ -312,8 +314,8 @@ const passthroughSlots = computed(() =>
 )
 
 /** Table.vue passes its slot scope untyped; every use narrows through here. */
-function asRecord(record: unknown): Record<string, any> {
-  return (record ?? {}) as Record<string, any>
+function asRecord(record: unknown): TableRecord {
+  return (record ?? {}) as TableRecord
 }
 
 // ── Summaries ────────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-import { defineComponent, h, type PropType } from 'vue'
+import { defineComponent, h, type Component, type PropType } from 'vue'
 import TextColumn from '../Columns/TextColumn.vue'
 import TextInputColumn from '../Columns/TextInputColumn.vue'
 import BadgeColumn from '../Columns/BadgeColumn.vue'
@@ -17,10 +17,12 @@ import {
   truncate,
   formatValue,
   type SchemaColumn,
+  type CellHandler,
 } from './tableSchema'
+import type { TableRecord } from './tableTypes'
 
 /** The component each read-only column type renders through. */
-const componentForType: Record<string, any> = {
+const componentForType: Record<string, Component> = {
   text: TextColumn,
   badge: BadgeColumn,
   date: DateColumn,
@@ -30,10 +32,20 @@ const componentForType: Record<string, any> = {
   color: ColorColumn,
 }
 
-type CellHandler = ((record: any, column: string, value: any) => unknown) | undefined
+/**
+ * The in-place editors, widened to the generic component type.
+ *
+ * SelectColumn and friends declare both an `onUpdate` *prop* and an `update`
+ * *emit*, so Vue's generated types read `onUpdate` as the emit listener and
+ * reject the callback. The runtime contract is the prop; widening here is
+ * only to get past that ambiguity, and keeps the type mismatch in one place.
+ */
+const textEditor: Component = TextInputColumn
+const selectEditor: Component = SelectColumn
+const toggleEditor: Component = ToggleColumn
 
 /** A column flag resolved against the row it is rendered for. */
-function flag(record: Record<string, any>, key: string | undefined): boolean {
+function flag(record: TableRecord, key: string | undefined): boolean {
   return key ? Boolean(record[key]) : false
 }
 
@@ -45,9 +57,9 @@ function labelForOption(column: SchemaColumn, value: unknown): string {
 /** Props every in-place editor takes; they all save through the same handler. */
 function editorProps(
   column: SchemaColumn,
-  record: Record<string, any>,
-  handler: CellHandler,
-): Record<string, any> {
+  record: TableRecord,
+  handler: CellHandler | undefined,
+): Record<string, unknown> {
   return {
     record,
     column: column.key,
@@ -58,20 +70,16 @@ function editorProps(
 
 function textInput(
   column: SchemaColumn,
-  record: Record<string, any>,
+  record: TableRecord,
   value: unknown,
-  handler: CellHandler,
+  handler: CellHandler | undefined,
 ) {
-  // SelectColumn and friends declare both an `onUpdate` *prop* and an `update`
-  // *emit*, so Vue's generated types read `onUpdate` as the emit listener and
-  // reject the callback. The runtime contract is the prop; the casts below are
-  // only to get past that ambiguity.
-  return h(TextInputColumn, {
+  return h(textEditor, {
     ...editorProps(column, record, handler),
     value: (value ?? '') as string,
     label: column.label,
     placeholder: column.placeholder ?? '',
-  } as any)
+  })
 }
 
 /**
@@ -84,9 +92,9 @@ export default defineComponent({
   name: 'SchemaCell',
   props: {
     column: { type: Object as PropType<SchemaColumn>, required: true },
-    record: { type: Object as PropType<Record<string, any>>, required: true },
+    record: { type: Object as PropType<TableRecord>, required: true },
     value: { type: null, default: undefined },
-    handler: { type: Function as PropType<CellHandler>, default: undefined },
+    handler: { type: Function as PropType<CellHandler | undefined>, default: undefined },
   },
   setup(cellProps) {
     return () => {
@@ -104,7 +112,7 @@ export default defineComponent({
           column,
           label: formatValue(column, value),
           onUpdate: handler ?? null,
-        } as any)
+        })
       }
 
       // An editable text cell renders its input even when empty — that is the
@@ -131,11 +139,11 @@ export default defineComponent({
             })
           }
 
-          return h(SelectColumn, {
+          return h(selectEditor, {
             ...editorProps(column, record, handler),
             value: value as string,
             options: column.options ?? [],
-          } as any)
+          })
         }
 
         case 'date':
@@ -155,10 +163,10 @@ export default defineComponent({
           // An editable boolean is an in-place toggle, saved through the same
           // handler an editable select uses; otherwise a read-only tick/cross.
           if (column.editable) {
-            return h(ToggleColumn, {
+            return h(toggleEditor, {
               ...editorProps(column, record, handler),
               value: value as boolean,
-            } as any)
+            })
           }
 
           return h(component, { value })

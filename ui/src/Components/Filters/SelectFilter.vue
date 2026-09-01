@@ -32,7 +32,7 @@
 import { type PropType } from 'vue'
 
 interface FilterOption {
-  value: any
+  value: string | number
   label: string
 }
 

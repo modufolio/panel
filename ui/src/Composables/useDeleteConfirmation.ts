@@ -13,19 +13,26 @@ import { reactive } from 'vue'
  * are hand-written, and they are the ones still calling confirm().
  */
 
+/** One record in the tree of what a delete would take with it. */
+export interface DeletionNode {
+  label: string
+  type?: string
+  children?: DeletionNode[]
+}
+
 export interface DeletionPlan {
   blocked: boolean
   /** Human labels of the records standing in the way. */
   protected?: string[]
   /** Nested tree of what would be deleted. */
-  nested?: Array<{ label: string; type?: string; children?: any[] }>
+  nested?: DeletionNode[]
   counts?: Record<string, number>
   linkCounts?: Record<string, number>
   /** True when the record is only trashed, so nothing is at stake. */
   soft?: boolean
 }
 
-export interface DeleteConfirmationState<T = any> {
+export interface DeleteConfirmationState<T = unknown> {
   open: boolean
   record: T | null
   plan: DeletionPlan | null
@@ -36,7 +43,7 @@ export interface DeleteConfirmationState<T = any> {
   error: string | null
 }
 
-export interface UseDeleteConfirmationOptions<T = any> {
+export interface UseDeleteConfirmationOptions<T = unknown> {
   /**
    * Where to ask what deleting `record` would do. Omit for a plain
    * confirmation.
@@ -57,7 +64,10 @@ export interface UseDeleteConfirmationOptions<T = any> {
   message?: (record: T) => string
 }
 
-export function useDeleteConfirmation<T = any>(options: UseDeleteConfirmationOptions<T>) {
+export function useDeleteConfirmation<T = unknown>(options: UseDeleteConfirmationOptions<T>) {
+  // `reactive()` unwraps refs inside `T`, which for a generic it cannot
+  // resolve, so the state is asserted back to its declared shape: a record
+  // is plain data, never a ref, and the assertion says so once.
   const state = reactive<DeleteConfirmationState<T>>({
     open: false,
     record: null,
@@ -65,10 +75,10 @@ export function useDeleteConfirmation<T = any>(options: UseDeleteConfirmationOpt
     loading: false,
     deleting: false,
     error: null,
-  })
+  }) as DeleteConfirmationState<T>
 
   async function request(record: T): Promise<void> {
-    state.record = record as any
+    state.record = record
     state.plan = null
     state.error = null
     state.open = true

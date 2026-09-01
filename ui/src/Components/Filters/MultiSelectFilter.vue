@@ -71,7 +71,7 @@
 import { ref, computed, watch, type PropType } from 'vue'
 
 interface FilterOption {
-  value: any
+  value: string | number
   label: string
   count?: number
 }
@@ -122,11 +122,11 @@ const filteredOptions = computed(() => {
   )
 })
 
-function isSelected(value: any) {
+function isSelected(value: FilterOption['value']) {
   return selectedValues.value.includes(value)
 }
 
-function toggleOption(value: any) {
+function toggleOption(value: FilterOption['value']) {
   const index = selectedValues.value.indexOf(value)
   if (index > -1) {
     selectedValues.value.splice(index, 1)

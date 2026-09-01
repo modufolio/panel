@@ -81,7 +81,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import Dialog from './Dialog.vue'
-import type { DeleteConfirmationState, DeletionPlan } from '../../Composables/useDeleteConfirmation'
+import type { DeleteConfirmationState, DeletionNode, DeletionPlan } from '../../Composables/useDeleteConfirmation'
 
 /**
  * The confirmation half of {@see useDeleteConfirmation}.
@@ -120,7 +120,7 @@ const summary = computed<Array<[string, number]>>(() => [
 ] as Array<[string, number]>)
 
 /** Flatten the nested plan depth-first, keeping the indent level. */
-function flatten(nodes: any[], depth = 0): Array<{ label: string; depth: number }> {
+function flatten(nodes: DeletionNode[], depth = 0): Array<{ label: string; depth: number }> {
   return (nodes ?? []).flatMap((node) => [
     { label: node.label, depth },
     ...flatten(node.children ?? [], depth + 1),

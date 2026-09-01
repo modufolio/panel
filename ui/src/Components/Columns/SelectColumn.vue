@@ -40,6 +40,13 @@
 <script setup lang="ts">
 import { ref, computed, type PropType } from 'vue'
 
+/** One choice as rendered; a bare string or number is accepted and normalised to this. */
+interface SelectOption {
+  label: string
+  value: string | number
+  class?: string
+}
+
 const props = defineProps({
   value: {
     type: [String, Number, Boolean],
@@ -54,7 +61,7 @@ const props = defineProps({
     required: true,
   },
   options: {
-    type: Array as PropType<any[]>,
+    type: Array as PropType<Array<SelectOption | string | number>>,
     required: true,
   },
   placeholder: {
@@ -78,7 +85,7 @@ const loading = ref(false)
 
 // Normalize options to { label, value, class? } format
 const normalizedOptions = computed(() => {
-  return props.options.map((option) => {
+  return props.options.map((option): SelectOption => {
     if (typeof option === 'string' || typeof option === 'number') {
       return { label: String(option), value: option }
     }
@@ -86,7 +93,7 @@ const normalizedOptions = computed(() => {
   })
 })
 
-function getOptionClass(value: any) {
+function getOptionClass(value: string | number | boolean): string {
   const option = normalizedOptions.value.find(opt => opt.value === value)
   return option?.class || ''
 }

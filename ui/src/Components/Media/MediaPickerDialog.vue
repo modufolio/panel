@@ -374,7 +374,7 @@ function buildQueryString(page: number): string {
 async function loadPage(page: number) {
   loading.value = true
   try {
-    const json: any = await apiFetch(panelUrl(`${getMediaEndpoints().list}?${buildQueryString(page)}`))
+    const json = await apiFetch<{ data?: MediaItem[]; meta?: Meta }>(panelUrl(`${getMediaEndpoints().list}?${buildQueryString(page)}`))
     images.value = json.data ?? []
     meta.value = json.meta ?? meta.value
   } catch {

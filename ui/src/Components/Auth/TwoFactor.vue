@@ -353,6 +353,29 @@ import Dialog from '../Dialogs/Dialog.vue'
 import { panelUrl } from '../../Utils/url'
 import { apiFetch, ApiError } from '../../Utils/apiFetch'
 
+/** Payload of the setup endpoint: what the authenticator app is shown. */
+interface SetupResponse {
+  qr_code: string | null
+  secret: string | null
+}
+
+/** Payload of the endpoints that mint recovery codes. */
+interface BackupCodesResponse {
+  backup_codes?: string[]
+}
+
+/** The `{error, errors}` shape the 2FA endpoints answer failures with. */
+interface ErrorBody {
+  error?: string
+  errors?: Record<string, string[]>
+}
+
+/** The parsed error payload, when the failure came from the API in that shape. */
+const errorBodyOf = (error: unknown): ErrorBody | null =>
+  error instanceof ApiError && error.body !== null && typeof error.body === 'object'
+    ? (error.body as ErrorBody)
+    : null
+
 // The persistent layout is the consuming app's choice; assign it where the
 // page is registered (e.g. `TwoFactor.layout = AppLayout`) rather than
 // hardcoding one here.
@@ -409,7 +432,7 @@ const setupTwoFactor = async () => {
   setupForm.processing = true
 
   try {
-    const data: any = await apiFetch(panelUrl('/api/2fa/setup'), { method: 'POST' })
+    const data = await apiFetch<SetupResponse>(panelUrl('/api/2fa/setup'), { method: 'POST' })
 
     qrCode.value = data.qr_code
     secret.value = data.secret
@@ -417,7 +440,7 @@ const setupTwoFactor = async () => {
     showSetupDialog.value = true
 
   } catch (error) {
-    const message = error instanceof ApiError ? (error.body as any)?.error : null
+    const message = errorBodyOf(error)?.error ?? null
     toast.error(message || 'Failed to setup two-factor authentication')
   } finally {
     setupForm.processing = false
@@ -430,7 +453,7 @@ const verifyAndEnable = async () => {
   enableForm.clearErrors()
 
   try {
-    const data: any = await apiFetch(panelUrl('/api/2fa/enable'), {
+    const data = await apiFetch<BackupCodesResponse>(panelUrl('/api/2fa/enable'), {
       method: 'POST',
       body: { code: enableForm.code },
     })
@@ -440,10 +463,11 @@ const verifyAndEnable = async () => {
     toast.success('Two-factor authentication enabled successfully!')
 
   } catch (error) {
-    if (error instanceof ApiError && (error.body as any)?.errors?.code) {
-      enableForm.setError('code', (error.body as any).errors.code[0])
+    const codeErrors = errorBodyOf(error)?.errors?.code
+    if (codeErrors) {
+      enableForm.setError('code', codeErrors[0])
     } else {
-      const message = error instanceof ApiError ? (error.body as any)?.error : null
+      const message = errorBodyOf(error)?.error ?? null
       toast.error(message || 'Failed to enable two-factor authentication')
     }
   } finally {
@@ -502,7 +526,7 @@ const disableTwoFactor = async () => {
     router.reload({ only: ['enabled', 'confirmed', 'enabled_at'] })
 
   } catch (error) {
-    const message = error instanceof ApiError ? (error.body as any)?.error : null
+    const message = errorBodyOf(error)?.error ?? null
     toast.error(message || 'Failed to disable two-factor authentication')
   } finally {
     disableForm.processing = false
@@ -514,7 +538,7 @@ const regenerateBackupCodes = async () => {
   regenerateForm.processing = true
 
   try {
-    const data: any = await apiFetch(panelUrl('/api/2fa/regenerate-backup-codes'), { method: 'POST' })
+    const data = await apiFetch<BackupCodesResponse>(panelUrl('/api/2fa/regenerate-backup-codes'), { method: 'POST' })
 
     backupCodes.value = data.backup_codes || []
     showBackupCodesDialog.value = false
@@ -523,7 +547,7 @@ const regenerateBackupCodes = async () => {
     toast.success('Backup codes regenerated')
 
   } catch (error) {
-    const message = error instanceof ApiError ? (error.body as any)?.error : null
+    const message = errorBodyOf(error)?.error ?? null
     toast.error(message || 'Failed to regenerate backup codes')
   } finally {
     regenerateForm.processing = false

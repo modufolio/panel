@@ -136,7 +136,7 @@ const props = defineProps({
     default: '',
   },
   selectedRecords: {
-    type: Array,
+    type: Array as PropType<Record<string, unknown>[]>,
     default: () => [],
   },
 })
@@ -191,7 +191,7 @@ const recordsToExport = computed(() => {
   }
 
   return props.data.filter(record => props.selectedRecords.some(
-    (selected: any) => selected === record || (selected.id !== undefined && selected.id === (record as any).id)
+    (selected) => selected === record || (selected.id !== undefined && selected.id === record.id)
   ))
 })
 
@@ -255,11 +255,11 @@ function handleExport(format: string) {
 }
 
 async function exportViaBackend(format: string, filename: string) {
-  const selectedIds = props.selectedRecords.map((record: any) => record.id).filter(Boolean)
+  const selectedIds = props.selectedRecords.map((record) => record.id).filter(Boolean)
 
   const exportColumns = props.columns
-    .filter((col: any) => col.exportable !== false)
-    .map((col: any) => ({
+    .filter((col) => col.exportable !== false)
+    .map((col) => ({
       key: col.key || col.name,
       label: col.label,
     }))

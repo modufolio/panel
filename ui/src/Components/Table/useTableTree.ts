@@ -50,7 +50,7 @@ export function useTableTree({ enabled, records, depthKey }: TreeOptions) {
     let hiddenBelowDepth: number | null = null
 
     for (const record of records()) {
-      const depth = record[depthKey()] ?? 0
+      const depth = Number(record[depthKey()] ?? 0)
 
       if (hiddenBelowDepth !== null) {
         if (depth > hiddenBelowDepth) continue

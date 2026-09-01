@@ -2,6 +2,15 @@ import { rulesFromSpec } from './validation'
 import type { FieldDef } from './useBlueprint'
 
 /**
+ * A field as `PanelResource::formFields()` serializes it: a {@link FieldDef}
+ * whose `rules` are still the PHP map, plus the starting value it declares.
+ */
+export interface FieldSpec extends Omit<FieldDef, 'rules'> {
+  rules?: Record<string, unknown>
+  default?: unknown
+}
+
+/**
  * Turn a server field declaration into one the blueprint components can use.
  *
  * Fields arrive exactly as `PanelResource::formFields()` declared them, with
@@ -27,7 +36,7 @@ const coerceNumber = (value: unknown): unknown =>
 /** Fields whose components iterate their model and so cannot be given null. */
 const COLLECTION_TYPES = new Set(['repeater', 'multiselect'])
 
-export function fieldsFromSpec(fields: any[]): FieldDef[] {
+export function fieldsFromSpec(fields: FieldSpec[]): FieldDef[] {
   return (fields ?? []).map((field) => {
     const rules = field.rules ? rulesFromSpec(field.rules) : undefined
     const numeric = field.props?.type === 'number'
@@ -49,8 +58,8 @@ export function fieldsFromSpec(fields: any[]): FieldDef[] {
  * so null does not degrade gracefully — it throws.
  */
 export function initialValues(
-  fields: any[],
-  record: Record<string, any> | null = null,
+  fields: Array<Pick<FieldSpec, 'key' | 'type' | 'default'>>,
+  record: Record<string, unknown> | null = null,
 ): Record<string, unknown> {
   const initial: Record<string, unknown> = {}
 

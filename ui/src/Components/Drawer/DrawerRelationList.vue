@@ -81,14 +81,17 @@ import DrawerLink from './DrawerLink.vue'
  * visit would leave unrendered.
  */
 
+/** One related row, as the server sends it; `id` keys the row when present. */
+type RelationItem = Record<string, unknown>
+
 const props = withDefaults(defineProps<{
-  items?: any[]
+  items?: RelationItem[]
   heading?: string
   emptyText?: string
   /** Builds the row's destination; rows are inert when omitted. */
-  href?: (item: any) => string
+  href?: (item: RelationItem) => string
   navigation?: 'drawer' | 'visit'
-  queryParams?: Record<string, any>
+  queryParams?: Record<string, unknown>
   variant?: 'list' | 'cards'
   /** Show the "+ Add" affordance and emit `add`. */
   addable?: boolean
@@ -120,7 +123,7 @@ const props = withDefaults(defineProps<{
 
 defineEmits<{
   add: []
-  delete: [item: any]
+  delete: [item: RelationItem]
 }>()
 
 const listContainerClass =
@@ -141,7 +144,7 @@ const rowClass = computed(() => {
  * visits; an inert row is a plain div, so it never announces itself as
  * clickable to a screen reader.
  */
-function rowComponent(_item: any) {
+function rowComponent(_item: RelationItem) {
   if (!props.href) {
     return 'div'
   }
@@ -149,7 +152,7 @@ function rowComponent(_item: any) {
   return props.navigation === 'drawer' ? DrawerLink : 'button'
 }
 
-function rowBindings(item: any): Record<string, unknown> {
+function rowBindings(item: RelationItem): Record<string, unknown> {
   if (!props.href) {
     return {}
   }
@@ -166,7 +169,7 @@ function rowBindings(item: any): Record<string, unknown> {
   return { type: 'button' }
 }
 
-function onRowClick(item: any): void {
+function onRowClick(item: RelationItem): void {
   if (props.href && props.navigation === 'visit') {
     router.visit(props.href(item))
   }

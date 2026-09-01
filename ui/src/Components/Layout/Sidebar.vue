@@ -2,18 +2,13 @@
   <div
     :class="[
       'flex flex-col bg-white transition-all duration-300 ease-in-out',
-      isCollapsed ? 'w-24' : 'w-96',
+      isCollapsed ? 'w-16' : 'w-96',
       'shrink-0 overflow-hidden'
     ]"
   >
     <!-- Logo Section -->
-    <div
-      :class="[
-        'flex items-center border-b bg-white transition-all duration-300',
-        isCollapsed ? 'justify-center px-4 h-16' : 'justify-between px-6 h-16'
-      ]"
-    >
-      <Link :href="getPanelBaseUrl()" :class="['flex items-center', isCollapsed && 'justify-center']">
+    <div class="flex items-center justify-between border-b bg-white px-6 h-16">
+      <Link :href="getPanelBaseUrl()" class="flex items-center shrink-0">
         <!-- Consumers supply their own mark; the default is a neutral square. -->
         <slot name="logo" :collapsed="isCollapsed">
           <svg
@@ -69,8 +64,7 @@
               <Link
                 :href="item.href"
                 :class="[
-                  'group flex items-center rounded-lg transition-all duration-75',
-                  isCollapsed ? 'justify-center px-2 py-2' : 'px-3 py-2',
+                  'group flex h-9 items-center rounded-lg px-3 transition-colors duration-75',
                   isActive(item.href)
                     ? 'bg-gray-100 dark:bg-white/5'
                     : 'hover:bg-gray-50 focus-visible:bg-gray-50 dark:hover:bg-white/5 dark:focus-visible:bg-white/5'
@@ -80,8 +74,8 @@
                 <icon
                   :name="item.icon"
                   :class="[
-                    'nav-icon transition-colors duration-75',
-                    isCollapsed ? 'w-4 h-4' : 'w-4 h-4 mr-3'
+                    'nav-icon w-4 h-4 shrink-0 transition-colors duration-75',
+                    isCollapsed ? '' : 'mr-3'
                   ]"
                 />
                 <span
@@ -111,8 +105,7 @@
               <button
                 @click="toggleSubmenu(`${gIndex}-${index}`)"
                 :class="[
-                  'group w-full flex items-center rounded-lg transition-all duration-75',
-                  isCollapsed ? 'justify-center px-2 py-2' : 'px-3 py-2',
+                  'group w-full flex h-9 items-center rounded-lg px-3 transition-colors duration-75',
                   hasActiveChild(item)
                     ? 'bg-gray-100 dark:bg-white/5'
                     : 'hover:bg-gray-50 focus-visible:bg-gray-50 dark:hover:bg-white/5 dark:focus-visible:bg-white/5'
@@ -122,8 +115,8 @@
                 <icon
                   :name="item.icon"
                   :class="[
-                    'nav-icon transition-colors duration-75',
-                    isCollapsed ? 'w-4 h-4' : 'w-4 h-4 mr-3'
+                    'nav-icon w-4 h-4 shrink-0 transition-colors duration-75',
+                    isCollapsed ? '' : 'mr-3'
                   ]"
                 />
                 <span
@@ -162,7 +155,7 @@
                   <icon
                     v-if="child.icon"
                     :name="child.icon"
-                    class="nav-icon w-4 h-4 mr-3 transition-colors duration-75"
+                    class="nav-icon w-4 h-4 mr-3 shrink-0 transition-colors duration-75"
                   />
                   <span class="truncate font-medium text-gray-950 dark:text-white">
                     {{ child.label }}
@@ -183,15 +176,12 @@
     <div class="border-t ring-1 ring-gray-950/5 p-3 dark:ring-white/10">
       <button
         @click="toggleSidebar"
-        :class="[
-          'group w-full flex items-center rounded-lg px-2 py-2 text-gray-950 hover:bg-gray-50 focus-visible:bg-gray-50 transition-all duration-75 dark:text-white dark:hover:bg-white/5 dark:focus-visible:bg-white/5',
-          isCollapsed && 'justify-center'
-        ]"
+        class="group w-full flex h-9 items-center rounded-lg px-3 text-gray-950 hover:bg-gray-50 focus-visible:bg-gray-50 transition-colors duration-75 dark:text-white dark:hover:bg-white/5 dark:focus-visible:bg-white/5"
         :title="isCollapsed ? (isCollapsed ? 'Expand sidebar' : 'Collapse sidebar') : ''"
       >
         <icon
           :name="isCollapsed ? 'chevron-right' : 'chevron-left'"
-          class="nav-icon w-4 h-4 transition-colors duration-75"
+          class="nav-icon w-4 h-4 shrink-0 transition-colors duration-75"
           :class="isCollapsed ? '' : 'mr-3'"
         />
         <span v-if="!isCollapsed" class="text-sm font-medium text-gray-950 dark:text-white">
@@ -211,9 +201,32 @@ import Icon from '../../Components/Core/Icon.vue'
 
 const GROUPS_KEY = 'sidebar-groups'
 
+/** A submenu link; shown without an icon when it has none. */
+export interface SidebarChildItem {
+  label: string
+  href: string
+  icon?: string
+}
+
+/** A top-level navigation link, optionally carrying a submenu. */
+export interface SidebarItem extends SidebarChildItem {
+  /** Always drawn — it is all that remains of the item when the sidebar is collapsed. */
+  icon: string
+  badge?: string | number
+  badgeColor?: 'primary' | 'success' | 'danger' | 'warning'
+  children?: SidebarChildItem[]
+}
+
+/** A heading; the items that follow it belong to that group until the next one. */
+export interface SidebarGroupHeading {
+  group: string
+}
+
+export type SidebarEntry = SidebarItem | SidebarGroupHeading
+
 const props = defineProps({
   items: {
-    type: Array as PropType<any[]>,
+    type: Array as PropType<SidebarEntry[]>,
     default: () => []
   },
   collapsed: {
@@ -258,13 +271,13 @@ const toggleGroup = (name: string) => {
 
 // Flatten nav array into grouped structure
 const groupedNav = computed(() => {
-  const groups: Array<{ name: string | null; items: any[] }> = []
-  let current: { name: string | null; items: any[] } = { name: null, items: [] }
+  const groups: Array<{ name: string | null; items: SidebarItem[] }> = []
+  let current: { name: string | null; items: SidebarItem[] } = { name: null, items: [] }
 
   for (const item of navigationItems.value) {
     if ('group' in item) {
       if (current.items.length > 0 || current.name !== null) groups.push(current)
-      current = { name: item.group as string, items: [] }
+      current = { name: item.group, items: [] }
     } else {
       current.items.push(item)
     }
@@ -306,9 +319,9 @@ const isActive = (href: string) => {
   return false
 }
 
-const hasActiveChild = (item: any) => {
+const hasActiveChild = (item: SidebarItem) => {
   if (!item.children) return false
-  return item.children.some((child: any) => isActive(child.href))
+  return item.children.some((child) => isActive(child.href))
 }
 
 // Initialize open submenus based on active items

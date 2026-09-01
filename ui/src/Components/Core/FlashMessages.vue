@@ -22,6 +22,12 @@
 </template>
 
 <script lang="ts">
+/** Server flash messages, surfaced through DefaultProps as `$page.props.flash`. */
+interface FlashProps {
+  success?: string | null
+  error?: string | null
+}
+
 export default {
   data() {
     return {
@@ -29,8 +35,8 @@ export default {
     }
   },
   computed: {
-    flash(): any {
-      return (this.$page.props as any).flash
+    flash(): FlashProps {
+      return this.$page.props.flash as FlashProps
     },
   },
   watch: {

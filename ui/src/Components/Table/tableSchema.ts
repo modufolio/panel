@@ -6,6 +6,8 @@
  * cannot export type declarations).
  */
 
+import type { TableRecord } from './tableTypes'
+
 export type SchemaColumnType =
   | 'text'
   | 'select'
@@ -238,10 +240,13 @@ export interface TableSchema {
  * Returns undefined rather than throwing when any segment is missing, so a
  * null relation renders the column's placeholder instead of blowing up.
  */
-export function getPath(record: Record<string, any>, path: string): unknown {
-  return path
-    .split('.')
-    .reduce<any>((value, segment) => (value == null ? undefined : value[segment]), record)
+export function getPath(record: TableRecord, path: string): unknown {
+  return path.split('.').reduce<unknown>(
+    // Anything non-null is indexed as the original did — a string's `length`
+    // resolves too — so the intermediate is read as a plain property bag.
+    (value, segment) => (value == null ? undefined : (value as Record<string, unknown>)[segment]),
+    record,
+  )
 }
 
 /**
@@ -281,10 +286,48 @@ export interface SchemaBulkAction {
   confirmMessage?: string
 }
 
+/**
+ * The callbacks a page injects for what a schema can declare but not do.
+ *
+ * A schema is serialised Inertia data, so it can say a column is editable or
+ * that an action exists, but never how to persist or perform it; these are
+ * the shapes the page's handler maps take.
+ */
+
+/*
+ * Declared as method signatures rather than function types on purpose. A
+ * page typically types its handler against its own row shape —
+ * `(record: PostRow) => …` — and a function type would reject that, because
+ * function parameters are checked contravariantly: the handler would have to
+ * accept *every* TableRecord. Method signatures are checked bivariantly, so a
+ * row type that is itself a TableRecord is accepted. Same device as React's
+ * event handler types.
+ */
+
+/** Saves an in-place edit: the row, the column key, and the new value. */
+export type CellHandler = {
+  bivarianceHack(record: TableRecord, column: string, value: unknown): unknown
+}['bivarianceHack']
+
+/** Services a column's cell action for one row. */
+export type CellActionHandler = {
+  bivarianceHack(record: TableRecord, action: SchemaColumnAction): unknown
+}['bivarianceHack']
+
+/** Services a row action the table cannot perform itself. */
+export type RowActionHandler = {
+  bivarianceHack(record: TableRecord, action: SchemaRowAction): unknown
+}['bivarianceHack']
+
+/** Services a bulk action over the selection. */
+export type BulkActionHandler = {
+  bivarianceHack(records: TableRecord[], action: SchemaBulkAction): unknown
+}['bivarianceHack']
+
 /** The actions this row offers, after its own visibility fields are read. */
 export function visibleRowActions(
   actions: SchemaRowAction[] | undefined,
-  record: Record<string, any>,
+  record: TableRecord,
 ): SchemaRowAction[] {
   return (actions ?? []).filter((action) => {
     if (action.hiddenWhen && getPath(record, action.hiddenWhen)) return false
@@ -296,7 +339,7 @@ export function visibleRowActions(
 
 export function visibleCellActions(
   column: SchemaColumn,
-  record: Record<string, any>,
+  record: TableRecord,
 ): SchemaColumnAction[] {
   return (column.actions ?? []).filter(
     (action) => !action.hiddenWhen || !getPath(record, action.hiddenWhen),
@@ -311,7 +354,7 @@ export function visibleCellActions(
  */
 export function resolveRecordUrl(
   template: string | null | undefined,
-  record: Record<string, any>,
+  record: TableRecord,
 ): string | null {
   if (!template) return null
 

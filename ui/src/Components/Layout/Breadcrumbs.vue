@@ -2,7 +2,7 @@
   <nav class="ui-breadcrumbs" aria-label="Breadcrumb">
     <ol class="ui-breadcrumbs-list flex items-center gap-2 text-sm">
       <li
-        v-for="(item, index) in items"
+        v-for="(item, index) in crumbs"
         :key="index"
         class="ui-breadcrumb-item flex items-center gap-2"
       >
@@ -55,14 +55,25 @@
 
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
-import type { PropType } from 'vue'
+import { computed, type Component, type PropType } from 'vue'
+
+/** A crumb: either `label` or `name` names it, either `url` or `href` links it. */
+interface BreadcrumbItem {
+  label?: string
+  name?: string
+  url?: string
+  href?: string
+  icon?: Component | string
+}
 
 const props = defineProps({
   items: {
-    type: Array as PropType<any[]>,
+    // Left as `unknown[]` at the boundary: PageHeader forwards page props
+    // through a bare `Array` prop, which a stricter PropType would reject.
+    type: Array as PropType<unknown[]>,
     required: true,
     validator: (items: unknown) => {
-      return (items as any[]).every((item: any) => item.label || item.name)
+      return (items as BreadcrumbItem[]).every((item) => item.label || item.name)
     }
   },
   showHomeIcon: {
@@ -79,11 +90,14 @@ const props = defineProps({
   },
 })
 
+/** The items as the declared crumb shape, applied once rather than per access. */
+const crumbs = computed(() => props.items as BreadcrumbItem[])
+
 function isActive(index: number) {
   return index === props.items.length - 1
 }
 
-function getComponent(item: any, index: number) {
+function getComponent(item: BreadcrumbItem, index: number) {
   // Last item or item without URL is just text
   if (isActive(index) || (!item.url && !item.href)) {
     return 'span'

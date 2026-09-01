@@ -24,14 +24,14 @@
       :is="filterComponent(filter)"
       :key="filter.key"
       v-bind="filterProps(filter)"
-      :model-value="values[filter.key] as any"
+      :model-value="values[filter.key]"
       @update:model-value="(value: unknown) => $emit('update:filter', filter.key, value)"
     />
   </FilterPopover>
 </template>
 
 <script setup lang="ts">
-import type { PropType } from 'vue'
+import type { Component, PropType } from 'vue'
 import FilterPopover from '../Filters/FilterPopover.vue'
 import SelectFilter from '../Filters/SelectFilter.vue'
 import TernaryFilter from '../Filters/TernaryFilter.vue'
@@ -66,7 +66,7 @@ defineProps({
 
 defineEmits(['update:filter', 'reset'])
 
-const filterComponentForType: Record<string, any> = {
+const filterComponentForType: Record<string, Component> = {
   select: SelectFilter,
   multiSelect: MultiSelectFilter,
   ternary: TernaryFilter,
@@ -74,12 +74,12 @@ const filterComponentForType: Record<string, any> = {
   dateRange: DateRangeFilter,
 }
 
-function filterComponent(filter: SchemaFilter): any {
+function filterComponent(filter: SchemaFilter): Component {
   return filterComponentForType[filter.type] ?? SelectFilter
 }
 
-function filterProps(filter: SchemaFilter): Record<string, any> {
-  const base: Record<string, any> = { label: filter.label }
+function filterProps(filter: SchemaFilter): Record<string, unknown> {
+  const base: Record<string, unknown> = { label: filter.label }
 
   if (filter.placeholder) base.placeholder = filter.placeholder
 

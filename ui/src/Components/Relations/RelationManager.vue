@@ -168,6 +168,7 @@ import ActionGroup from '../Actions/ActionGroup.vue'
 import ActionGroupItem from '../Actions/ActionGroupItem.vue'
 import Dialog from '../Dialogs/Dialog.vue'
 import BelongsToSelect from '../Fields/BelongsToSelect.vue'
+import { recordId, type TableColumn, type TableRecord } from '../Table/tableTypes'
 
 const props = defineProps({
   /**
@@ -203,7 +204,7 @@ const props = defineProps({
    * Table configuration
    */
   columns: {
-    type: Array as PropType<any[]>,
+    type: Array as PropType<TableColumn[]>,
     required: true,
   },
   searchable: {
@@ -291,14 +292,14 @@ const handleCreate = () => {
   emit('create')
 }
 
-const handleEdit = (record: any) => {
+const handleEdit = (record: TableRecord) => {
   emit('edit', record)
 }
 
-const handleDelete = async (record: any) => {
+const handleDelete = async (record: TableRecord) => {
   if (confirm('Are you sure you want to delete this record?')) {
     try {
-      await relationshipData.deleteRecord(record.id)
+      await relationshipData.deleteRecord(recordId(record))
       emit('delete', record)
       emit('refresh')
     } catch (error) {
@@ -307,10 +308,10 @@ const handleDelete = async (record: any) => {
   }
 }
 
-const handleDetach = async (record: any) => {
+const handleDetach = async (record: TableRecord) => {
   if (confirm('Are you sure you want to detach this record?')) {
     try {
-      await relationshipData.detach(props.resourceId, record.id)
+      await relationshipData.detach(props.resourceId, recordId(record))
       emit('detach', record)
       emit('refresh')
     } catch (error) {

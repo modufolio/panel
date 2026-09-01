@@ -42,6 +42,13 @@ export interface UseNestedDrawerFormReturn {
   resetForm: () => void
   getFormData: () => Record<string, unknown>
   /**
+   * Only the fields whose value differs from what the form opened with —
+   * what an edit submit should PATCH. Smaller conflict surface, honest audit
+   * trails: an untouched field cannot clobber a concurrent change. Create
+   * mode has no meaningful baseline, so callers use getFormData() there.
+   */
+  getChangedData: () => Record<string, unknown>
+  /**
    * True while the open form holds edits that have not been submitted —
    * what an "unsaved changes" guard asks before letting a navigation
    * (including Logout) discard them. False whenever the form is closed:
@@ -108,6 +115,22 @@ export function useNestedDrawerForm(
     fields.forEach((field) => {
       data[field.name] = state[field.name]
     })
+    return data
+  }
+
+  function getChangedData(): Record<string, unknown> {
+    const data: Record<string, unknown> = {}
+    fields.forEach((field) => {
+      const current = state[field.name] ?? ''
+      const original = state.mode === 'edit'
+        ? initialValues.value[field.name] ?? defaultValues?.[field.name] ?? ''
+        : defaultValues?.[field.name] ?? ''
+
+      if (String(current) !== String(original)) {
+        data[field.name] = state[field.name]
+      }
+    })
+
     return data
   }
 
@@ -193,6 +216,7 @@ export function useNestedDrawerForm(
     closeForm,
     resetForm,
     getFormData,
+    getChangedData,
     isDirty,
     setFieldValue,
     submit,

@@ -8,19 +8,22 @@ import {
   type SchemaRowAction,
   type SchemaBulkAction,
   type TableSchema,
+  type RowActionHandler,
+  type BulkActionHandler,
 } from './tableSchema'
+import { recordId, type TableRecord } from './tableTypes'
 
-type Row = Record<string, any>
+type Row = TableRecord
 
 interface ActionOptions {
   schema: () => TableSchema
   /** Appended to record links so a drawer preserves the current list state. */
-  queryParams: () => Record<string, any>
+  queryParams: () => Record<string, unknown>
   /** The resource's own word for one record ('movie'), for the delete dialog. */
   recordLabel: () => string | undefined
   /** Row actions the schema declares but the table cannot service itself. */
-  rowActionHandlers: () => Record<string, (record: Row, action: SchemaRowAction) => unknown>
-  bulkActionHandlers: () => Record<string, (records: Row[], action: SchemaBulkAction) => unknown>
+  rowActionHandlers: () => Record<string, RowActionHandler>
+  bulkActionHandlers: () => Record<string, BulkActionHandler>
 }
 
 /**
@@ -102,7 +105,7 @@ export function useSchemaActions(options: ActionOptions) {
 
   function performBulk(action: SchemaBulkAction, records: Row[]): void {
     if (action.behaviour === 'post' && action.url) {
-      router.post(action.url, { ids: records.map((record) => record.id) }, { preserveScroll: true })
+      router.post(action.url, { ids: records.map(recordId) }, { preserveScroll: true })
 
       return
     }
