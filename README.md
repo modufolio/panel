@@ -1,5 +1,10 @@
 # modufolio/panel
 
+[![CI](https://img.shields.io/github/actions/workflow/status/modufolio/panel/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/modufolio/panel/actions/workflows/ci.yml)
+[![PHPStan](https://img.shields.io/badge/PHPStan-level%208-brightgreen.svg?style=flat-square)](https://phpstan.org/)
+[![Packagist](https://img.shields.io/packagist/v/modufolio/panel?style=flat-square)](https://packagist.org/packages/modufolio/panel)
+[![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+
 The PHP half of the Modufolio panel: resources, table schemas, drawers and
 blueprint forms, emitted as **plain data** for
 [`@modufolio/panel`](https://www.npmjs.com/package/@modufolio/panel) to render.

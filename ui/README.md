@@ -1,5 +1,9 @@
 # @modufolio/panel
 
+[![CI](https://img.shields.io/github/actions/workflow/status/modufolio/panel/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/modufolio/panel/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/@modufolio/panel?style=flat-square)](https://www.npmjs.com/package/@modufolio/panel)
+[![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg?style=flat-square)](https://opensource.org/licenses/MIT)
+
 Schema-driven admin panel components for Inertia.js + Vue 3 — tables,
 blueprint forms, filters, actions, drawers, widgets. Tables can be driven
 entirely by a server-authored schema. The frontend companion
