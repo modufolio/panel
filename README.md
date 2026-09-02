@@ -91,9 +91,24 @@ composer path repositories, so it installs and tests on its own:
 
 ```bash
 composer install
-composer test
-composer stan   # PHPStan, level 8
+composer test        # unit and database suites, SQLite in memory
+composer stan        # PHPStan, level 8
 ```
+
+The `Database` suite runs the listing, guesser, relation and delete
+machinery against a real EntityManager over the fixture entities in
+`tests/Fixture/Entity`. It needs no setup: SQLite in memory is the default.
+The same `DB_*` variables the sibling packages read point it at a real engine,
+and `docker-compose.yml` has one of each ready:
+
+```bash
+docker compose up -d mysql postgres
+DB_DRIVER=pdo_mysql DB_PORT=3309 DB_USER=root DB_PASSWORD=secret composer test:db
+DB_DRIVER=pdo_pgsql DB_PORT=5435 DB_USER=postgres DB_PASSWORD=secret composer test:db
+```
+
+CI runs that suite against MySQL 8.4, PostgreSQL 16 and SQL Server 2022 on
+every push.
 
 Those `repositories` entries apply only when this package is the root; a
 consuming application resolves the siblings its own way.

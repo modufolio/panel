@@ -1,0 +1,40 @@
+# Databases for running the Database suite against a real engine.
+#
+#   docker compose up -d mysql postgres
+#   DB_DRIVER=pdo_mysql  DB_PORT=3309 DB_USER=root     DB_PASSWORD=secret composer test:db
+#   DB_DRIVER=pdo_pgsql  DB_PORT=5435 DB_USER=postgres DB_PASSWORD=secret composer test:db
+#   DB_DRIVER=pdo_sqlsrv DB_PORT=1436 DB_USER=sa       DB_PASSWORD='Secret_1234' composer test:db
+#
+# Ports are shifted off the defaults, and off the ports json-api (3307/5433/
+# 1434) and appkit (3308/5434/1435) use, so all three suites can run side by
+# side. SQLite needs nothing and stays the default.
+services:
+  mysql:
+    image: mysql:8.4
+    ports: ['3309:3306']
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: panel_test
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-psecret']
+      interval: 5s
+      retries: 20
+
+  postgres:
+    image: postgres:16
+    ports: ['5435:5432']
+    environment:
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: panel_test
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      retries: 20
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    ports: ['1436:1433']
+    environment:
+      ACCEPT_EULA: 'Y'
+      MSSQL_SA_PASSWORD: 'Secret_1234'
+      MSSQL_PID: Developer
