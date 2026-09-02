@@ -98,6 +98,7 @@
 import { nextTick, ref, computed, type PropType } from 'vue'
 import { useTableExport, type TableColumn } from './useTableExport'
 import { getCsrfToken } from '../../Utils/csrf'
+import { pathIcon } from '../../Utils/pathIcon'
 import { useArrowNavigation } from '../../Primitives/useArrowNavigation'
 import { useDismissableLayer } from '../../Primitives/useDismissableLayer'
 import { useId } from '../../Primitives/useId'
@@ -195,30 +196,19 @@ const recordsToExport = computed(() => {
   ))
 })
 
-// Icons as SVG components
-const CSVIcon = {
-  template: `
-    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-    </svg>
-  `,
-}
+// Icons as render-function components; a template string would need the
+// runtime compiler, which a host's runtime-only Vue build does not have.
+const CSVIcon = pathIcon(
+  'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+  { strokeWidth: 2, class: 'h-5 w-5' },
+)
 
-const ExcelIcon = {
-  template: `
-    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-    </svg>
-  `,
-}
+const ExcelIcon = pathIcon(
+  'M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z',
+  { strokeWidth: 2, class: 'h-5 w-5' },
+)
 
-const JSONIcon = {
-  template: `
-    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-    </svg>
-  `,
-}
+const JSONIcon = pathIcon('M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4', { strokeWidth: 2, class: 'h-5 w-5' })
 
 // Available export formats
 const allFormats = [

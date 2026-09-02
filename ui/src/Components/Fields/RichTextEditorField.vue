@@ -452,21 +452,28 @@ watch(
 </script>
 
 <script lang="ts">
-// Toolbar Button Component
-export const ToolbarButton = {
+import { defineComponent, h } from 'vue'
+
+// Toolbar button. A render function rather than a template string: the
+// latter needs Vue's runtime compiler, which a runtime-only host build lacks.
+export const ToolbarButton = defineComponent({
   props: {
-    title: String,
-    disabled: Boolean,
+    title: { type: String, default: undefined },
+    disabled: { type: Boolean, default: false },
   },
-  template: `
-    <button
-      type="button"
-      :title="title"
-      :disabled="disabled"
-      class="rounded p-1.5 text-gray-600 transition-colors duration-200 hover:bg-gray-200 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
-    >
-      <slot />
-    </button>
-  `,
-}
+  setup(props, { slots }) {
+    return () =>
+      h(
+        'button',
+        {
+          type: 'button',
+          title: props.title,
+          disabled: props.disabled,
+          class:
+            'rounded p-1.5 text-gray-600 transition-colors duration-200 hover:bg-gray-200 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent',
+        },
+        slots.default?.(),
+      )
+  },
+})
 </script>
