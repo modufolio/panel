@@ -21,7 +21,7 @@ final class DeletionPlan
      * @param array<string, int>                                              $counts by type label
      * @param list<string>                                                    $protected human labels
      * @param list<object>                                                    $deletes in dependency order
-     * @param list<array{entity: object, field: string}>                      $nullifies
+     * @param list<array{entity: object, field: string, unlink?: object}>     $nullifies references to clear; `unlink` names the member to drop from a collection
      * @param array<string, int>                                              $linkCounts join rows cleared
      */
     public function __construct(

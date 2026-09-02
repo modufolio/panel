@@ -32,7 +32,13 @@ final class Collector
     /** @var list<object> */
     private array $deletes = [];
 
-    /** @var list<array{entity: object, field: string}> */
+    /**
+     * Rows to clear a reference on. A many-to-many entry also names the
+     * `unlink` target: the field is a collection there, and only that member
+     * is removed from it.
+     *
+     * @var list<array{entity: object, field: string, unlink?: object}>
+     */
     private array $nullifies = [];
 
     /** @var list<string> */
@@ -56,6 +62,8 @@ final class Collector
 
     public function collect(object $entity): DeletionPlan
     {
+        $this->reset();
+
         $nested = $this->visit($entity);
 
         // Deferred to the end because a RESTRICT is only a problem if the
@@ -77,6 +85,22 @@ final class Collector
             nullifies: $this->nullifies,
             linkCounts: $this->linkCounts,
         );
+    }
+
+    /**
+     * Each plan starts clean. The gathered state is per walk, not per
+     * collector, so one instance can serve a bulk delete or live in a
+     * container without the second plan carrying the first walk's rows.
+     */
+    private function reset(): void
+    {
+        $this->deletes    = [];
+        $this->nullifies  = [];
+        $this->protected  = [];
+        $this->restricted = [];
+        $this->counts     = [];
+        $this->linkCounts = [];
+        $this->seen       = [];
     }
 
     /**
