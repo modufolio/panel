@@ -204,7 +204,7 @@ final class Collector
     {
         $found = [];
 
-        foreach ($this->entityManager->getMetadataFactory()->getAllMetadata() as $meta) {
+        foreach ($this->mappedClasses() as $meta) {
             foreach ($meta->getAssociationMappings() as $field => $mapping) {
                 if (($mapping['targetEntity'] ?? null) !== $class) {
                     continue;
@@ -231,7 +231,7 @@ final class Collector
     {
         $found = [];
 
-        foreach ($this->entityManager->getMetadataFactory()->getAllMetadata() as $meta) {
+        foreach ($this->mappedClasses() as $meta) {
             foreach ($meta->getAssociationMappings() as $field => $mapping) {
                 if (($mapping['targetEntity'] ?? null) !== $class) {
                     continue;
@@ -244,6 +244,25 @@ final class Collector
         }
 
         return $found;
+    }
+
+    /**
+     * Every mapped class, in a fixed order.
+     *
+     * The metadata factory lists classes in the order the driver found their
+     * files, which follows the filesystem — so the plan's tree and counts
+     * came out in a different order on macOS than on Linux. A confirmation
+     * should read the same everywhere.
+     *
+     * @return list<ClassMetadata<object>>
+     */
+    private function mappedClasses(): array
+    {
+        $all = $this->entityManager->getMetadataFactory()->getAllMetadata();
+
+        usort($all, static fn (ClassMetadata $a, ClassMetadata $b): int => strcmp($a->getName(), $b->getName()));
+
+        return $all;
     }
 
     /**

@@ -506,10 +506,18 @@ final class ResourceListing
         $existing = $qb->getDQLPart('orderBy');
 
         // $field comes from the schema, never the request.
+        $field = "{$alias}.{$group->field()}";
         $qb->resetDQLPart('orderBy');
-        $qb->orderBy("{$alias}.{$group->field()}", 'ASC');
+        $qb->orderBy($field, 'ASC');
 
         foreach ($existing as $orderBy) {
+            // A sort on the group's own field is already expressed by the
+            // grouping; repeating it is redundant everywhere and refused by
+            // SQL Server, which requires ORDER BY columns to be unique.
+            if (str_contains((string) $orderBy, $field)) {
+                continue;
+            }
+
             $qb->addOrderBy($orderBy);
         }
     }
