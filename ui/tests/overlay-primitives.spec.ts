@@ -348,9 +348,10 @@ describe('DrawerStack', () => {
 
   const arrival = { key: 'a', type: 'movie', title: 'Arrival', data: { id: 1 } }
   const amy = { key: 'b', type: 'person', title: 'Amy Adams', data: { id: 2 } }
+  const slots = { movie: '<p>a movie</p>', person: '<p>a person</p>' }
 
   it('closes the drawer on top, not the one beneath', async () => {
-    const wrapper = mount(DrawerStack, { props: { stack: [arrival, amy] } as any })
+    const wrapper = mount(DrawerStack, { props: { stack: [arrival, amy] } as any, slots })
     await nextTick()
 
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
@@ -361,7 +362,7 @@ describe('DrawerStack', () => {
   })
 
   it('keeps the order when the stack grows a level at a time', async () => {
-    const wrapper = mount(DrawerStack, { props: { stack: [arrival] } as any })
+    const wrapper = mount(DrawerStack, { props: { stack: [arrival] } as any, slots })
     await nextTick()
 
     // How the real stack deepens: a navigation replaces the prop.

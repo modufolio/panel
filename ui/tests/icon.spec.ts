@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { Icon } from '../src/index'
 
@@ -130,13 +130,17 @@ describe('Icon Component', () => {
     })
 
     it('should handle null icon name', () => {
+      // Deliberately invalid input: Vue's prop-type warning is the expected noise.
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
       const wrapper = mount(Icon, {
         props: {
           name: null as any
         }
       })
-      
+
       expect(wrapper.html()).toBe('<!--v-if-->')
+      expect(String(warn.mock.calls[0]?.[0])).toContain('Invalid prop: type check failed for prop "name"')
+      warn.mockRestore()
     })
   })
 })

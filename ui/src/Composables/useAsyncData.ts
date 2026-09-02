@@ -1,4 +1,4 @@
-import { ref, onScopeDispose, watch, type Ref, type WatchSource } from 'vue'
+import { getCurrentScope, ref, onScopeDispose, watch, type Ref, type WatchSource } from 'vue'
 
 /**
  * Reactive async-data primitive — the panel's standard way to run a fetch and
@@ -100,10 +100,14 @@ export function useAsyncData<T, A extends unknown[] = []>(
       : updater
   }
 
-  onScopeDispose(() => {
-    disposed = true
-    controller?.abort()
-  })
+  // Outside a component or effect scope (a plain script, a test) there is
+  // nothing to dispose with; registering would only make Vue warn.
+  if (getCurrentScope()) {
+    onScopeDispose(() => {
+      disposed = true
+      controller?.abort()
+    })
+  }
 
   if (options.watch) {
     watch(options.watch, () => {
