@@ -7,8 +7,15 @@
          failOnWarning="true"
          failOnRisky="true">
     <testsuites>
-        <testsuite name="Panel">
+        <!-- Pure unit tests: value objects, builders, the route loader. -->
+        <testsuite name="Unit">
             <directory>tests</directory>
+            <exclude>tests/Database</exclude>
+        </testsuite>
+        <!-- Against a real EntityManager: SQLite in memory by default, any
+             engine through DB_DRIVER (see docker-compose.yml). -->
+        <testsuite name="Database">
+            <directory>tests/Database</directory>
         </testsuite>
     </testsuites>
     <source>
