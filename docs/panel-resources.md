@@ -105,6 +105,17 @@ create/edit/delete routes. See [fields.md](fields.md).
 Per-field access that depends on the *user* rather than the record is declared
 on the field instead, as `access` — see [fields.md](fields.md#per-field-access).
 
+Four layers of code are easy to reason about one at a time and hard to see
+combined. `Inspection\PermissionInspector` reads them back together without a
+request: per resource and per role, which generated routes admit the role,
+what the hooks answer for a stand-in user, whether `scopeQuery()` is
+overridden, and which fields are readable, read-denied, write-denied or
+frozen — plus notes on divergences, such as a hook that reads a literal role
+while the route layer honours the hierarchy. The host wires it with its route
+collection, its resource factory, a `FormResolver`, the role hierarchy and a
+user factory; the reference application exposes it as `panel:permissions`
+and as a super-admin-only page.
+
 ### Registration
 
 Resources are built through the container. One with **no required constructor
@@ -169,8 +180,9 @@ public function show(
 ```
 
 > The `type:` here must match a `#{type}` slot in the page's `<DrawerStack>`.
-> They are coupled by string only — a typo renders raw key/value pairs instead
-> of your markup, with no error.
+> They are coupled by string only. A typo renders raw key/value pairs instead
+> of your markup; `DrawerStack` warns in the browser console, once per
+> unclaimed type, so the fallback is not mistaken for the drawer you meant.
 
 On the page, forward the `stack` prop to `<SchemaTable :stack="stack"
 drawer-type="organization">` as well — that keeps the highlighted table row in

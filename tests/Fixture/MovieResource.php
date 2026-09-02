@@ -70,7 +70,7 @@ class MovieResource extends PanelResource
         }, $entities);
     }
 
-    public function tableSchema(): ?TableSchema
+    public function tableSchema(): TableSchema
     {
         return TableSchema::make()
             ->recordUrl('/panel/movies/{id}')

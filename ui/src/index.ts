@@ -76,6 +76,7 @@ export { default as SelectInput } from './Components/Core/SelectInput.vue'
 // Table Components
 export { default as Table } from './Components/Table/Table.vue'
 export { default as SchemaTable } from './Components/Table/SchemaTable.vue'
+export { default as ChildTable } from './Components/Table/ChildTable.vue'
 export {
   resolveRecordUrl,
   isEmptyValue,
@@ -84,10 +85,13 @@ export {
   truncate,
   formatValue,
   emptyFilterValue,
+  defaultFilterValue,
+  isFilterDefault,
   filterDefaults,
   visibleColumnDefaults,
   visibleRowActions,
   type TableSchema,
+  type SchemaChildTable,
   type SchemaColumn,
   type SchemaColumnType,
   type SchemaFilter,

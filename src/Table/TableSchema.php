@@ -52,6 +52,9 @@ final class TableSchema
     /** @var list<BulkAction> */
     private array $bulkActionList = [];
 
+    /** @var list<ChildTable> */
+    private array $children = [];
+
     private ?string $recordUrl = null;
     private ?string $emptyStateTitle = null;
     private ?string $emptyStateDescription = null;
@@ -96,6 +99,28 @@ final class TableSchema
         $this->groups = $groups;
 
         return $this;
+    }
+
+    /**
+     * Related rows shown under each parent row, one nested table per child.
+     *
+     * Each child names a to-many association of the listed entity; the
+     * listing validates the name against Doctrine's metadata and loads the
+     * association for the page in one query. See {@see ChildTable}.
+     *
+     * @param list<ChildTable> $children
+     */
+    public function children(array $children): self
+    {
+        $this->children = $children;
+
+        return $this;
+    }
+
+    /** @return list<ChildTable> */
+    public function declaredChildren(): array
+    {
+        return $this->children;
     }
 
     /** @return list<Group> */
@@ -299,6 +324,7 @@ final class TableSchema
             'actions'               => array_map(static fn (RowAction $a): array => $a->toArray(), $this->actions),
             'bulkActionItems'       => array_map(static fn (BulkAction $a): array => $a->toArray(), $this->bulkActionList),
             'stickyHeader'          => $this->stickyHeader,
+            'children'              => array_map(static fn (ChildTable $c): array => $c->toArray(), $this->children),
         ];
     }
 }

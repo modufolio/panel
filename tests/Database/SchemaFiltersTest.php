@@ -94,9 +94,9 @@ final class SchemaFiltersTest extends DoctrineTestCase
             {
             }
 
-            public function tableSchema(): ?TableSchema
+            public function tableSchema(): TableSchema
             {
-                return parent::tableSchema()?->filters($this->filters);
+                return parent::tableSchema()->filters($this->filters);
             }
         };
     }
@@ -110,9 +110,9 @@ final class SchemaFiltersTest extends DoctrineTestCase
             {
             }
 
-            public function tableSchema(): ?TableSchema
+            public function tableSchema(): TableSchema
             {
-                return parent::tableSchema()?->constraints($this->constraints);
+                return parent::tableSchema()->constraints($this->constraints);
             }
         };
     }

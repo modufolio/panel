@@ -57,7 +57,10 @@ export function useTableRowFocus(options: RowFocusOptions) {
   })
 
   function focusRow(index: number): void {
-    const rows = options.root()?.querySelectorAll<HTMLElement>('tbody tr.ui-table-row')
+    // This table's own rows, not those of a table nested in an expanded row.
+    const rows = options
+      .root()
+      ?.querySelectorAll<HTMLElement>(':scope > .ui-table-content > table > tbody > tr.ui-table-row')
 
     rows?.[index]?.focus()
   }

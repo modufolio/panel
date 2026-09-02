@@ -918,9 +918,9 @@ final class ResourceListingTest extends DoctrineTestCase
                 return $this->mayDelete;
             }
 
-            public function tableSchema(): ?TableSchema
+            public function tableSchema(): TableSchema
             {
-                return parent::tableSchema()?->actions([
+                return parent::tableSchema()->actions([
                     RowAction::view(),
                     RowAction::edit('/custom/movies/{id}/edit'),
                     RowAction::delete('/custom/movies/{id}'),
@@ -962,9 +962,9 @@ final class ResourceListingTest extends DoctrineTestCase
         $this->seed();
 
         $resource = new class extends MovieResource {
-            public function tableSchema(): ?TableSchema
+            public function tableSchema(): TableSchema
             {
-                return parent::tableSchema()?->bulkActions(BulkAction::post('archive', '/panel/movies/bulk-archive'));
+                return parent::tableSchema()->bulkActions(BulkAction::post('archive', '/panel/movies/bulk-archive'));
             }
         };
 
@@ -1221,5 +1221,33 @@ final class ResourceListingTest extends DoctrineTestCase
         );
 
         self::assertCount(4, $listing->allMatching(), 'Unselected: the scope alone.');
+    }
+
+    /**
+     * The trashed control's default is the resource's decision. A resource
+     * listing deleted rows by default hands the client that value, so the
+     * control shows it without counting as a filter the viewer applied; a
+     * resource without a default sends none.
+     */
+    public function testTheTrashedFilterCarriesTheResourcesDefault(): void
+    {
+        $this->seed();
+
+        $plain = $this->renderProps($this->listing(new MovieResource()));
+        $trashedFilter = array_values(array_filter($plain['table']['filters'], static fn (array $f): bool => $f['key'] === 'trashed'))[0];
+        self::assertArrayNotHasKey('default', $trashedFilter);
+
+        $withDeleted = new class extends MovieResource {
+            public function defaultTrashed(): string
+            {
+                return 'with';
+            }
+        };
+
+        $props = $this->renderProps($this->listing($withDeleted, urls: $this->movieRoutes()));
+        $trashedFilter = array_values(array_filter($props['table']['filters'], static fn (array $f): bool => $f['key'] === 'trashed'))[0];
+
+        self::assertSame('with', $trashedFilter['default']);
+        self::assertSame('with', $props['filters']['trashed'], 'The effective value is still echoed.');
     }
 }

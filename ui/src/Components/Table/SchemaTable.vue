@@ -87,6 +87,22 @@
       />
     </template>
 
+    <!--
+      Child tables under an expanded row, one per declared child. A page's
+      own #expandedRow wins — it is forwarded above as a passthrough slot.
+    -->
+    <template v-if="generatedChildren" #expandedRow="{ record }">
+      <div class="space-y-4">
+        <ChildTable
+          v-for="child in children"
+          :key="child.key"
+          :child="child"
+          :record="asRecord(record)"
+          :query-params="queryParams"
+        />
+      </div>
+    </template>
+
     <!-- Generic cell rendering, one per schema column -->
     <template
       v-for="column in generatedColumns"
@@ -148,6 +164,7 @@
 <script setup lang="ts">
 import { computed, useSlots, type PropType } from 'vue'
 import Table from './Table.vue'
+import ChildTable from './ChildTable.vue'
 import SchemaCell from './SchemaCell'
 import SchemaFilterPanel from './SchemaFilterPanel.vue'
 import Action from '../Actions/Action.vue'
@@ -288,6 +305,9 @@ const tableProps = computed(() => ({
   search: props.search,
   bulkActionsEnabled: props.schema.bulkActions ?? false,
   stickyHeader: props.schema.stickyHeader ?? true,
+  // Declared children are what a row expands into; a page cannot pass this
+  // through from outside, since this template has several roots.
+  expandable: children.value.length > 0,
   sortColumn: props.sortColumn,
   sortDirection: props.sortDirection,
   loading: props.loading,
@@ -368,6 +388,12 @@ const {
   rowActionHandlers: () => props.rowActionHandlers,
   bulkActionHandlers: () => props.bulkActionHandlers,
 })
+
+// ── Child tables ─────────────────────────────────────────────────────────────
+
+const children = computed(() => props.schema.children ?? [])
+
+const generatedChildren = computed(() => children.value.length > 0 && !slots.expandedRow)
 
 /** Generate the row menu only when the page did not write its own. */
 const generatedRowActions = computed(

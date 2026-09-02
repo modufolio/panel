@@ -6,6 +6,7 @@ namespace Modufolio\Panel\Tests\Table;
 
 use Doctrine\ORM\QueryBuilder;
 use Modufolio\Panel\Query\ListQueryInterface;
+use Modufolio\Panel\Table\ChildTable;
 use Modufolio\Panel\Table\Column;
 use Modufolio\Panel\Table\Filter;
 use Modufolio\Panel\Table\TableSchema;
@@ -120,5 +121,20 @@ final class TableSchemaTest extends TestCase
         ] as $key) {
             self::assertArrayHasKey($key, $schema);
         }
+    }
+
+    /** Children ride inside the table prop, in the order they were declared. */
+    public function testChildrenAreSerialisedInDeclarationOrder(): void
+    {
+        $schema = TableSchema::make()
+            ->children([
+                ChildTable::relation('cast', 'Cast'),
+                ChildTable::relation('credits', 'Credits'),
+            ])
+            ->toArray(SortableTitleOnlyQuery::class);
+
+        self::assertSame(['cast', 'credits'], array_column($schema['children'], 'key'));
+        self::assertArrayHasKey('children', TableSchema::make()->toArray(SortableTitleOnlyQuery::class));
+        self::assertSame([], TableSchema::make()->toArray(SortableTitleOnlyQuery::class)['children']);
     }
 }

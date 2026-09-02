@@ -188,6 +188,11 @@ export interface SchemaFilter {
   falseLabel?: string
   trueValue?: string
   falseValue?: string
+  /**
+   * The value in effect when the request names none. A control showing it is
+   * not an active filter, and a reset returns to it rather than to empty.
+   */
+  default?: unknown
 }
 
 export interface SchemaConstraintOperator {
@@ -213,6 +218,24 @@ export interface QueryCondition {
   value2?: string
 }
 
+/**
+ * Related rows shown under a parent row, in a nested table. The rows ride on
+ * the parent row under `source`; the server validated `relation` against the
+ * entity and loaded it with the page. Columns are never sortable: a child has
+ * no list query of its own.
+ */
+export interface SchemaChildTable {
+  key: string
+  label: string
+  relation: string
+  /** Key in the parent row holding the child rows. */
+  source: string
+  columns: SchemaColumn[]
+  /** Template resolved per child row; `{parent}` is the parent row's id. */
+  recordUrl?: string | null
+  empty?: string | null
+}
+
 export interface TableSchema {
   columns: SchemaColumn[]
   filters?: SchemaFilter[]
@@ -232,6 +255,8 @@ export interface TableSchema {
   /** Actions offered on a selection; the page's `#bulkActions` slot wins. */
   bulkActionItems?: SchemaBulkAction[]
   stickyHeader?: boolean
+  /** Nested tables under each row; SchemaTable turns on expansion when any are declared. */
+  children?: SchemaChildTable[]
 }
 
 /**
@@ -386,13 +411,29 @@ export function emptyFilterValue(filter: SchemaFilter): unknown {
 }
 
 /**
+ * What a filter goes back to on reset: its declared default when the server
+ * sent one, else its empty value. A resource listing deleted rows by default
+ * resets to "with deleted", not to a blank the server would refill anyway.
+ */
+export function defaultFilterValue(filter: SchemaFilter): unknown {
+  return filter.default !== undefined && filter.default !== null ? filter.default : emptyFilterValue(filter)
+}
+
+/** Whether a value is the filter's default — shown by the control, but not applied by the viewer. */
+export function isFilterDefault(filter: SchemaFilter, value: unknown): boolean {
+  if (filter.default === undefined || filter.default === null) return false
+
+  return String(value) === String(filter.default)
+}
+
+/**
  * Build the `defaults` map useListFilters expects, straight from the schema.
  *
  * Keeps the page from restating filter keys the server already declared.
  */
 export function filterDefaults(schema: TableSchema | undefined): Record<string, unknown> {
   const defaults = Object.fromEntries(
-    (schema?.filters ?? []).map((filter) => [filter.key, emptyFilterValue(filter)]),
+    (schema?.filters ?? []).map((filter) => [filter.key, defaultFilterValue(filter)]),
   )
 
   // Grouping and ad-hoc conditions ride the same query-param plumbing.

@@ -45,6 +45,14 @@ final class Filter
 
     private bool $handledByQuery = false;
 
+    /**
+     * The value that applies when the request names none. Travels to the
+     * client so a control showing it is not counted as an active filter and
+     * a reset returns to it — the listing fills it in for `trashed` from the
+     * resource's defaultTrashed().
+     */
+    private mixed $default = null;
+
     private string $trueLabel = 'Yes';
     private string $falseLabel = 'No';
     private string $trueValue = '1';
@@ -154,6 +162,28 @@ final class Filter
      * matches against a JSON `roles` array rather than a scalar column.
      * Applying it in both places would double-filter.
      */
+    /** The value in effect when the request says nothing; see {@see defaultValue()}. */
+    public function default(mixed $value): self
+    {
+        $this->default = $value;
+
+        return $this;
+    }
+
+    public function defaultValue(): mixed
+    {
+        return $this->default;
+    }
+
+    /** A clone carrying a default, for the listing to fill in what the resource decides. */
+    public function withDefault(mixed $value): self
+    {
+        $clone = clone $this;
+        $clone->default = $value;
+
+        return $clone;
+    }
+
     public function handledByQuery(bool $handledByQuery = true): self
     {
         $this->handledByQuery = $handledByQuery;
@@ -305,6 +335,7 @@ final class Filter
             'falseLabel'  => $this->falseLabel,
             'trueValue'   => $this->trueValue,
             'falseValue'  => $this->falseValue,
+            'default'     => $this->default,
         ], static fn (mixed $value): bool => $value !== null);
     }
 

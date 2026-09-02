@@ -1,7 +1,11 @@
 <template>
-  <div ref="root" class="ui-table-wrapper bg-white rounded-lg shadow-sm ring-1 ring-gray-950/5 overflow-hidden">
+  <div
+    ref="root"
+    class="ui-table-wrapper"
+    :class="nested ? 'ui-table-nested' : 'bg-white rounded-lg shadow-sm ring-1 ring-gray-950/5 overflow-hidden'"
+  >
     <TableToolbar
-      v-if="$slots.header || searchable || $slots.headerActions || showTreeToggle"
+      v-if="!nested && ($slots.header || searchable || $slots.headerActions || showTreeToggle)"
       :searchable="searchable"
       :search="search"
       :show-tree-toggle="showTreeToggle"
@@ -37,7 +41,7 @@
 
     <!-- Table -->
     <div class="ui-table-content overflow-x-auto overflow-y-visible">
-      <table class="ui-table w-full divide-y divide-gray-200" :class="treeCollapsible ? 'table-fixed' : 'table-auto'" @keydown="handleTableKeyDown">
+      <table class="ui-table w-full divide-y divide-gray-200" :class="treeCollapsible ? 'table-fixed' : 'table-auto'" @keydown="onTableKeyDown">
         <colgroup v-if="treeCollapsible">
           <col v-if="expandable" class="w-4" />
           <col v-if="bulkActionsEnabled" class="w-4" />
@@ -195,9 +199,15 @@
 
             <!-- Empty State -->
             <tr v-if="records.length === 0">
-              <td :colspan="columnCount" class="px-4 py-12 text-center text-sm text-gray-500">
+              <td
+                :colspan="columnCount"
+                class="text-sm text-gray-500"
+                :class="nested ? 'ui-table-empty-nested px-4 py-3' : 'px-4 py-12 text-center'"
+              >
                 <slot name="emptyState">
-                  <TableEmptyState :title="emptyStateTitle" :description="emptyStateDescription" />
+                  <!-- A nested table says it in a line; the full illustration belongs to a page. -->
+                  <span v-if="nested">{{ emptyStateTitle }}</span>
+                  <TableEmptyState v-else :title="emptyStateTitle" :description="emptyStateDescription" />
                 </slot>
               </td>
             </tr>
@@ -279,6 +289,15 @@ const props = defineProps({
   visibleColumns: {
     type: Array as PropType<string[]>,
     default: null,
+  },
+  /**
+   * Rendered inside another table's expanded row: bare chrome, no toolbar,
+   * and keyboard events stay inside so the outer table's row focus does not
+   * follow arrows pressed here.
+   */
+  nested: {
+    type: Boolean,
+    default: false,
   },
   emptyStateTitle: {
     type: String,
@@ -394,21 +413,33 @@ function handleSort(name: string | undefined): void {
   emit('sort', { column: name, direction })
 }
 
+function onTableKeyDown(event: KeyboardEvent): void {
+  handleTableKeyDown(event)
+
+  if (props.nested) event.stopPropagation()
+}
+
 // ── Expandable rows ──────────────────────────────────────────────────────────
 
-const expandedRecords = ref<TableRecord[]>([])
+// Keyed by the row's id when it has one: an Inertia reload replaces every row
+// object, and expansion keyed by identity collapsed everything on each save.
+const expanded = ref(new Set<unknown>())
+
+function expandKey(record: TableRecord): unknown {
+  return record.id ?? record
+}
 
 function isExpanded(record: TableRecord): boolean {
-  return expandedRecords.value.includes(record)
+  return expanded.value.has(expandKey(record))
 }
 
 function toggleExpand(record: TableRecord): void {
-  const index = expandedRecords.value.indexOf(record)
+  const key = expandKey(record)
 
-  if (index > -1) {
-    expandedRecords.value.splice(index, 1)
+  if (expanded.value.has(key)) {
+    expanded.value.delete(key)
   } else {
-    expandedRecords.value.push(record)
+    expanded.value.add(key)
   }
 }
 </script>

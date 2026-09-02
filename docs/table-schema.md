@@ -35,6 +35,7 @@ Return `null` (the default) to keep hand-written columns in the page component.
 | `filters(Filter[])` | See [Filters](#filters) |
 | `groups(Group[])` | See [Groups](#groups) |
 | `constraints(Constraint[])` | See [Query builder constraints](#query-builder-constraints) |
+| `children(ChildTable[])` | Related rows under each row, in a nested table — see [Child tables](#child-tables) |
 
 ---
 
@@ -366,6 +367,23 @@ Frontend wiring: `filterDefaults(props.table)` builds the key/empty-value map
 
 ---
 
+### Defaults
+
+A filter may carry the value that applies when the request names none:
+
+```php
+Filter::select('status')->options(...)->default('open')
+```
+
+The default travels to the client, which shows it in the control **without**
+counting it as an active filter or a chip, and returns to it on reset. The
+`trashed` control gets its default from the resource's `defaultTrashed()`
+automatically — a resource listing deleted rows by default shows "With
+Deleted" selected, and a reset leaves it there rather than blanking it for
+the server to refill on the next request.
+
+---
+
 ## Groups
 
 ```php
@@ -393,6 +411,63 @@ page, which is the only reason they're worth a round trip. They ride in
 
 Summarising a dot-path column throws a `LogicException`: aggregating across a
 relation needs an explicit join.
+
+---
+
+## Child tables
+
+Related rows shown under a parent row: a movie's cast under the movie, an
+order's lines under the order. The read half of master–detail; the drawer's
+relation tabs are the write half.
+
+```php
+TableSchema::make()
+    ->columns([...])
+    ->children([
+        ChildTable::relation('cast', 'Cast')
+            ->columns([
+                Column::make('actor')->linksTo('/panel/actors/{actor_id}'),
+                Column::make('character'),
+            ])
+            ->empty('No cast listed yet.'),
+    ]);
+```
+
+A child names a **to-many association** of the listed entity and the columns
+to show per related row. The rows themselves come from the presented parent
+row, under `source` — the snake_cased relation by default, or whatever key
+`->source()` names — exactly as `DrawerTab::relation()` reads them. So the
+presenter's list row has to carry them, the way its detail array already does
+for the drawer.
+
+Two things the listing does with the declaration:
+
+- **Validates the relation against Doctrine's metadata** when it renders. A
+  name the entity does not map, a to-one, or a many-to-many is refused with a
+  `LogicException` naming the class — not a blank nested table in the browser.
+- **Loads the association for the page in one query.** The list query sets an
+  eager fetch mode for every declared child, which Doctrine turns into one
+  `IN` query per page. This is why children are one-to-many only for now: a
+  many-to-many would load once per row, and a bound the panel imposes must be
+  visible rather than paid for quietly. It is also why the association is not
+  joined in the list query's `applyEagerLoads()` — a fetch-join under the
+  page's LIMIT counts child rows against it and shortens pages.
+
+What a child cannot declare, and why: filters, groups, constraints, summaries,
+search, bulk actions and inline editing all need a query of their own, and a
+child has none. Its columns therefore serialise as never sortable, and a
+column with a summary or `editable()` is refused at declaration.
+
+`recordUrl()` links each child row. Placeholders resolve against the child row,
+plus `{parent}` for the parent row's id — the drawer-tab convention:
+
+```php
+ChildTable::relation('cast', 'Cast')->recordUrl('/panel/movies/{parent}/cast/{id}')
+```
+
+On the client, `SchemaTable` turns a row expandable as soon as the schema
+declares children and renders one nested table per child in the expanded
+row. A page that writes its own `#expandedRow` slot still wins.
 
 ---
 
@@ -466,6 +541,9 @@ thing standing between a query param and DQL.
   <template #pagination>…</template>
 </SchemaTable>
 ```
+
+Rows expand into nested tables when the schema declares
+[children](#child-tables); a page-supplied `#expandedRow` replaces them.
 
 `SchemaTable` wraps `Table` rather than replacing it — every page still using
 `Table` directly is unaffected. It forwards any slot you pass (`headerActions`,

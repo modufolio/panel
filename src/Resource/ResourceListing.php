@@ -19,6 +19,7 @@ use Modufolio\Panel\Table\Summary;
 use Modufolio\Panel\Table\TableSchema;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\EntityRepository;
+use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\QueryBuilder;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -99,7 +100,12 @@ final class ResourceListing
         $params['filters'] = $this->resource->filterValues($params, $queryParams);
         $pagination  = $this->getJsonApiPagination($queryParams);
 
-        $query = $this->resource->buildListQuery($params, $pagination['limit'], $pagination['offset']);
+        $query  = $this->resource->buildListQuery($params, $pagination['limit'], $pagination['offset']);
+        $schema = $this->resource->tableSchema();
+
+        if ($schema !== null) {
+            $this->assertChildRelations($schema);
+        }
 
         $alias      = $this->resource->queryAlias();
         $repository = $this->repository();
@@ -110,7 +116,18 @@ final class ResourceListing
 
         [, $sortDirection] = $this->resolveSortField($this->resource->listQueryClass(), $params['sort']);
         $this->applyKeysetTiebreak($listQb, $alias, $sortDirection);
-        $entities = $listQb->getQuery()->getResult();
+
+        $listQuery = $listQb->getQuery();
+
+        // A declared child is loaded for the whole page in one IN query, so
+        // the presenter can read the collection without an N+1. Set on the
+        // query rather than joined in the list query: a fetch-join under the
+        // page's LIMIT would count child rows against it and shorten pages.
+        foreach ($schema?->declaredChildren() ?? [] as $child) {
+            $listQuery->setFetchMode($this->resource->entityClass(), $child->relationName(), ClassMetadata::FETCH_EAGER);
+        }
+
+        $entities = $listQuery->getResult();
 
         // The count must see the same filters, or the pager advertises pages
         // that do not exist.
@@ -122,8 +139,7 @@ final class ResourceListing
             ->getQuery()
             ->getSingleScalarResult();
 
-        $key    = $this->resource->key();
-        $schema = $this->resource->tableSchema();
+        $key = $this->resource->key();
 
         if ($schema !== null) {
             $schema = $this->resolveFilterOptions($schema);
@@ -245,6 +261,56 @@ final class ResourceListing
             'next'     => $this->recordUrl($next, $queryParams),
             'previous' => $this->recordUrl($previous, $queryParams),
         ];
+    }
+
+    /**
+     * Refuse a child table whose relation the entity does not map the way a
+     * child needs — at render time, where the metadata is, rather than in the
+     * browser as a blank nested table.
+     *
+     * One-to-many only, for now: Doctrine batch-loads an eager one-to-many
+     * for the page in a single query, while a many-to-many would load once
+     * per parent row, and a bound the panel imposes must be visible.
+     */
+    private function assertChildRelations(TableSchema $schema): void
+    {
+        $children = $schema->declaredChildren();
+
+        if ($children === []) {
+            return;
+        }
+
+        $entityClass = $this->resource->entityClass();
+        $meta        = $this->entityManager->getClassMetadata($entityClass);
+
+        foreach ($children as $child) {
+            $relation = $child->relationName();
+
+            if (!$meta->hasAssociation($relation)) {
+                throw new \LogicException(sprintf(
+                    'TableSchema children name "%s", but %s maps no such association.',
+                    $relation,
+                    $entityClass,
+                ));
+            }
+
+            if (!$meta->isCollectionValuedAssociation($relation)) {
+                throw new \LogicException(sprintf(
+                    'TableSchema children name "%s", but %s maps it as a to-one association; a child table lists a collection.',
+                    $relation,
+                    $entityClass,
+                ));
+            }
+
+            if (($meta->getAssociationMapping($relation)['type'] & ClassMetadata::MANY_TO_MANY) !== 0) {
+                throw new \LogicException(sprintf(
+                    'TableSchema children name "%s", but %s maps it many-to-many, which would load once per row; '
+                    . 'a child table lists a mapped-by one-to-many.',
+                    $relation,
+                    $entityClass,
+                ));
+            }
+        }
     }
 
     /**
@@ -429,6 +495,18 @@ final class ResourceListing
     private function resolveFilterOptions(TableSchema $schema): TableSchema
     {
         $filters = array_map(function (Filter $filter): Filter {
+            // The trashed control's default is the resource's decision, not
+            // the schema's: a resource listing deleted rows by default hands
+            // the client that value so it shows without counting as a
+            // filter the viewer applied, and a reset returns to it.
+            if ($filter->type() === Filter::TRASHED && $filter->defaultValue() === null) {
+                $default = $this->resource->defaultTrashed();
+
+                if ($default !== null) {
+                    return $filter->withDefault($default);
+                }
+            }
+
             $relation = $filter->relation();
 
             if ($relation === null) {

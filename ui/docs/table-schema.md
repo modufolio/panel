@@ -62,6 +62,17 @@ interface TableSchema {
   searchable?: boolean
   bulkActions?: boolean
   stickyHeader?: boolean
+  children?: SchemaChildTable[]  // nested tables under each row; expansion is derived from this
+}
+
+interface SchemaChildTable {
+  key: string
+  label: string
+  relation: string
+  source: string                 // key in the parent row holding the child rows
+  columns: SchemaColumn[]        // never sortable: a child has no query
+  recordUrl?: string | null      // '{parent}' is the parent row's id
+  empty?: string | null
 }
 ```
 
@@ -236,6 +247,7 @@ Everything you pass is forwarded to `Table`; anything you don't is generated.
 |---|---|
 | `cell-{key}` | **Overrides** the generated cell for that column |
 | `filters` | **Replaces** the generated filter popover entirely |
+| `expandedRow` | **Replaces** the generated child tables for a row (`{ record }`) |
 | `headerActions`, `actions`, `bulkActions`, `pagination`, `header` | Forwarded as-is |
 
 Overriding one column doesn't opt you out of the others — the component filters

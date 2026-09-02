@@ -420,6 +420,11 @@ final class Column
      * persist it, by passing a handler under this column's key. A closure here
      * would not survive json_encode.
      */
+    public function isEditable(): bool
+    {
+        return $this->editable;
+    }
+
     public function editable(bool $editable = true): self
     {
         $this->editable = $editable;

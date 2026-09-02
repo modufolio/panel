@@ -143,6 +143,10 @@ final class PanelResourceTest extends TestCase
             }
         };
 
-        self::assertInstanceOf(TableSchema::class, $resource->tableSchema());
+        self::assertSame(
+            '/panel/events/{id}',
+            $resource->tableSchema()->toArray(StubListQuery::class)['recordUrl'],
+            'The declaration reaches the client untouched.',
+        );
     }
 }
