@@ -104,7 +104,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, provide, ref, shallowRef, watchEffect, defineComponent } from 'vue'
+import { computed, provide, ref, shallowRef, useSlots, watchEffect, defineComponent } from 'vue'
 import { visitDrawer } from './visitDrawer'
 import Drawer from './Drawer.vue'
 import Dialog from '../Dialogs/Dialog.vue'
@@ -149,6 +149,25 @@ function isDialog(item: StackItem): boolean {
  * at once dims the page twice.
  */
 const hasDrawerFrames = computed(() => props.stack.some((item) => !isDialog(item)))
+
+// A frame's `type` and the page's `#type` slot are coupled by name only. A
+// frame no slot claims still renders — the key/value fallback below — which
+// looks enough like content that a typo used to go unnoticed. Say so, once
+// per type, where a developer is looking.
+const slots = useSlots()
+const unclaimedTypes = new Set<string>()
+
+watchEffect(() => {
+  for (const item of props.stack) {
+    if (slots[item.type] || unclaimedTypes.has(item.type)) continue
+
+    unclaimedTypes.add(item.type)
+    console.warn(
+      `[DrawerStack] No slot named "${item.type}" for a frame of that type; `
+      + 'rendering its data as key/value pairs. Add a `#' + item.type + '` slot to the page.',
+    )
+  }
+})
 
 // Use shallowRef for the stack to avoid deep reactivity on large entity data
 // (learned from Tofandel/inertia-vue3-modal's performance pattern)
