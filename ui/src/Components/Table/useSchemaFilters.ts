@@ -1,7 +1,8 @@
 import { computed } from 'vue'
 import type { FilterIndicator } from '../Filters/FilterIndicators.vue'
 import {
-  emptyFilterValue,
+  defaultFilterValue,
+  isFilterDefault,
   type SchemaFilter,
   type QueryCondition,
   type TableSchema,
@@ -49,6 +50,8 @@ export function useSchemaFilters({ schema, values, onChange, onReset }: FilterOp
     const value = values()[filter.key]
 
     if (value === null || value === undefined || value === '') return false
+    // The default is what the server applies unasked; showing it is not filtering.
+    if (isFilterDefault(filter, value)) return false
     if (Array.isArray(value)) return value.length > 0
     if (typeof value === 'object') {
       return Object.values(value as object).some((entry) => entry !== null && entry !== '')
@@ -138,12 +141,12 @@ export function useSchemaFilters({ schema, values, onChange, onReset }: FilterOp
     if (key === 'group') return onChange('group', '')
 
     const filter = schemaFilters.value.find((entry) => entry.key === key)
-    if (filter) onChange(filter.key, emptyFilterValue(filter))
+    if (filter) onChange(filter.key, defaultFilterValue(filter))
   }
 
   function resetFilters(): void {
     for (const filter of schemaFilters.value) {
-      onChange(filter.key, emptyFilterValue(filter))
+      onChange(filter.key, defaultFilterValue(filter))
     }
 
     if (constraints.value.length > 0) onChange('constraints', [])

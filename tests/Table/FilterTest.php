@@ -71,4 +71,17 @@ final class FilterTest extends TestCase
 
         self::assertSame($options, Filter::select('status')->options($options)->toArray()['options']);
     }
+
+    /**
+     * A default is what applies when the request says nothing. It travels,
+     * so the client can tell a control showing it from a filter the viewer
+     * applied; a filter without one sends no key at all.
+     */
+    public function testADefaultTravelsWhenDeclared(): void
+    {
+        self::assertArrayNotHasKey('default', Filter::select('genre')->toArray());
+        self::assertSame('open', Filter::select('status')->default('open')->toArray()['default']);
+        self::assertSame('with', Filter::trashed()->withDefault('with')->toArray()['default']);
+        self::assertNull(Filter::trashed()->defaultValue());
+    }
 }
