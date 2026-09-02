@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-09-02
+
+PHP only; `@modufolio/panel` on npm stays at 0.2.0.
+
+### Added
+
+- **A `Database` test suite for the core.** `ResourceListing`, its factory,
+  `FormFieldGuesser`, `RelationOptionResolver` and the delete `Collector`
+  were covered only by the consuming application — the 0.1.x "known gaps".
+  They now run against a real EntityManager over six fixture entities, one
+  of each shape the guesser and the collector distinguish. The base case
+  boots no kernel, only what the classes need; SQLite in memory by default,
+  MySQL/PostgreSQL/SQL Server through the same `DB_*` variables the sibling
+  packages read (`docker-compose.yml` has one of each). CI runs all three.
+
+### Fixed
+
+- **`Collector` is reusable.** Its state was never cleared between calls, so
+  a shared instance returned plans accumulated from earlier walks.
+- **LIKE wildcards are escaped on every engine.** Text filters relied on the
+  engine's default escape character; SQLite has none, so searching for `%`
+  matched nothing there. The predicate now declares `ESCAPE '!'`.
+- **Date bounds include their own day on every engine.** Bounds were bound
+  as datetimes; SQLite compares a DATE column as text, so `'1995-12-15'`
+  sorted before `'1995-12-15 00:00:00'` and every bound shifted a day. They
+  are typed as dates now, and `before`/`between` cover the whole named day
+  like `on` already did.
+- **Grouping drops a sort on its own field** instead of repeating it in
+  ORDER BY, which SQL Server refuses. Deletion plans list referencing classes
+  in name order rather than filesystem order, so they read the same on
+  every machine.
+
 ## [0.2.0] - 2026-09-01
 
 ### Added
