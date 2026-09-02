@@ -36,7 +36,9 @@ class CastMember
     #[OnDelete(OnDelete::PROTECT)]
     private ?Actor $actor = null;
 
-    #[ORM\Column(length: 120)]
+    // `character` is a reserved word on MySQL, so the column is named for
+    // the property without becoming a quoting exercise in every engine.
+    #[ORM\Column(name: 'character_name', length: 120)]
     private string $character = '';
 
     #[ORM\Column(type: 'integer')]
