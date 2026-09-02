@@ -29,6 +29,7 @@ use Symfony\Component\Config\FileLocator;
 use Symfony\Component\Routing\Generator\UrlGenerator;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Routing\RequestContext;
+use Symfony\Component\Routing\RouteCollection;
 
 /**
  * A real EntityManager over the fixture entities, with the schema rebuilt
@@ -257,6 +258,16 @@ abstract class DoctrineTestCase extends TestCase
      */
     protected function urlGeneratorFromConfig(string $configBody): UrlGeneratorInterface
     {
+        return new UrlGenerator($this->routesFromConfig($configBody), new RequestContext());
+    }
+
+    /**
+     * The routes the package generates for a hand-written config body — the
+     * collection itself, for a test that inspects routes rather than
+     * generating URLs from them.
+     */
+    protected function routesFromConfig(string $configBody): RouteCollection
+    {
         $file = tempnam(sys_get_temp_dir(), 'panel_routes_') . '.php';
         $this->tempFiles[] = $file;
 
@@ -265,10 +276,8 @@ abstract class DoctrineTestCase extends TestCase
             "<?php\n\nuse " . PanelResourceConfigurator::class . ";\n\nreturn {$configBody};\n",
         );
 
-        $routes = (new PanelResourceRouteLoader(new FileLocator([dirname($file)]), FixtureController::class))
+        return (new PanelResourceRouteLoader(new FileLocator([dirname($file)]), FixtureController::class))
             ->load($file, 'panel_resource');
-
-        return new UrlGenerator($routes, new RequestContext());
     }
 
     /**
