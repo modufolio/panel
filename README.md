@@ -78,6 +78,22 @@ cannot cross the JSON boundary. See
 > yields a form that looks guarded and is not —
 > [the wiring](docs/fields.md#wiring-the-guards).
 
+## The write side
+
+A generated create, edit or delete route needs more than the declaration,
+and the package provides it as plain services a host controller composes:
+
+| Service | Answers |
+|---|---|
+| `Form\FormResolver` | which form a resource has — hand-written or guessed from Doctrine |
+| `Form\FormPresenter` | the fields this viewer may see, relations resolved, computed values filled |
+| `Form\SubmissionHandler` | a request body to a persisted record, or errors keyed by field |
+| `Delete\PlanExecutor` | carrying out what the delete `Collector` planned, in one transaction |
+| `Resource\RecordLocator` | the record a URL names, through the resource's own scope |
+
+What stays in the host is HTTP: who is asking, and which redirect or JSON a
+refusal, a validation failure or a success becomes.
+
 ## Read-only resources
 
 Create, edit, update and delete routes are generated only when
