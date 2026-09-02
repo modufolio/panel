@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-02
+
+### Added
+
+- **Child tables.** `TableSchema::children([ChildTable::relation('cast', 'Cast')->columns([...])])`
+  lists related rows in a nested table under each row — the read half of
+  master–detail, beside the drawer tabs' write half. Rows come from the
+  presented parent row under `source`; the listing checks the relation
+  against Doctrine's metadata (one-to-many only, and says why) and loads it
+  for the page in one query, so a declared child cannot cost an N+1.
+  `SchemaTable` derives row expansion from the schema; expansion survives a
+  reload and row focus walks only the table's own rows.
+- **A permission inspector.** `Inspection\PermissionInspector` reads the four
+  permission layers back together without a request: per resource and role,
+  routes admitted, hook verdicts, `scopeQuery()` overridden or not, fields
+  readable / read-denied / write-denied / frozen, plus notes where the layers
+  disagree. The reference application exposes it as `panel:permissions` and
+  as a super-admin page.
+- **The write side lives in the package.** `Form\FormResolver`,
+  `Form\FormPresenter` and `Form\SubmissionHandler` carry what a generated
+  form route does between the request and the response — from which form a
+  resource has to persisting the validated, access-filtered submission with
+  its repeater rows and to-many links. `Delete\PlanExecutor` carries out a
+  deletion plan in one transaction and `Resource\RecordLocator` finds a
+  record through the resource's scope. A host controller is routing and
+  responses now, and the package's own suite exercises the pipeline against
+  a real database. `symfony/validator` is a declared dependency.
+- **Filter defaults.** `Filter::default()` names the value that applies when
+  the request says nothing; the `trashed` filter takes it from the resource's
+  `defaultTrashed()`.
+- **CI collects coverage** on the PHP 8.4 leg and uploads it to Codecov, and
+  PHPStan runs with `phpstan-phpunit`.
+
+### Fixed
+
+- **A default filter value is no longer an active filter.** A resource with
+  `defaultTrashed('with')` echoed the value back as the `trashed` filter, so
+  the client counted it, showed a chip, and a reset cleared it only until
+  the next request refilled it. A value equal to the filter's default is now
+  neither counted nor chipped, and reset returns to it.
+- **A decimal reaches a string setter as a string.** A number field's float
+  hit `setRating(?string)` as a TypeError under strict types; the setter's
+  signature now decides the shape, as it already did for dates.
+- **`DrawerStack` warns about a frame no slot claims,** once per type, instead
+  of silently falling back to key/value output when a `#type` slot is missing
+  or misspelled.
+
 ## [0.2.1] - 2026-09-02
 
 PHP only; `@modufolio/panel` on npm stays at 0.2.0.
