@@ -15,6 +15,16 @@ use Doctrine\ORM\QueryBuilder;
  */
 trait FiltersText
 {
+    /**
+     * LIKE escape character. Declared in the DQL rather than assumed: without
+     * an ESCAPE clause the engine's default applies, and SQLite has none — a
+     * backslash there is an ordinary character, so a search for "%" looked
+     * for a literal "\%" and never matched. Not a backslash, for the same
+     * reason RelationOptionResolver avoids one: it would have to survive PHP,
+     * DQL and the driver's own quoting, and each treats it differently.
+     */
+    private const LIKE_ESCAPE = '!';
+
     public static function filterOperators(): array
     {
         return [
@@ -32,15 +42,17 @@ trait FiltersText
     public static function applyFilter(QueryBuilder $qb, string $dqlField, string $operator, mixed $value, string $parameter): void
     {
         $text = \is_scalar($value) ? (string) $value : '';
-        $escaped = addcslashes($text, '%_');
+        $e = self::LIKE_ESCAPE;
+        $escaped = str_replace([$e, '%', '_'], [$e.$e, $e.'%', $e.'_'], $text);
+        $like = "LIKE :{$parameter} ESCAPE '{$e}'";
 
         match ($operator) {
-            'contains' => $qb->andWhere("{$dqlField} LIKE :{$parameter}")->setParameter($parameter, '%'.$escaped.'%'),
-            'not_contains' => $qb->andWhere("{$dqlField} NOT LIKE :{$parameter}")->setParameter($parameter, '%'.$escaped.'%'),
+            'contains' => $qb->andWhere("{$dqlField} {$like}")->setParameter($parameter, '%'.$escaped.'%'),
+            'not_contains' => $qb->andWhere("{$dqlField} NOT {$like}")->setParameter($parameter, '%'.$escaped.'%'),
             'equals' => $qb->andWhere("{$dqlField} = :{$parameter}")->setParameter($parameter, $text),
             'not_equals' => $qb->andWhere("{$dqlField} != :{$parameter}")->setParameter($parameter, $text),
-            'starts_with' => $qb->andWhere("{$dqlField} LIKE :{$parameter}")->setParameter($parameter, $escaped.'%'),
-            'ends_with' => $qb->andWhere("{$dqlField} LIKE :{$parameter}")->setParameter($parameter, '%'.$escaped),
+            'starts_with' => $qb->andWhere("{$dqlField} {$like}")->setParameter($parameter, $escaped.'%'),
+            'ends_with' => $qb->andWhere("{$dqlField} {$like}")->setParameter($parameter, '%'.$escaped),
             'empty' => $qb->andWhere("({$dqlField} IS NULL OR {$dqlField} = '')"),
             'not_empty' => $qb->andWhere("({$dqlField} IS NOT NULL AND {$dqlField} != '')"),
             default => throw new \InvalidArgumentException(sprintf('Unknown filter operator "%s" for %s.', $operator, static::class)),

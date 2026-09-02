@@ -4,6 +4,7 @@ declare(strict_types = 1);
 
 namespace Modufolio\Panel\Table;
 
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\QueryBuilder;
 
 /**
@@ -265,9 +266,12 @@ final class Filter
                 $from  = is_array($value) ? ($value['from'] ?? $value['start'] ?? null) : null;
                 $until = is_array($value) ? ($value['until'] ?? $value['end'] ?? null) : null;
 
+                // Bound as dates, not datetimes: a DATE column stored as text
+                // (SQLite) compares byte-wise, and '1995-12-15' sorts before
+                // '1995-12-15 00:00:00' — see DateType::applyFilter().
                 if ($from !== null && $from !== '') {
                     $qb->andWhere("{$field} >= :{$param}_from")
-                        ->setParameter("{$param}_from", new \DateTimeImmutable((string)$from));
+                        ->setParameter("{$param}_from", new \DateTimeImmutable((string)$from), Types::DATE_IMMUTABLE);
                 }
 
                 if ($until !== null && $until !== '') {
@@ -275,7 +279,8 @@ final class Filter
                     $qb->andWhere("{$field} < :{$param}_until")
                         ->setParameter(
                             "{$param}_until",
-                            (new \DateTimeImmutable((string)$until))->modify('+1 day')
+                            (new \DateTimeImmutable((string)$until))->modify('+1 day'),
+                            Types::DATE_IMMUTABLE,
                         );
                 }
                 break;

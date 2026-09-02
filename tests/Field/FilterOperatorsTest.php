@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Field;
 
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query\Expr;
 use Doctrine\ORM\QueryBuilder;
@@ -52,8 +53,10 @@ final class FilterOperatorsTest extends TestCase
     {
         [$where, $params] = $this->whereOf(TextType::class, 'contains', '50%_off');
 
-        $this->assertSame('p.field LIKE :f0', $where);
-        $this->assertSame('%50\%\_off%', $params['f0'], 'User input must not smuggle wildcards.');
+        // The escape character is named in the predicate: without an ESCAPE
+        // clause the engine's default applies, and SQLite has none.
+        $this->assertSame("p.field LIKE :f0 ESCAPE '!'", $where);
+        $this->assertSame('%50!%!_off%', $params['f0'], 'User input must not smuggle wildcards.');
     }
 
     public function testTextEmptyCoversNullAndEmptyString(): void
@@ -79,7 +82,33 @@ final class FilterOperatorsTest extends TestCase
 
         [$where, $params] = $this->whereOf(DateType::class, 'after', '2026-01-01');
         $this->assertSame('p.field >= :f0', $where);
-        $this->assertSame('2026-01-01', $params['f0']);
+        $this->assertInstanceOf(\DateTimeImmutable::class, $params['f0']);
+        $this->assertSame('2026-01-01 00:00:00', $params['f0']->format('Y-m-d H:i:s'));
+    }
+
+    /**
+     * A date bound travels as a date, whatever column it meets. Left untyped
+     * it would be inferred as a datetime and formatted with a time part,
+     * which a DATE column stored as text compares byte-wise — every lower
+     * bound then skipped its own day. `before` and `between` spell out the
+     * whole day they mean, the way `on` already did.
+     */
+    public function testDateBoundsAreTypedAsDatesAndCoverWholeDays(): void
+    {
+        $qb = $this->qb();
+        DateType::applyFilter($qb, 'p.field', 'before', '2026-01-31', 'f0');
+
+        $bound = $qb->getParameter('f0') ?? self::fail('The bound was not set.');
+        $value = $bound->getValue();
+
+        $this->assertSame('p.field < :f0', (string) $qb->getDQLPart('where'));
+        $this->assertSame(Types::DATE_IMMUTABLE, $bound->getType());
+        $this->assertInstanceOf(\DateTimeImmutable::class, $value);
+        $this->assertSame('2026-02-01', $value->format('Y-m-d'), 'Up to and including the 31st.');
+
+        [$where, $params] = $this->whereOf(DateType::class, 'between', ['2026-01-01', '2026-01-31']);
+        $this->assertSame('p.field >= :f0_from AND p.field < :f0_to', $where);
+        $this->assertSame('2026-02-01', $params['f0_to']->format('Y-m-d'));
     }
 
     public function testSelectInNormalisesAScalarToAList(): void
@@ -108,11 +137,14 @@ final class FilterOperatorsTest extends TestCase
     public function testEveryDeclaredOperatorIsApplicable(): void
     {
         $samples = ['between' => [1, 2], 'in' => ['a']];
+        // A date type parses its bounds as days, so it gets days.
+        $days = ['between' => ['2026-01-01', '2026-01-31']];
 
         foreach ([TextType::class, NumberType::class, DateType::class, SelectType::class, ToggleType::class] as $type) {
             foreach (array_keys($type::filterOperators()) as $op) {
-                $qb = $this->qb();
-                $type::applyFilter($qb, 'p.field', $op, $samples[$op] ?? 'v', 'f0');
+                $qb    = $this->qb();
+                $value = $type === DateType::class ? ($days[$op] ?? '2026-01-01') : ($samples[$op] ?? 'v');
+                $type::applyFilter($qb, 'p.field', $op, $value, 'f0');
                 $this->assertNotSame('', (string) $qb->getDQLPart('where'), "{$type}::{$op} built no predicate.");
             }
         }

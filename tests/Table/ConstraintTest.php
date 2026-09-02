@@ -77,8 +77,8 @@ final class ConstraintTest extends TestCase
             ['operator' => 'contains', 'value' => '50%_off'],
         );
 
-        $this->assertSame('p.title LIKE :c0_title', $where);
-        $this->assertSame('%50\%\_off%', $params['c0_title'], 'Escaping is the type\'s, and it still runs.');
+        $this->assertSame("p.title LIKE :c0_title ESCAPE '!'", $where);
+        $this->assertSame('%50!%!_off%', $params['c0_title'], 'Escaping is the type\'s, and it still runs.');
     }
 
     public function testNumberBetweenPassesBothBoundsAsNumbers(): void
