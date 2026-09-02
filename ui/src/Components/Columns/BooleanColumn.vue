@@ -9,6 +9,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { pathIcon } from '../../Utils/pathIcon'
+
+const CheckIcon = pathIcon('M4.5 12.75l6 6 9-13.5', { strokeWidth: 2.5 })
+const CrossIcon = pathIcon('M6 18L18 6M6 6l12 12', { strokeWidth: 2.5 })
 
 const props = defineProps({
   value: {
@@ -91,19 +95,6 @@ const icon = computed(() => {
   if (boolValue.value && props.trueIcon) return props.trueIcon
   if (!boolValue.value && props.falseIcon) return props.falseIcon
 
-  // Default icons
-  return boolValue.value ? {
-    template: `
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-      </svg>
-    `,
-  } : {
-    template: `
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-      </svg>
-    `,
-  }
+  return boolValue.value ? CheckIcon : CrossIcon
 })
 </script>
