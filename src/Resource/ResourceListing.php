@@ -103,6 +103,13 @@ final class ResourceListing
         $query  = $this->resource->buildListQuery($params, $pagination['limit'], $pagination['offset']);
         $schema = $this->resource->tableSchema();
 
+        // Which shape of this listing was asked for. A board is a different
+        // query — grouped into columns, ordered by position, limited per
+        // column — so the choice has to be resolved before the rows are read,
+        // not after.
+        $view  = $this->resource->viewFor($this->requestedView($queryParams));
+        $board = $view->isBoard() ? $this->board($view, $query, $params) : null;
+
         if ($schema !== null) {
             $this->assertChildRelations($schema);
         }
@@ -127,7 +134,10 @@ final class ResourceListing
             $listQuery->setFetchMode($this->resource->entityClass(), $child->relationName(), ClassMetadata::FETCH_EAGER);
         }
 
-        $entities = $listQuery->getResult();
+        // A board has already read its own rows, per column. Running the
+        // paginated query as well would be a second full read of the same
+        // table for a page that never renders it.
+        $entities = $board === null ? $listQuery->getResult() : [];
 
         // The count must see the same filters, or the pager advertises pages
         // that do not exist.
@@ -192,13 +202,161 @@ final class ResourceListing
                     // which case ExportButton falls back to its client-side
                     // path — which can only ever see the loaded page.
                     'exportUrl'  => $this->exportUrl($key),
+                    // The switcher's options and which one is showing. A
+                    // resource declaring only the table sends a single entry,
+                    // and the client renders no switcher for one option.
+                    'views'      => array_map(
+                        static fn (ResourceView $declared): array => $declared->toArray(),
+                        $this->resource->views(),
+                    ),
+                    'view'       => $view->key(),
+                    // Whether cards on a board can be dragged. Deliberately
+                    // NOT `canEdit`: that one also requires the edit *form*
+                    // route, and a board is a way of reading records that
+                    // groups them by a field they already have — a resource
+                    // can have one without ever declaring a form. What it does
+                    // require is the move route and the edit permission, which
+                    // is exactly what the endpoint itself checks.
+                    'canMove'    => $this->routeExists($key . '_board_move')
+                        && $this->resource->canEdit(null, $this->user),
                 ],
+                ...($board !== null ? ['board' => $board] : []),
                 ...($schema !== null ? ['table' => $schema->toArray($this->resource->listQueryClass())] : []),
                 ...$this->extraProps,
                 ...$this->sharedProps->create(),
             ],
             $this->request,
         );
+    }
+
+    /**
+     * The columns each card may be moved to, keyed by the card's id.
+     *
+     * Asked of {@see PanelResource::canMoveTo()}, which is the same predicate
+     * the move endpoint enforces — so a button is offered exactly when the
+     * move behind it would be allowed. A board deriving its buttons from a map
+     * of its own is how the buttons and the rules drift apart.
+     *
+     * Empty unless the view asks for it: this is one call per card per column,
+     * cheap for an in-memory rule and not something to spend where no button
+     * will be rendered.
+     *
+     * @param  list<object>                     $entities
+     * @param  list<array<string, mixed>>       $presented
+     * @return array<string, list<array<string, mixed>>>
+     */
+    private function quickMoves(ResourceView $view, string $from, array $entities, array $presented): array
+    {
+        if (!$view->offersQuickMove()) {
+            return [];
+        }
+
+        $moves = [];
+
+        foreach (array_values($entities) as $index => $entity) {
+            $id = (string) ($presented[$index]['id'] ?? '');
+
+            if ($id === '') {
+                continue;
+            }
+
+            $targets = [];
+
+            foreach ($view->columnDefinitions() as $target) {
+                if ($target['value'] === $from) {
+                    continue;
+                }
+
+                if ($this->resource->canMoveTo($entity, $target['value'], $this->user) === true) {
+                    $targets[] = $target;
+                }
+            }
+
+            if ($targets !== []) {
+                $moves[$id] = $targets;
+            }
+        }
+
+        return $moves;
+    }
+
+    /**
+     * The view key `?view=` asks for, if it asks for one at all.
+     *
+     * @param array<string, mixed> $queryParams
+     */
+    private function requestedView(array $queryParams): ?string
+    {
+        $requested = $queryParams['view'] ?? null;
+
+        return is_string($requested) && $requested !== '' ? $requested : null;
+    }
+
+    /**
+     * A board: one query per declared column, each ordered by position.
+     *
+     * Per column rather than one query over everything, because a board pages
+     * by column. A single LIMIT across a grouped result cuts columns off at
+     * arbitrary points — the fifth column would arrive empty not because it is
+     * empty but because the first four used up the page.
+     *
+     * Columns come from the declaration, so a column with no cards is still
+     * rendered. Growing them from the rows present would hide an empty "Done",
+     * which is exactly the column whose emptiness is worth seeing.
+     *
+     * @param  array<string, mixed> $params
+     * @return array<string, mixed>
+     */
+    private function board(ResourceView $view, ListQueryInterface $query, array $params): array
+    {
+        $alias      = $this->resource->queryAlias();
+        $repository = $this->repository();
+        $groupBy    = (string) $view->groupBy();
+        $position   = $view->positionField();
+
+        $columns = [];
+
+        foreach ($view->columnDefinitions() as $column) {
+            // forCount() carries the query's filters without its sort or its
+            // pagination — which is exactly a board column's starting point,
+            // since the column supplies both itself.
+            $qb = $query->forCount($repository->createQueryBuilder($alias));
+            $this->applySchemaFilters($qb, $alias, $params);
+
+            $qb->andWhere("{$alias}.{$groupBy} = :boardColumn")
+                ->setParameter('boardColumn', $column['value']);
+
+            $total = (int) (clone $qb)
+                ->select("COUNT({$alias}.id)")
+                ->getQuery()
+                ->getSingleScalarResult();
+
+            if ($position !== null) {
+                $qb->orderBy("{$alias}.{$position}", 'ASC');
+            }
+
+            // Ties are broken by identity so a column's order is stable across
+            // reloads. Two cards sharing a position is a real state — imported
+            // rows, or an older integer scheme — and without this they would
+            // swap places between requests for no visible reason.
+            $qb->addOrderBy("{$alias}.id", 'ASC');
+
+            $cards     = $qb->setMaxResults($view->columnLimit())->getQuery()->getResult();
+            $presented = $this->resource->present($cards);
+
+            $columns[] = [
+                ...$column,
+                'total' => $total,
+                'cards' => $presented,
+                // Which other columns each card may move to, asked of the
+                // resource per card. Sent alongside the cards rather than
+                // inside them, so `cards` stays exactly what present()
+                // returned and no reserved key has to be carved out of it.
+                'moves' => $this->quickMoves($view, $column['value'], $cards, $presented),
+            ];
+        }
+
+        return ['view' => $view->toArray(), 'columns' => $columns];
     }
 
     /**

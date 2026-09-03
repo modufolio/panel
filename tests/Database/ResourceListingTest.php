@@ -317,7 +317,22 @@ final class ResourceListingTest extends DoctrineTestCase
             'canEdit'    => true,
             'canDelete'  => true,
             'exportUrl'  => '/panel/movies/export',
+            // A resource declaring no views gets the table alone, and the
+            // client renders no switcher for a single option — so adding views
+            // left every existing listing looking exactly as it did.
+            'views'      => [[
+                'key'   => 'table',
+                'label' => 'Table',
+                'icon'  => 'bars-3',
+                'type'  => 'table',
+            ]],
+            'view'       => 'table',
+            // False here because MovieResource declares no board — the move
+            // route is emitted per board view, not per resource.
+            'canMove'    => false,
         ], $props['resource']);
+
+        self::assertArrayNotHasKey('board', $props, 'A table view carries no board payload.');
 
         self::assertSame(
             ['title' => true, 'year' => true, 'rating' => true, 'studio' => false],
