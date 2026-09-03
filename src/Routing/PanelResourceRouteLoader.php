@@ -166,6 +166,36 @@ final class PanelResourceRouteLoader extends Loader
                 );
             }
 
+            // Moving a card on a board: which column it landed in and which
+            // cards it landed between. POST rather than PUT because the
+            // neighbours travel in the body and the server decides the
+            // resulting position — the client never sends one.
+            //
+            // Conditioned on a board being declared rather than on a form
+            // existing: a board is a way of reading records, and grouping them
+            // by a field they already have does not require a form to edit
+            // them through. The move itself is still an edit, and the handler
+            // asks canEdit() before writing anything.
+            foreach ($instance->views() as $declaredView) {
+                if (!$declaredView->isBoard()) {
+                    continue;
+                }
+
+                $routes->add(
+                    "{$key}_board_move",
+                    $this->createRoute(
+                        "{$prefix}/{$key}/{uuid}/board-move",
+                        ['POST'],
+                        'boardMove',
+                        $resourceClass,
+                        $options,
+                        ['uuid' => Uuid::PATTERN],
+                    ),
+                );
+
+                break;
+            }
+
             if ($hasForm && $options->generates('delete')) {
                 // What deleting this record would do, asked before anyone
                 // commits to it — the confirmation's data source.
