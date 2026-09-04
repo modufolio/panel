@@ -198,7 +198,7 @@ final readonly class BoardMover
             : null;
 
         $entity->{$setter}(
-            is_string($enumType) && enum_exists($enumType) && is_string($value)
+            is_string($enumType) && is_a($enumType, \BackedEnum::class, true) && is_string($value)
                 ? $enumType::from($value)
                 : $value,
         );

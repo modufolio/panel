@@ -105,7 +105,12 @@ final class ResourceView
         return $clone;
     }
 
-    /** Already-built column rows, as an enum's own getColumns() returns. */
+    /**
+     * Already-built column rows, as an enum's own getColumns() returns.
+     *
+     * @param array<int|string, mixed> $source
+     * @phpstan-assert-if-true array<int|string, array<string, mixed>> $source
+     */
     private static function isColumnList(array $source): bool
     {
         foreach ($source as $entry) {
@@ -118,7 +123,7 @@ final class ResourceView
     }
 
     /**
-     * @param  array<int, array<string, mixed>> $source
+     * @param  array<int|string, array<string, mixed>> $source
      * @return list<array{value: string, label: string, color: ?string}>
      */
     private static function normalizeColumnList(array $source): array

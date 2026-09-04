@@ -47,13 +47,17 @@ final class BoardOnlyMovieResource extends PanelResource
 
     public function present(array $entities): array
     {
-        return array_map(static fn (Movie $movie): array => [
-            'id'    => $movie->getUuid()->toString(),
-            'title' => $movie->getTitle(),
-        ], $entities);
+        return array_map(static function (object $movie): array {
+            assert($movie instanceof Movie);
+
+            return [
+                'id'    => $movie->getUuid()->toString(),
+                'title' => $movie->getTitle(),
+            ];
+        }, $entities);
     }
 
-    public function tableSchema(): ?TableSchema
+    public function tableSchema(): TableSchema
     {
         return TableSchema::make();
     }
