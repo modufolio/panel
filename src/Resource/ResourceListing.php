@@ -18,6 +18,7 @@ use Modufolio\Panel\Table\RelationOptions;
 use Modufolio\Panel\Table\Summary;
 use Modufolio\Panel\Table\TableSchema;
 use Doctrine\ORM\EntityManagerInterface;
+use Modufolio\Appkit\Security\User\UserInterface;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\QueryBuilder;
@@ -59,8 +60,8 @@ final class ResourceListing
         private readonly UrlGeneratorInterface $urlGenerator,
         private readonly SharedPropsInterface $sharedProps,
         private readonly PageRendererInterface $renderer,
-        /** Who is asking — the resource's scopeQuery() decides what that means. */
-        private readonly ?object $user = null,
+        /** Who is asking — the resource's scopeQuery() decides what that means. Null when nobody is signed in. */
+        private readonly ?UserInterface $user = null,
     ) {
     }
 
@@ -241,8 +242,8 @@ final class ResourceListing
      * cheap for an in-memory rule and not something to spend where no button
      * will be rendered.
      *
-     * @param  list<object>                     $entities
-     * @param  list<array<string, mixed>>       $presented
+     * @param  array<int, object>               $entities
+     * @param  array<int, array<string, mixed>> $presented
      * @return array<string, list<array<string, mixed>>>
      */
     private function quickMoves(ResourceView $view, string $from, array $entities, array $presented): array
@@ -253,7 +254,7 @@ final class ResourceListing
 
         $moves = [];
 
-        foreach (array_values($entities) as $index => $entity) {
+        foreach ($entities as $index => $entity) {
             $id = (string) ($presented[$index]['id'] ?? '');
 
             if ($id === '') {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Database;
 
+use Modufolio\Appkit\Security\User\UserInterface;
 use Doctrine\ORM\Query\QueryException;
 use Doctrine\ORM\QueryBuilder;
 use Modufolio\Panel\Table\BulkAction;
@@ -647,7 +648,7 @@ final class ResourceListingTest extends DoctrineTestCase
             }
         };
 
-        $viewer = new \stdClass();
+        $viewer = $this->createStub(UserInterface::class);
 
         $this->renderProps($this->listing($resource, [], $viewer, $this->movieRoutes()));
 
