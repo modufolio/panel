@@ -8,6 +8,7 @@ use Modufolio\Panel\Http\JsonApiPaginationTrait;
 use Modufolio\Panel\Contracts\PageRendererInterface;
 use Modufolio\Panel\Contracts\SharedPropsInterface;
 use Modufolio\Panel\Query\ListQueryInterface;
+use Modufolio\Panel\Routing\Uuid;
 use Modufolio\Panel\Table\BulkAction;
 use Modufolio\Panel\Table\Column;
 use Modufolio\Panel\Table\Constraint;
@@ -809,14 +810,13 @@ final class ResourceListing
         if ($uuids !== null) {
             // Canonicalized the way the repositories do it, so a malformed id
             // is dropped rather than thrown — one bad value in a selection
-            // should not fail the export.
+            // should not fail the export. The pattern is the one the routes
+            // require, and lowercase is the form the column stores.
             $canonical = [];
 
             foreach ($uuids as $uuid) {
-                try {
-                    $canonical[] = \Ramsey\Uuid\Uuid::fromString($uuid)->toString();
-                } catch (\InvalidArgumentException) {
-                    continue;
+                if (preg_match('/^' . Uuid::PATTERN . '$/', $uuid) === 1) {
+                    $canonical[] = strtolower($uuid);
                 }
             }
 
