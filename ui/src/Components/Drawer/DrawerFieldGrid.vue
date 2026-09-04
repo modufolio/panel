@@ -14,6 +14,18 @@
             :alt="field.label"
             class="w-24 aspect-square rounded-lg object-cover bg-gray-100"
           />
+          <!--
+            A reference the presenter gave an `href` — another record worth
+            opening. DrawerLink stacks it over this one rather than navigating
+            away, so the field reads like the table column that points at the
+            same record.
+          -->
+          <DrawerLink
+            v-else-if="field.href"
+            :href="field.href"
+            :navigation="field.navigation ?? 'drawer'"
+          >{{ field.value }}</DrawerLink>
+
           <template v-else>{{ field.value }}</template>
         </slot>
       </dd>
@@ -23,6 +35,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import DrawerLink from './DrawerLink.vue'
 
 /**
  * The two-column definition grid every drawer's "details" view is built from.
@@ -112,6 +125,53 @@ function imageUrl(value: unknown): string | undefined {
     || undefined
 }
 
+/**
+ * Where a relation reference points, when the presenter says so.
+ *
+ * Deliberately `href` and not `url`: imageUrl() above treats an object
+ * carrying `url` or `thumbnail_url` as a MEDIA reference and renders an
+ * <img>, so a link named `url` would render the organization as a broken
+ * image. Two shapes, two keys.
+ */
+function referenceHref(value: unknown): string | undefined {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return undefined
+  }
+
+  const href = (value as Record<string, unknown>).href
+
+  return typeof href === 'string' && href !== '' ? href : undefined
+}
+
+/**
+ * The readable label of a relation reference — a presenter emitting the whole
+ * related record (`{ id, name, ... }`) rather than a scalar.
+ *
+ * Without this such a value reached `String(value)` and rendered as
+ * `[object Object]`: the grid knew about media references and about scalars,
+ * and a relation is neither. Tried in the order a presenter is likely to name
+ * the human-facing field.
+ */
+function referenceLabel(value: unknown): string | undefined {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return undefined
+  }
+
+  const record = value as Record<string, unknown>
+
+  for (const key of ['name', 'title', 'label', 'display_name', 'full_name']) {
+    const candidate = record[key]
+
+    if (typeof candidate === 'string' && candidate !== '') {
+      return candidate
+    }
+  }
+
+  // An object with no obvious label reads better as "nothing to show" than as
+  // the object's string coercion.
+  return undefined
+}
+
 const resolvedFields = computed<DrawerField[]>(() => {
   if (props.fields !== undefined) {
     return props.fields
@@ -134,17 +194,31 @@ const resolvedFields = computed<DrawerField[]>(() => {
 
   return entries.map(([key, value]) => {
     const image = imageUrl(value)
-    const text = value === null || value === undefined || value === ''
+    const reference = image ? undefined : referenceLabel(value)
+    const isEmptyObject = !image
+      && reference === undefined
+      && typeof value === 'object'
+      && value !== null
+      && !Array.isArray(value)
+
+    const text = value === null || value === undefined || value === '' || isEmptyObject
       ? '—'
-      : String(value)
+      : (reference ?? String(value))
+
+    const href = image ? undefined : referenceHref(value)
+    const navigation = href !== undefined
+      ? ((value as Record<string, unknown>).navigation as 'drawer' | 'visit' | undefined)
+      : undefined
 
     return {
       key,
       label: props.include?.[key] ?? humanize(key),
       value: image ? '' : text,
-      wide: !image && text.length > props.wideThreshold,
+      wide: !image && !href && text.length > props.wideThreshold,
       raw: value,
       image,
+      href,
+      navigation,
     }
   })
 })
