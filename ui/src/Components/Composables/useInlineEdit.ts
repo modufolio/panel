@@ -27,6 +27,33 @@ export interface TableRecord {
   [key: string]: FieldUpdateValue | FieldUpdateValue[]
 }
 
+/**
+ * Shared props that must come back from every partial reload.
+ *
+ * A partial reload returns ONLY the props named in `only`, and the server
+ * filters shared props the same way. An inline edit is exactly the case where
+ * the server may answer with a flash message — a rejected role change, a
+ * permission refusal — and if `flash` is not requested, Inertia keeps the
+ * previous (usually empty) value, AppLayout's watcher never fires, and the
+ * refusal is silently swallowed. The row simply snaps back with no explanation.
+ *
+ * Callers pass `only` to avoid refetching expensive list props, not to opt out
+ * of being told what happened, so these are appended for them.
+ */
+const ALWAYS_RELOADED = ['flash', 'errors'] as const
+
+/**
+ * Merge the caller's `only` list with the props the layout depends on.
+ * Returns undefined when the caller wants a full reload, so nothing changes.
+ */
+function withSharedProps(only: string[] | undefined): string[] | undefined {
+  if (!only) {
+    return undefined
+  }
+
+  return Array.from(new Set([...only, ...ALWAYS_RELOADED]))
+}
+
 export function useInlineEdit(options: InlineEditOptions = {}) {
   const {
     endpoint = null,
@@ -61,7 +88,7 @@ export function useInlineEdit(options: InlineEditOptions = {}) {
         {
           preserveScroll,
           preserveState,
-          ...(only ? { only } : {}),
+          ...(only ? { only: withSharedProps(only) } : {}),
           invalidateCacheTags,
           onSuccess: (page) => {
             if (onSuccess) {
@@ -100,7 +127,7 @@ export function useInlineEdit(options: InlineEditOptions = {}) {
         {
           preserveScroll,
           preserveState,
-          ...(only ? { only } : {}),
+          ...(only ? { only: withSharedProps(only) } : {}),
           invalidateCacheTags,
           onSuccess: (page) => {
             if (onSuccess) {
