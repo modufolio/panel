@@ -608,6 +608,8 @@ stored value.
 ## See also
 
 - [panel-resources.md](panel-resources.md) — where a schema is declared
+- [panel-resources.md#exports](panel-resources.md#exports) — what the Export
+  button actually sends, and why the schema is only its fallback
 - [ui/docs/table-schema.md](../ui/docs/table-schema.md) — the client half:
   `SchemaTable`, cell overrides, the query builder
 - `presenters.md` (in the reference application) — computing the fields a schema references

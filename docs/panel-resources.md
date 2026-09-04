@@ -118,21 +118,204 @@ and as a super-admin-only page.
 
 ### Registration
 
-Resources are built through the container. One with **no required constructor
-arguments needs no registration** — the resolver instantiates it directly. One
-with dependencies goes in the application's service definitions
-(`config/services.php` in appkit-portfolio):
+A resource is a service, and the application's container builds it — for the
+`#[Resource]` resolver, for the generic controller, and for the route loader
+alike. Register every resource in the application's service definitions
+(`config/services.php` in appkit-playground), declaring whatever it needs
+through its constructor:
 
 ```php
+->set(ActorResource::class, fn () => new ActorResource())
 ->set(UserResource::class, fn (App $app) => new UserResource($app->imageService()))
+->set(IssueResource::class, fn (App $app) => new IssueResource($app->get(StateMachine::class)))
 ```
 
-The resolver throws a message naming the class and this file if you forget.
+There is no second way in. The route loader is handed a resolver by the host
+(a closure over the container) and never calls `new` itself, so a resource with
+constructor dependencies generates routes exactly like one without. Route
+collections load lazily, on the router's first use, by which point the
+container exists.
 
-> A *generated* resource is also instantiated once with no arguments, at boot,
-> to enumerate its routes — before any container exists. Keep every constructor
-> parameter optional, or route loading fails; that throwaway instance never
-> presents a record, so it never needs one.
+A resource that is not registered fails with the container's own not-found
+message, naming the class, the first time anything asks for it.
+
+---
+
+## Views
+
+A listing renders one shape by default: the table. `views()` names others.
+
+```php
+public function views(): array
+{
+    return [
+        ResourceView::table(),
+        ResourceView::board('status')
+            ->columns(IssueStatus::class)   // or a value => label map, or an
+                                            // already-built column list
+            ->position('position')
+            ->card('title', 'due_date'),
+    ];
+}
+```
+
+The first entry is the default, and `?view=<key>` selects another. The client
+renders a switcher only when there is more than one, so adding `views()` to a
+resource that declares just the table changes nothing.
+
+**A board is a different query, not a different renderer.** It runs one query
+per declared column, ordered by the position field and limited per column —
+which is why the choice reaches the server rather than living in the client. A
+single `LIMIT` across a grouped result would cut columns off at arbitrary
+points: the fifth column arrives empty not because it is empty, but because the
+first four used up the page.
+
+Columns come from the declaration, never from the rows present. A board that
+grew its columns from the data would hide an empty "Done" — the column whose
+emptiness is most worth seeing.
+
+### Positions
+
+`->position($field)` names the property holding a card's place within its
+column. It must be a **`bigint`**, and the positions in it are sparse:
+
+```php
+#[ORM\Column(type: 'bigint', options: ['default' => 0])]
+private int $position = 0;
+```
+
+A card's *index* cannot express "between these two" without renumbering
+everything below the drop — a full-column write on every drag, and a race where
+two people dragging at once overwrite each other. `BoardPosition` leaves gaps
+instead: cards start `2^32` apart, a drop takes the midpoint of the gap, and
+only the moved row is written. A small random offset keeps two simultaneous
+drops into the same gap from landing on the same value.
+
+Integers rather than decimals, deliberately. An earlier version used
+`DECIMAL(20,10)` and bcmath, which bought exact midpoints that the storage then
+threw away: SQLite gives a decimal column REAL affinity, so positions
+round-tripped through a double and two values the server computed as distinct
+came back **equal** — silently, which is the one failure the scheme exists to
+prevent. An integer is exact everywhere and needs no extension.
+
+The gap affords 32 drops into the same spot before it closes, and a column
+holds two billion cards. When a gap does close, `BoardMover` spreads the column
+back onto even spacing and places the card again — an arithmetic limit nobody
+can see must not surface as a refused drag.
+
+Without a position field the board still renders and still moves cards between
+columns; it just declares itself `sortable: false`, and the client does not
+offer reordering within a column — rather than offering it and losing it on
+reload.
+
+### Moves
+
+A drag posts to `{key}_board_move` with the target column and the ids of the
+cards either side of the drop. The client never sends a position: only the
+server sees two people dropping into the same gap.
+
+The endpoint asks `canEdit()`, then the resource's `canMoveTo()`:
+
+```php
+public function canMoveTo(object $entity, string $column, ?object $user): bool|string
+{
+    // true to allow, or a message explaining the refusal
+}
+```
+
+The default allows every move, because most boards are a plain grouping and
+dragging is just editing that field. Override it where the columns are workflow
+states — a board that lets a card be dragged from Backlog to Done and only then
+discovers there is no such transition has already lied to the person dragging
+it. Return the message rather than a bare `false`: it is what the board shows
+when it puts the card back.
+
+`BoardMover` independently refuses a column the view does not declare. That
+check is what protects a resource using the default `canMoveTo()`, where the
+declaration is the only thing between a dropped card and an arbitrary value.
+
+### Quick-move buttons
+
+`->quickMove()` puts a button on each card for every column it may move to.
+The targets are computed per card from the resource's own `canMoveTo()`, so a
+button is offered exactly when the move behind it would be accepted — and a
+guarded transition disappears while its guard blocks. Dragging stays the
+general gesture; the buttons are for the move taken often enough to deserve one
+click, and for touch, where dragging between columns is awkward.
+
+They arrive as `columns[].moves`, keyed by card id, alongside `cards` rather
+than inside them — so `cards` stays exactly what `present()` returned.
+
+The client reads `resource.canMove`, **not** `resource.canEdit`. `canEdit` also
+requires the edit *form* route, and a board needs no form — it groups records by
+a field they already have. `canMove` is the move route plus the edit
+permission, which is what the endpoint itself checks. Wiring the drag to
+`canEdit` makes every card on a formless board immovable while the endpoint
+behind it works perfectly.
+
+---
+
+## Exports
+
+The table's Export button posts the current result set to the resource's export
+route and gets a CSV, Excel, JSON or print payload back. Three things about it
+are worth knowing before you rely on it, because none is guessable from the
+button.
+
+### Who may export
+
+**Being allowed to view a listing and being allowed to download it are the same
+permission.** The generated export route asks `canView()` and nothing else — a
+role that reaches the listing can export every row it can see.
+
+That is deliberate: a download is a read, and a listing that renders 500 rows
+on screen has already disclosed them. If a resource needs a stricter rule, it
+needs a hand-written export route; `canView()` is the only hook the generated
+one consults. (The reference application's user export is hand-written for
+exactly this reason — it re-checks for an admin before exporting.)
+
+`scopeQuery()` still applies, so an export can never reach rows the listing
+itself could not.
+
+### Which columns
+
+The **client names the columns**, in the request body:
+
+```jsonc
+{ "format": "json",
+  "columns": [ { "key": "title", "label": "Title" } ] }
+```
+
+The table schema is only the fallback for when the body names none — the client
+sends its list because it knows which columns are actually on screen, filtered
+and reordered.
+
+The consequence: **the column list is caller-supplied, not server-chosen.** A
+request may name any key, including one the table never renders. What comes
+back is whatever `present()` emits under that key, so the presenter — not the
+table schema — is the real boundary.
+
+### Which values
+
+Exports present through `present()` (the **list** shape), not `presentOne()`
+(the **record** shape):
+
+| Path | Presenter | Typically carries |
+|---|---|---|
+| Listing, export | `present()` | The columns a table row needs |
+| Drawer, detail, edit | `presentOne()` | The above plus the form's fields |
+
+A key named in the export body that `present()` does not emit exports as
+`null` — for everybody, including an admin.
+
+> **`access` does not reach here.** Per-field `access.read`
+> ([fields.md](fields.md#per-field-access)) governs *form definitions*; the
+> export path never consults it. A field kept out of an export today is kept
+> out because `present()` omits it, not because anyone was denied. Promote such
+> a field to `present()` for a list column and every role that can view the
+> listing can export it the same hour. If a value must never leave by this
+> door, keep it out of `present()` — and pin that with a test, since the next
+> person to add a column has no way to see the rule.
 
 ---
 
@@ -236,6 +419,10 @@ a scalar column. Applying it in both places would double-filter.
   flash-derived `errors` key. Spread it **first** in any array where you also
   pass `errors`, or yours is silently overwritten and the form renders a
   success-looking 200 with no messages.
+- **A board's position column must be `bigint`.** A 32-bit integer column
+  overflows after a few hundred cards, since positions are `2^32` apart by
+  design. Do not "tidy" the values into 1, 2, 3 — the gaps are the mechanism,
+  and closing them turns every drag back into a full-column rewrite.
 - **The resolver pipeline is not memoised.** Several resolvers capture the
   request at construction; caching the pipeline hands later dispatches a stale
   request. Invisible under one-request-per-process, wrong under RoadRunner.

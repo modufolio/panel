@@ -200,6 +200,24 @@ Two verbs, and hidden ≠ forbidden is enforced on both sides of the wire:
 - **write denied** — the field renders read-only *and* its submitted value is
   stripped. Disabling the input is presentation; the strip is the guard.
 
+**Scope: `access` governs the form.** Both verbs act where the form is built
+and where its submission is handled — the paths listed under [Wiring the
+guards](#wiring-the-guards). They are *not* an application-wide rule about a
+field's value, and no other read path consults them:
+
+| Path | Honours `access.read`? |
+|---|---|
+| Form definitions (`FieldAccess::resolve`) | Yes |
+| Form submission (`FieldAccess::stripDenied`) | Yes — the `write` half |
+| Presenters (`present()` / `presentOne()`) | **No** |
+| Exports | **No** — see [panel-resources.md](panel-resources.md#exports) |
+| Your own JSON responses | **No** |
+
+So `access.read` keeps a field out of the *editor*; it does not keep the value
+out of every payload. If a value must not reach a role at all, it also has to
+be absent from what your presenter emits to that role — declaring `access` and
+assuming the rest is the same mistake as declaring it and never wiring it.
+
 Callables receive `($user, $record)`, either possibly null — a create form has
 no record yet. They never travel to the client, which is why they are held
 apart from the field definitions:
