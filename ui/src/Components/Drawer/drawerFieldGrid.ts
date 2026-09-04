@@ -12,6 +12,13 @@ export interface DrawerField {
   value: string
   /** Claim the full row rather than one column. */
   wide?: boolean
+  /**
+   * Where this value points, when it is a reference the presenter gave an
+   * `href`. Rendered as a DrawerLink so the target stacks over the current
+   * frame instead of replacing it.
+   */
+  href?: string
+  navigation?: 'drawer' | 'visit'
   /** The value before stringification, for slot consumers. */
   raw?: unknown
   /**

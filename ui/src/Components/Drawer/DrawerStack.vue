@@ -56,7 +56,9 @@
           <slot :name="`header-${item.type}`" :item="item" :index="index" />
         </template>
 
-        <slot :name="item.type" :item="item" :index="index" :data="item.data" />
+        <slot :name="item.type" :item="item" :index="index" :data="item.data">
+          <DrawerRecordFrame :frame="item" />
+        </slot>
 
         <template #footer v-if="$slots[`footer-${item.type}`]">
           <slot :name="`footer-${item.type}`" :item="item" :index="index" />
@@ -86,13 +88,19 @@
 
         <!-- Use named slot per entity type, or fall back to default -->
         <slot :name="item.type" :item="item" :index="index" :data="item.data">
-          <!-- Fallback: render data as key-value pairs -->
-          <div v-if="item.data" class="space-y-4">
-            <div v-for="(value, key) in item.data" :key="key" class="text-sm">
-              <dt class="font-medium text-gray-500 dark:text-gray-400">{{ formatLabel(String(key)) }}</dt>
-              <dd class="mt-1 text-gray-900 dark:text-white">{{ value ?? '—' }}</dd>
-            </div>
-          </div>
+          <!--
+            No slot for this frame's type. That is the normal case for a
+            stacked record of another resource: a page declares slots for the
+            types it knows, and a generated page knows only its own.
+
+            The frame describes itself — its data, and the tabs, sections and
+            field lists its resource declared — so it can be rendered without
+            the page knowing the type. Previously this printed every key
+            verbatim, which showed ids, foreign keys and JSON-encoded
+            collections and made cross-resource stacking look broken even when
+            the server had built the stack correctly.
+          -->
+          <DrawerRecordFrame :frame="item" />
         </slot>
 
         <template #footer v-if="$slots[`footer-${item.type}`]">
@@ -104,7 +112,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, provide, ref, shallowRef, useSlots, watchEffect, defineComponent } from 'vue'
+import DrawerRecordFrame from './DrawerRecordFrame.vue'
+import { computed, provide, ref, shallowRef, watchEffect, defineComponent } from 'vue'
 import { visitDrawer } from './visitDrawer'
 import Drawer from './Drawer.vue'
 import Dialog from '../Dialogs/Dialog.vue'
@@ -150,24 +159,12 @@ function isDialog(item: StackItem): boolean {
  */
 const hasDrawerFrames = computed(() => props.stack.some((item) => !isDialog(item)))
 
-// A frame's `type` and the page's `#type` slot are coupled by name only. A
-// frame no slot claims still renders — the key/value fallback below — which
-// looks enough like content that a typo used to go unnoticed. Say so, once
-// per type, where a developer is looking.
-const slots = useSlots()
-const unclaimedTypes = new Set<string>()
-
-watchEffect(() => {
-  for (const item of props.stack) {
-    if (slots[item.type] || unclaimedTypes.has(item.type)) continue
-
-    unclaimedTypes.add(item.type)
-    console.warn(
-      `[DrawerStack] No slot named "${item.type}" for a frame of that type; `
-      + 'rendering its data as key/value pairs. Add a `#' + item.type + '` slot to the page.',
-    )
-  }
-})
+// No warning for a frame that matches no `#type` slot. There used to be one,
+// because the fallback was a raw key/value dump that looked enough like
+// content for a typo to go unnoticed. The fallback is now DrawerRecordFrame,
+// which draws the tabs, sections and fields the server declared — so having no
+// slot is the ordinary path for every generated resource, and warning about it
+// meant warning about correct code.
 
 // Use shallowRef for the stack to avoid deep reactivity on large entity data
 // (learned from Tofandel/inertia-vue3-modal's performance pattern)
@@ -323,13 +320,4 @@ function closeAll() {
   }
 }
 
-/**
- * Format a camelCase or snake_case key into a readable label.
- */
-function formatLabel(key: string): string {
-  return key
-    .replace(/_/g, ' ')
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-}
 </script>
