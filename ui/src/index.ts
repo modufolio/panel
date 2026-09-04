@@ -104,6 +104,15 @@ export {
 } from './Components/Table/tableSchema'
 export { default as TablePagination } from './Components/Table/TablePagination.vue'
 export { default as ColumnToggle } from './Components/Table/ColumnToggle.vue'
+export { default as BoardView } from './Components/Board/BoardView.vue'
+export { default as ViewSwitcher } from './Components/Board/ViewSwitcher.vue'
+export type {
+  BoardCard,
+  BoardColumn,
+  BoardPayload,
+  BoardViewSpec,
+  ResourceViewOption,
+} from './Components/Board/boardTypes'
 export {
   registerColumnType,
   resolveColumnComponent,
@@ -230,6 +239,7 @@ export type { DrawerTab } from './Components/Drawer/drawerTabs'
 export { default as DrawerFieldGrid } from './Components/Drawer/DrawerFieldGrid.vue'
 export type { DrawerField } from './Components/Drawer/drawerFieldGrid'
 export { default as DrawerRelationList } from './Components/Drawer/DrawerRelationList.vue'
+export { default as DrawerRecordFrame } from './Components/Drawer/DrawerRecordFrame.vue'
 export { default as NestedDrawerForm } from './Components/Drawer/NestedDrawerForm.vue'
 export { useDrawerStack, type StackItem, type StackItemTab } from './Components/Drawer/useDrawerStack'
 export { useFocusedStackRow } from './Components/Drawer/useFocusedStackRow'
