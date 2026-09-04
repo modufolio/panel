@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Routing;
 
+use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\PanelResourceConfigurator;
 use Modufolio\Panel\Routing\PanelResourceRouteLoader;
 use Modufolio\Panel\Routing\Uuid;
@@ -48,6 +49,11 @@ final class PanelResourceRouteLoaderTest extends TestCase
      */
     private function load(string $body, string $prefix = '/panel'): RouteCollection
     {
+        return $this->loadWith($body, self::resolver(), $prefix);
+    }
+
+    private function loadWith(string $body, \Closure $resolver, string $prefix = '/panel'): RouteCollection
+    {
         $file = tempnam(sys_get_temp_dir(), 'panel_resources_') . '.php';
         file_put_contents($file, "<?php\n\nuse " . PanelResourceConfigurator::class . ";\n\nreturn {$body};\n");
         $this->tempFiles[] = $file;
@@ -61,7 +67,7 @@ final class PanelResourceRouteLoaderTest extends TestCase
             }
         };
 
-        return (new PanelResourceRouteLoader($locator, FixtureController::class, $prefix))
+        return (new PanelResourceRouteLoader($locator, FixtureController::class, $resolver, $prefix))
             ->load($file, 'panel_resource');
     }
 
@@ -286,18 +292,44 @@ final class PanelResourceRouteLoaderTest extends TestCase
     }
 
     /**
-     * The loader instantiates every resource at boot to ask its key and
-     * whether it has a form, so a resource needing constructor arguments
-     * cannot be generated — and says so rather than failing at request time.
+     * The loader never calls `new` itself: a resource with constructor
+     * dependencies is the resolver's business, so its routes generate like any
+     * other's. This is what lets a resource take its collaborators through the
+     * constructor rather than pulling them in afterwards.
      */
-    public function testAResourceNeedingConstructorArgumentsIsRefusedAtBoot(): void
+    public function testAResourceWithConstructorArgumentsIsBuiltByTheResolver(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessageMatches('/required constructor arguments/');
+        $routes = $this->loadWith(
+            'function (PanelResourceConfigurator $panel): void {
+                $panel->resource(\\' . NeedsConstructorArgsResource::class . '::class);
+            }',
+            static function (string $class): PanelResource {
+                /** @var class-string<PanelResource> $class */
+                return $class === NeedsConstructorArgsResource::class
+                    ? new NeedsConstructorArgsResource('reports')
+                    : new $class();
+            },
+        );
 
-        $this->load('function (PanelResourceConfigurator $panel): void {
-            $panel->resource(\\' . NeedsConstructorArgsResource::class . '::class);
-        }');
+        self::assertSame('/panel/reports', $this->route($routes, 'reports')->getPath());
+    }
+
+    /** A resolver that answers with something else is a wiring bug, and says so. */
+    public function testAResolverReturningTheWrongClassIsRefused(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches('/returned .* for/');
+
+        $this->loadWith($this->readOnlyConfig(), static fn (string $class): PanelResource => new WritableResource());
+    }
+
+    /** Every fixture resource constructs bare, so the default resolver is `new`. */
+    private static function resolver(): \Closure
+    {
+        return static function (string $class): PanelResource {
+            /** @var class-string<PanelResource> $class */
+            return new $class();
+        };
     }
 
     public function testTheLoaderOnlySupportsItsOwnType(): void
@@ -309,7 +341,7 @@ final class PanelResourceRouteLoaderTest extends TestCase
             }
         };
 
-        $loader = new PanelResourceRouteLoader($locator, FixtureController::class);
+        $loader = new PanelResourceRouteLoader($locator, FixtureController::class, self::resolver());
 
         self::assertTrue($loader->supports('anything', 'panel_resource'));
         self::assertFalse($loader->supports('anything', 'yaml'));

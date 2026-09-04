@@ -22,9 +22,15 @@ use Symfony\Component\Routing\RouteCollection;
  * of its own — the route name, path and drawer wiring all derive from
  * `PanelResource::key()`.
  *
- * Deliberately narrow: index and show only. Create/edit/update are form work,
- * where the bespoke controller is still the honest answer — generating a CRUD
- * skeleton would freeze conventions that are still moving.
+ * Index, show and export always come from the declaration alone; the write
+ * routes, relation endpoints and delete preview appear once the resource
+ * declares a form, and the board move once it declares a board.
+ *
+ * The loader never constructs a resource itself. It asks the `$resources`
+ * resolver the host hands it — which in practice is the host's container —
+ * so a resource is built exactly one way, with whatever constructor
+ * dependencies it declares. Route collections are loaded lazily, on the
+ * router's first use, by which point the container exists.
  *
  * The generated names and paths match what the hand-written controllers
  * already use (`movies`, `movies_show`, `/panel/movies/{uuid}`), so a resource
@@ -32,9 +38,15 @@ use Symfony\Component\Routing\RouteCollection;
  */
 final class PanelResourceRouteLoader extends Loader
 {
+    /**
+     * @param \Closure(class-string<PanelResource>): PanelResource $resources
+     *        how a configured class becomes an instance — the host's
+     *        container, in practice
+     */
     public function __construct(
         private readonly FileLocatorInterface $fileLocator,
         private readonly string $controllerClass,
+        private readonly \Closure $resources,
         private readonly string $prefix = '/panel',
     ) {
         parent::__construct();
@@ -53,7 +65,7 @@ final class PanelResourceRouteLoader extends Loader
         $routes = new RouteCollection();
 
         foreach ($configurator->buildConfig() as $resourceClass => $options) {
-            $instance = $this->instantiate($resourceClass);
+            $instance = $this->resourceFor($resourceClass);
             $key      = $instance->key();
             $prefix   = $options->prefixOr($this->prefix);
 
@@ -267,14 +279,12 @@ final class PanelResourceRouteLoader extends Loader
     }
 
     /**
-     * A resource names its own route prefix and declares its own form;
-     * instantiating it is the only way to ask, and a PanelResource is a
-     * declaration object with no side effects.
+     * The configured class, as the host builds it.
      *
      * @param string $resourceClass A name from the config file, verified here
      *                              rather than trusted.
      */
-    private function instantiate(string $resourceClass): PanelResource
+    private function resourceFor(string $resourceClass): PanelResource
     {
         if (!class_exists($resourceClass)) {
             throw new \InvalidArgumentException(sprintf(
@@ -283,23 +293,21 @@ final class PanelResourceRouteLoader extends Loader
             ));
         }
 
-        $constructor = (new \ReflectionClass($resourceClass))->getConstructor();
-
-        if ($constructor !== null && $constructor->getNumberOfRequiredParameters() > 0) {
-            throw new \InvalidArgumentException(sprintf(
-                'Panel resource "%s" has required constructor arguments, so its routes cannot be generated. '
-                . 'Give it a no-argument constructor or declare its routes by hand.',
-                $resourceClass,
-            ));
-        }
-
-        $resource = new $resourceClass();
-
-        if (!$resource instanceof PanelResource) {
+        if (!is_a($resourceClass, PanelResource::class, true)) {
             throw new \InvalidArgumentException(sprintf(
                 'Configured panel resource "%s" is not a %s.',
                 $resourceClass,
                 PanelResource::class,
+            ));
+        }
+
+        $resource = ($this->resources)($resourceClass);
+
+        if (!$resource instanceof $resourceClass) {
+            throw new \LogicException(sprintf(
+                'The resource resolver returned %s for "%s".',
+                get_debug_type($resource),
+                $resourceClass,
             ));
         }
 

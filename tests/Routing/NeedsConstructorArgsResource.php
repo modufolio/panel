@@ -7,12 +7,12 @@ namespace Modufolio\Panel\Tests\Routing;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Tests\Fixture\StubListQuery;
 
-/** Routes cannot be generated for a resource the loader cannot instantiate. */
+/** A resource with a constructor dependency, which only the resolver can supply. */
 final class NeedsConstructorArgsResource extends PanelResource
 {
     public function __construct(private readonly string $required) {}
 
-    /** Read so the argument is genuinely needed; the loader refuses long before asking. */
+    /** The key comes from the argument, so a generated path proves the resolver was asked. */
     public function key(): string { return $this->required; }
     public function entityClass(): string { return \stdClass::class; }
     public function listQueryClass(): string { return StubListQuery::class; }

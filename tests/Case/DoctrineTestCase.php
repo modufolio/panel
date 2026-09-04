@@ -14,6 +14,7 @@ use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\ORMSetup;
 use Doctrine\ORM\Tools\SchemaTool;
+use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\PanelResourceConfigurator;
 use Modufolio\Panel\Resource\ResourceListing;
@@ -276,7 +277,14 @@ abstract class DoctrineTestCase extends TestCase
             "<?php\n\nuse " . PanelResourceConfigurator::class . ";\n\nreturn {$configBody};\n",
         );
 
-        return (new PanelResourceRouteLoader(new FileLocator([dirname($file)]), FixtureController::class))
+        return (new PanelResourceRouteLoader(
+            new FileLocator([dirname($file)]),
+            FixtureController::class,
+            static function (string $class): PanelResource {
+            /** @var class-string<PanelResource> $class */
+            return new $class();
+        },
+        ))
             ->load($file, 'panel_resource');
     }
 
@@ -291,7 +299,7 @@ abstract class DoctrineTestCase extends TestCase
     protected function listing(
         PanelResource $resource,
         array $query = [],
-        ?object $user = null,
+        ?UserInterface $user = null,
         ?UrlGeneratorInterface $urls = null,
     ): ResourceListing {
         $this->renderer = new CapturingRenderer($this->createStub(ResponseInterface::class));

@@ -32,7 +32,7 @@ easy to forget because nothing errors when you do.
 | 5 | List query | `src/Query/{Name}ListQuery.php` |
 | 6 | Presenter | `src/Presenter/{Name}Presenter.php` |
 | 7 | Resource | `src/Panel/{Name}Resource.php` |
-| 8 | Register the resource | `config/panel_resources.php` |
+| 8 | Register the resource | `config/services.php` and `config/panel_resources.php` |
 | 9 | Menu item | `config/areas/{key}.php` |
 
 Then tests. See [Verifying it](#verifying-it) — the assertions worth writing
@@ -249,7 +249,22 @@ per-field access, and the field types a guessed form cannot reach — is in
 
 ## 8. Register the resource
 
-`config/panel_resources.php`. This is what generates the routes:
+Twice, for two different questions.
+
+`config/services.php` says how the class becomes an instance. A resource is
+an ordinary service — the container is the only thing that constructs one, so
+whatever it needs arrives through its constructor:
+
+```php
+->set(EventResource::class, fn () => new EventResource())
+// or, with a collaborator:
+->set(EventResource::class, fn (App $app) => new EventResource($app->imageService()))
+```
+
+Skip this and the first request for the resource fails with the container's
+not-found message, naming the class.
+
+`config/panel_resources.php` says which routes it gets:
 
 ```php
 $panel->resource(EventResource::class)

@@ -27,21 +27,11 @@ use Modufolio\JsonApi\JsonApiSerializer;
  * - **Per-action, not per-class.** One controller can list two resources; a
  *   controller need not be a resource controller at all.
  *
- * Construction depends on how the resource's routes are declared, and the two
- * contracts differ deliberately:
- *
- * - **Hand-written routes** (`#[Resource(...)]` on a controller action): the
- *   resource is built through the container at request time, so it may declare
- *   constructor dependencies — UserResource takes ImageService this way, via
- *   its config/interfaces.php registration.
- * - **Generated routes** (config/panel_resources.php): the route loader
- *   instantiates the resource at boot, where no container exists, so it must
- *   construct with **no arguments**. This is not a limitation to engineer
- *   around: route building needs only static facts (`key()`, whether a form
- *   is declared), and anything needing services belongs in a presenter or a
- *   request-time hook — where the container still wins — not in the resource's
- *   constructor. A resource that outgrows this graduates to hand-written
- *   routes, keeping its URLs (the loader guarantees the same names and paths).
+ * A resource is an ordinary service: it declares whatever it needs in its
+ * constructor and the host's container builds it. Nothing constructs one
+ * behind the container's back — the route loader asks the host for an
+ * instance and the host's listing factory does the same — so a resource that
+ * consults a workflow or a thumbnail generator simply takes it as an argument.
  */
 abstract class PanelResource
 {
@@ -153,6 +143,82 @@ abstract class PanelResource
     public function formFieldKeys(): ?array
     {
         return null;
+    }
+
+    /**
+     * The ways this resource's records can be looked at.
+     *
+     * The default is the table alone, which is what every listing served
+     * before views existed. Declaring more offers a switcher in the listing
+     * header and lets `?view=` select one:
+     *
+     *     public function views(): array
+     *     {
+     *         return [
+     *             ResourceView::table(),
+     *             ResourceView::board('status')
+     *                 ->columns(IssueStatus::class)
+     *                 ->position('position')
+     *                 ->card('title', 'due_date'),
+     *         ];
+     *     }
+     *
+     * The first entry is the default. A board is a different *query*, not a
+     * different renderer over the table's payload, which is why the choice has
+     * to reach the server rather than living in the client.
+     *
+     * @return list<ResourceView>
+     */
+    public function views(): array
+    {
+        return [ResourceView::table()];
+    }
+
+    /**
+     * Whether this record may be dragged into that board column.
+     *
+     * Returns true to allow, or a message explaining the refusal — which the
+     * board shows and then puts the card back where it came from.
+     *
+     * The default allows every move, because most boards are a plain grouping
+     * and dragging is just editing that field. Override where the column is a
+     * workflow state and not every hop between them is legal: a board that
+     * lets a card be dragged from Backlog straight to Done, and only then
+     * discovers the transition does not exist, has already lied to the person
+     * dragging it.
+     */
+    public function canMoveTo(object $entity, string $column, ?object $user): bool|string
+    {
+        return true;
+    }
+
+    /**
+     * The view `?view=` selects, or the default.
+     *
+     * An unknown key falls back to the default rather than failing: a stale
+     * bookmark or a view that has since been withdrawn should show the
+     * records, not an error page.
+     */
+    public function viewFor(?string $key): ResourceView
+    {
+        $views = $this->views();
+
+        if ($views === []) {
+            return ResourceView::table();
+        }
+
+        foreach ($views as $view) {
+            if ($view->key() === $key) {
+                $view->assertUsable(static::class);
+
+                return $view;
+            }
+        }
+
+        $default = $views[0];
+        $default->assertUsable(static::class);
+
+        return $default;
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Routing;
 
+use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\PanelResourceConfigurator;
 use Modufolio\Panel\Routing\PanelResourceRouteLoader;
 use PHPUnit\Framework\TestCase;
@@ -60,7 +61,10 @@ final class RouteDumpingTest extends TestCase
             }
         };
 
-        return (new PanelResourceRouteLoader($locator, FixtureController::class))
+        return (new PanelResourceRouteLoader($locator, FixtureController::class, static function (string $class): PanelResource {
+            /** @var class-string<PanelResource> $class */
+            return new $class();
+        }))
             ->load($file, 'panel_resource');
     }
 
