@@ -4,6 +4,17 @@
       <slot name="headerActions" />
     </template>
 
+    <!--
+      A type nothing renders is a declaration error. Said here, where the
+      form is, with the registration that fixes it — a field that silently
+      never appears is the failure this replaces.
+    -->
+    <pre
+      v-if="unknownTypes.length"
+      class="ui-field-unknown-types col-span-12 whitespace-pre-wrap rounded-md border border-red-200 bg-red-50 p-3 font-mono text-xs text-red-700"
+      role="alert"
+    >{{ unknownTypeMessage }}</pre>
+
     <template v-for="field in visibleFields" :key="field.key">
       <component
         :is="fieldComponent(field.type)"
@@ -23,6 +34,7 @@
 import { computed, defineAsyncComponent, ref, watch, type Component } from 'vue'
 import FieldsSection from '../Sections/FieldsSection.vue'
 import { useBlueprint, resolveFieldComponent, type FieldDef, type FieldType } from './useBlueprint'
+import { missingFieldTypes, unknownFieldTypeMessage } from './fieldRegistry'
 
 const props = defineProps({
   modelValue: {
@@ -63,7 +75,17 @@ const emit = defineEmits<{
 // on every change, so a captured snapshot would freeze conditional visibility
 // at whatever the values were when the form first rendered.
 const blueprint = useBlueprint(() => props.fields, () => props.modelValue)
-const { visibleFields, visibleData, clientErrors, isValid } = blueprint
+const { visibleFields: renderableFields, visibleData, clientErrors, isValid } = blueprint
+
+// Checked against the whole declaration, hidden fields included: a `when`
+// that is false today does not make the type it hides any more renderable.
+const unknownTypes = computed(() => missingFieldTypes(props.fields))
+const unknownTypeMessage = computed(() => unknownFieldTypeMessage(unknownTypes.value))
+const visibleFields = computed(() => renderableFields.value.filter((field) => !unknownTypes.value.includes(field.type)))
+
+watch(unknownTypes, (types) => {
+  if (types.length) console.error(unknownFieldTypeMessage(types))
+}, { immediate: true })
 
 // A field that has been edited, or the whole form once a submit was attempted.
 // Rules are evaluated from the start, but showing "required" on a field nobody

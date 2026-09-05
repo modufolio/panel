@@ -119,5 +119,16 @@ server side of that contract.
 Registering an existing name (e.g. `'file'`) **overrides** the built-in —
 that's the supported way to swap in, say, a resumable-upload field.
 
-Unknown types throw at resolve time with the list of known types, so typos
-fail loudly rather than rendering nothing.
+## When a type is not registered
+
+A form whose declaration names a type nothing renders shows it — a red block
+in the form saying which type and the `createPanel({ fields: … })` snippet
+that registers it — and logs the same to the console. The other fields still
+render. `missingFieldTypes(fields)` answers the same question in code.
+
+Built-ins are listed in `fieldTypes.json` beside the registry; the PHP
+package's `FieldComponents::BUILT_IN` is pinned to the same file by a test on
+each side, so a type shipped on one side and not the other fails a test
+rather than a page. `FieldComponents::missing($fields, $registered)` lets a
+host lint every resource's form against what its `createPanel()` call
+registers — the reference application does this in its `panel:lint` command.

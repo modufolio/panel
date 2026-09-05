@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { ref } from 'vue'
 import { flushPromises } from '@vue/test-utils'
-import { evaluateCondition, useBlueprint, defineBlueprint, resolveFieldComponent, type FieldDef } from '../src/index'
+import { evaluateCondition, useBlueprint, defineBlueprint, type FieldDef } from '../src/index'
 import { mountBlueprintForm } from './support/mountBlueprintForm'
 
 describe('conditions', () => {
@@ -104,16 +104,4 @@ describe('BlueprintForm', () => {
 
     expect(wrapper.text()).toContain('Reason')
   })
-})
-
-describe('field registry coverage', () => {
-  // Every type a PHP FieldType can emit must resolve, or the form throws
-  // "Unknown field type" at render. `tags` shipped as a component and as
-  // App\Panel\Field\TagsType without ever being registered.
-  it.each(['text', 'textarea', 'select', 'multiselect', 'toggle', 'checkbox', 'range',
-    'date', 'datetime', 'time', 'date-range', 'file', 'color', 'belongs-to', 'repeater',
-    'toggle-buttons', 'tags'])(
-    'resolves the %s field type', async (type) => {
-      await expect(resolveFieldComponent(type)).resolves.toBeTruthy()
-    })
 })
