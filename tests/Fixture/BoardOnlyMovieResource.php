@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace Modufolio\Panel\Tests\Fixture;
 
 use Modufolio\Panel\Resource\PanelResource;
-use Modufolio\Panel\Resource\ResourceView;
+use Modufolio\Panel\Resource\Board;
 use Modufolio\Panel\Table\TableSchema;
 use Modufolio\Panel\Tests\Fixture\Entity\Movie;
 
 /**
- * A resource with a board and deliberately no `formFields()`.
+ * A resource with a board and deliberately no form.
  *
  * Grouped by `released`, which every Movie already has — the case a board
  * exists for, and the one where requiring a form would be nonsense.
@@ -37,12 +37,9 @@ final class BoardOnlyMovieResource extends PanelResource
         return 'movie';
     }
 
-    public function views(): array
+    public function board(): Board
     {
-        return [
-            ResourceView::table(),
-            ResourceView::board('released')->columns(['1' => 'Released', '0' => 'Unreleased']),
-        ];
+        return Board::make('released')->columns(['1' => 'Released', '0' => 'Unreleased']);
     }
 
     public function present(array $entities): array
@@ -57,7 +54,7 @@ final class BoardOnlyMovieResource extends PanelResource
         }, $entities);
     }
 
-    public function tableSchema(): TableSchema
+    public function table(): TableSchema
     {
         return TableSchema::make();
     }

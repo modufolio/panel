@@ -49,9 +49,9 @@ final class ChildTablesTest extends DoctrineTestCase
                 }, $entities);
             }
 
-            public function tableSchema(): TableSchema
+            public function table(): TableSchema
             {
-                return parent::tableSchema()->children([
+                return parent::table()->children([
                     ChildTable::relation('cast', 'Cast')
                         ->columns([Column::make('actor'), Column::make('character')])
                         ->recordUrl('/panel/movies/{parent}/cast/{id}')
@@ -149,9 +149,9 @@ final class ChildTablesTest extends DoctrineTestCase
             {
             }
 
-            public function tableSchema(): TableSchema
+            public function table(): TableSchema
             {
-                return parent::tableSchema()->children([$this->child]);
+                return parent::table()->children([$this->child]);
             }
         };
     }

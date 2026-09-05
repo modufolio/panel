@@ -286,9 +286,10 @@ final class DrawerTab
      * @param  list<self>                 $tabs
      * @param  array<string, mixed>       $record
      * @param  list<array<string, mixed>> $formFields
+     * @param  array<string, string>      $labels     labels for listed keys that name none — the resource's fields()
      * @return list<array<string, mixed>>
      */
-    public static function collect(array $tabs, array $record, array $formFields = []): array
+    public static function collect(array $tabs, array $record, array $formFields = [], array $labels = []): array
     {
         $byKey = [];
         foreach ($tabs as $tab) {
@@ -296,8 +297,8 @@ final class DrawerTab
         }
 
         return array_map(
-            static function (self $tab) use ($byKey, $record, $formFields): array {
-                $declaration = $tab->toArray($record);
+            static function (self $tab) use ($byKey, $record, $formFields, $labels): array {
+                $declaration = self::labelled($tab->toArray($record), $labels);
 
                 if (($declaration['addable'] ?? false) === true) {
                     $declaration = [...$declaration, ...self::addFormFor($tab, $formFields)];
@@ -411,6 +412,28 @@ final class DrawerTab
         }
 
         return $fields;
+    }
+
+    /**
+     * A listed key with no label of its own takes the resource's.
+     *
+     * @param  array<string, mixed>  $declaration
+     * @param  array<string, string> $labels
+     * @return array<string, mixed>
+     */
+    private static function labelled(array $declaration, array $labels): array
+    {
+        if ($labels === [] || !is_array($declaration['fields'] ?? null)) {
+            return $declaration;
+        }
+
+        foreach ($declaration['fields'] as $key => $label) {
+            if ($label === null && isset($labels[$key])) {
+                $declaration['fields'][$key] = $labels[$key];
+            }
+        }
+
+        return $declaration;
     }
 
     /** A presented relation: an array with a label, as opposed to a list of rows. */
