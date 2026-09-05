@@ -6,12 +6,14 @@ namespace Modufolio\Panel\Tests\Database;
 
 use Modufolio\Panel\Blueprint\FormDefinition;
 use Modufolio\Panel\Blueprint\FormFieldGuesser;
+use Modufolio\Panel\Blueprint\Separator;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Table\RelationOptions;
 use Modufolio\Panel\Tests\Case\DoctrineTestCase;
 use Modufolio\Panel\Tests\Fixture\Entity\Actor;
 use Modufolio\Panel\Tests\Fixture\Entity\CastMember;
 use Modufolio\Panel\Tests\Fixture\Entity\Credit;
+use Modufolio\Panel\Tests\Fixture\Entity\Distributor;
 use Modufolio\Panel\Tests\Fixture\Entity\Movie;
 use Modufolio\Panel\Tests\Fixture\Entity\Studio;
 use Modufolio\Panel\Tests\Fixture\Entity\Tag;
@@ -40,14 +42,14 @@ final class FormFieldGuesserTest extends DoctrineTestCase
      * can hand the guesser exactly the declaration it wants to exercise.
      *
      * @param class-string                                            $entityClass
-     * @param array<int|string, string|array<string, mixed>>|null     $keys
+     * @param array<int|string, string|Separator|array<string, mixed>>|null $keys
      */
     private function resourceFor(string $entityClass, ?array $keys): PanelResource
     {
         return new class ($entityClass, $keys) extends PanelResource {
             /**
              * @param class-string                                        $entityClass
-             * @param array<int|string, string|array<string, mixed>>|null $keys
+             * @param array<int|string, string|Separator|array<string, mixed>>|null $keys
              */
             public function __construct(
                 private readonly string $entityClass,
@@ -85,7 +87,7 @@ final class FormFieldGuesserTest extends DoctrineTestCase
     /**
      * Guess the Movie form with the given keys and return the fields by key.
      *
-     * @param array<int|string, string|array<string, mixed>> $keys
+     * @param array<int|string, string|Separator|array<string, mixed>> $keys
      *
      * @return array<string, array<string, mixed>>
      */
@@ -171,6 +173,7 @@ final class FormFieldGuesserTest extends DoctrineTestCase
         self::assertSame('textarea', $fields['synopsis']['type'], 'text → textarea');
         self::assertSame('toggle', $fields['released']['type'], 'boolean → toggle');
         self::assertSame('date', $fields['released_on']['type'], 'date_immutable → date');
+        self::assertSame('datetime', $this->guessMovie(['premiere_at'])['premiere_at']['type'], 'datetime_immutable → datetime, a control that can read the time part');
 
         foreach (['year', 'runtime', 'rating'] as $numeric) {
             self::assertSame('text', $fields[$numeric]['type'], $numeric . ' renders the text input…');
@@ -179,6 +182,64 @@ final class FormFieldGuesserTest extends DoctrineTestCase
 
         self::assertSame(true, $this->section($fields['year'], 'rules')['integer'], 'An integer column carries the integer rule.');
         self::assertArrayNotHasKey('integer', $this->section($fields['rating'], 'rules'), 'A decimal column does not.');
+    }
+
+    /**
+     * The mapping calls every string column text. A property that knows
+     * better says so with #[FormType], and the guesser believes it — while
+     * still deriving everything else, the length-derived max included.
+     */
+    public function testAFormTypeAttributeOnThePropertyNamesTheType(): void
+    {
+        $fields = $this->guessMovie(['website']);
+
+        // UrlType renders the text input with type="url" and carries the url
+        // rule — the type's own defaults, which the attribute path must keep.
+        self::assertSame('url', $this->section($fields['website'], 'props')['type']);
+        self::assertTrue($this->section($fields['website'], 'rules')['url']);
+        self::assertSame(200, $this->section($fields['website'], 'rules')['max'], 'The column length still applies.');
+        self::assertArrayNotHasKey('required', $fields['website'], 'A nullable column is still optional.');
+    }
+
+    /** The attribute is the property's declaration; a resource's `options` shorthand does not demote it to a select. */
+    public function testAFormTypeAttributeWinsOverTheOptionsShorthand(): void
+    {
+        $fields = $this->guessMovie(['website' => ['options' => ['a' => 'A']]]);
+
+        self::assertSame('text', $fields['website']['type'], 'Not a select.');
+        self::assertSame('url', $this->section($fields['website'], 'props')['type']);
+    }
+
+    /** A Separator entry in the key list is a break in the guessed form, exactly where it was declared. */
+    public function testASeparatorEntryBecomesABreakWhereItWasDeclared(): void
+    {
+        $fields = $this->guessMovie(['title', Separator::Line, 'year', Separator::Space, 'released']);
+
+        self::assertSame(['title', 'separator_1', 'year', 'separator_2', 'released'], array_keys($fields));
+        self::assertSame('separator', $fields['separator_1']['type']);
+        self::assertSame('line', $this->section($fields['separator_1'], 'props')['separator']);
+        self::assertSame('space', $this->section($fields['separator_2'], 'props')['separator']);
+    }
+
+    /** An enumType column is a choice among its cases: a select, labelled by the enum's own getLabel(). */
+    public function testAnEnumColumnBecomesASelectOverItsCases(): void
+    {
+        $fields = $this->guessMovie(['genre']);
+
+        self::assertSame('select', $fields['genre']['type']);
+        self::assertSame(
+            [['value' => 'drama', 'label' => 'Drama'], ['value' => 'sci_fi', 'label' => 'Science fiction'], ['value' => 'comedy', 'label' => 'Comedy']],
+            $fields['genre']['options'],
+        );
+        self::assertArrayNotHasKey('required', $fields['genre'], 'A nullable enum column is optional.');
+    }
+
+    /** The resource may still name its own choices; the cases are only the default. */
+    public function testDeclaredOptionsWinOverTheEnumsCases(): void
+    {
+        $fields = $this->guessMovie(['genre' => ['options' => [['value' => 'drama', 'label' => 'Only drama']]]]);
+
+        self::assertSame([['value' => 'drama', 'label' => 'Only drama']], $fields['genre']['options']);
     }
 
     public function testAStringColumnsLengthBecomesTheMaxRule(): void
@@ -353,6 +414,64 @@ final class FormFieldGuesserTest extends DoctrineTestCase
      * would let a row be reparented. Identity and `position` belong to the
      * repeater sync, not to the person filling in the form.
      */
+    /**
+     * Distributor maps a `name`, which the convention would pick — but it
+     * marks `code` with #[LabelField], and the target's own declaration wins.
+     */
+    public function testATargetsLabelFieldBeatsTheNamingConvention(): void
+    {
+        $fields = $this->guessMovie(['distributor_id']);
+
+        $relation = $fields['distributor_id']['relation'] ?? null;
+        self::assertInstanceOf(RelationOptions::class, $relation);
+        self::assertSame(Distributor::class, $relation->entityClass);
+        self::assertSame('code', $relation->labelField);
+    }
+
+    /**
+     * Remake points at Movie twice: `movie` is the inverse of Movie::$remakes
+     * and `original` is another film. Only the one the mapping names as the
+     * parent link is structural; the other is a field of the row.
+     */
+    public function testARepeaterRowKeepsASecondRelationToTheParentsClass(): void
+    {
+        $fields = $this->guessMovie(['remakes']);
+        $keys   = array_column($fields['remakes']['fields'] ?? [], 'key');
+
+        self::assertSame(['original_id', 'note'], $keys);
+        self::assertNotContains('movie_id', $keys, 'The mappedBy side is not offered.');
+    }
+
+    /**
+     * A text column is a paragraph: it takes the whole row and does not count
+     * towards how the other fields share it. Remake has one association and
+     * one paragraph, so the association is alone in its row.
+     */
+    public function testATextareaInARepeaterRowTakesTheWholeRow(): void
+    {
+        $subFields = $this->subFields($this->guessMovie(['remakes'])['remakes']);
+
+        self::assertSame('textarea', $subFields['note']['type']);
+        self::assertSame('full', $subFields['note']['width']);
+        self::assertSame('full', $subFields['original_id']['width'], 'Alone once the paragraph is set aside.');
+    }
+
+    /**
+     * `fields` as a key => overrides map adjusts a guessed row rather than
+     * replacing it: one column widened, everything else still guessed.
+     */
+    public function testRepeaterSubFieldOverridesMergeOntoTheGuessedRow(): void
+    {
+        $subFields = $this->subFields($this->guessMovie([
+            'cast' => ['fields' => ['character' => ['width' => 'full', 'label' => 'Role']]],
+        ])['cast']);
+
+        self::assertSame('full', $subFields['character']['width']);
+        self::assertSame('Role', $subFields['character']['label']);
+        self::assertSame('1/2', $subFields['actor_id']['width'], 'The untouched column keeps its guess.');
+        self::assertSame('belongs-to', $subFields['actor_id']['type'], 'Still guessed, not declared.');
+    }
+
     public function testARepeaterRowOmitsTheLinkBackToItsParentAndItsBookkeeping(): void
     {
         $subFields = $this->subFields($this->guessMovie(['cast'])['cast']);

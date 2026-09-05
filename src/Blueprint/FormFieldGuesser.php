@@ -4,7 +4,12 @@ declare(strict_types = 1);
 
 namespace Modufolio\Panel\Blueprint;
 
+use Modufolio\Panel\Blueprint\EnumOptions;
+use Modufolio\Panel\Blueprint\FormType;
+use Modufolio\Panel\Blueprint\LabelField;
+use Modufolio\Panel\Blueprint\Separator;
 use Modufolio\Panel\Field\BelongsToType;
+use Modufolio\Panel\Field\DateTimeType;
 use Modufolio\Panel\Field\DateType;
 use Modufolio\Panel\Field\DecimalType;
 use Modufolio\Panel\Field\HasManyType;
@@ -95,7 +100,13 @@ final class FormFieldGuesser
         $meta    = $this->em->getClassMetadata($resource->entityClass());
         $builder = new BlueprintBuilder();
 
-        foreach ($this->normalizeKeys($keys) as $key => $overrides) {
+        foreach ($this->normalizeKeys($keys) as [$key, $overrides]) {
+            if ($key instanceof Separator) {
+                $builder->separator($key);
+
+                continue;
+            }
+
             [$type, $options] = $this->guessField($meta, $key, $overrides);
 
             $builder->add($key, $type, $options);
@@ -105,12 +116,15 @@ final class FormFieldGuesser
     }
 
     /**
-     * Accept both plain entries and key => overrides:
-     * `['title', 'genre' => ['options' => …]]`.
+     * Accept plain entries, key => overrides, and separators, in declaration
+     * order: `['title', 'genre' => ['options' => …], Separator::Line, 'year']`.
      *
-     * @param array<int|string, string|array<string, mixed>> $keys
+     * A list rather than a map, because a separator has no key of its own
+     * and its place in the sequence is the whole point of it.
      *
-     * @return array<string, array<string, mixed>>
+     * @param array<int|string, string|Separator|array<string, mixed>> $keys
+     *
+     * @return list<array{0: string|Separator, 1: array<string, mixed>}>
      */
     private function normalizeKeys(array $keys): array
     {
@@ -118,15 +132,21 @@ final class FormFieldGuesser
 
         foreach ($keys as $key => $value) {
             if (is_int($key)) {
+                if ($value instanceof Separator) {
+                    $normalized[] = [$value, []];
+
+                    continue;
+                }
+
                 if (!is_string($value)) {
                     throw new \InvalidArgumentException(
-                        'formFieldKeys(): a plain entry must be a field name; use `key => [overrides]` to pass options.',
+                        'formFieldKeys(): a plain entry must be a field name or a Separator; use `key => [overrides]` to pass options.',
                     );
                 }
 
-                $normalized[$value] = [];
+                $normalized[] = [$value, []];
             } else {
-                $normalized[$key] = is_array($value) ? $value : [];
+                $normalized[] = [$key, is_array($value) ? $value : []];
             }
         }
 
@@ -207,16 +227,28 @@ final class FormFieldGuesser
      */
     private function guessScalar(ClassMetadata $meta, string $field, array $overrides): array
     {
-        // Options provided means "choose among these" — a select, whatever the
-        // column type underneath.
-        $type = isset($overrides['options']) ? SelectType::class : match ((string) $meta->getTypeOfField($field)) {
+        // The property's own say comes first: a `string` column is only ever
+        // a text input to the mapping, so an email or a URL has to be declared
+        // beside the column. Failing that, options provided means "choose
+        // among these" — a select, whatever the column type underneath.
+        // An enumType column is a choice among the cases, whatever its
+        // storage type — a select, with the cases as its options unless the
+        // resource names others.
+        $enum = $meta->getFieldMapping($field)['enumType'] ?? null;
+
+        if (is_string($enum) && is_a($enum, \BackedEnum::class, true)) {
+            $overrides['options'] ??= EnumOptions::for($enum);
+        }
+
+        $type = $this->declaredType($meta, $field) ?? (isset($overrides['options']) ? SelectType::class : match ((string) $meta->getTypeOfField($field)) {
             'text' => TextareaType::class,
             'integer', 'smallint', 'bigint' => NumberType::class,
             'decimal', 'float' => DecimalType::class,
             'boolean' => ToggleType::class,
-            'date', 'date_immutable', 'datetime', 'datetime_immutable' => DateType::class,
+            'date', 'date_immutable' => DateType::class,
+            'datetime', 'datetime_immutable', 'datetimetz', 'datetimetz_immutable' => DateTimeType::class,
             default => TextType::class,
-        };
+        });
 
         $options = $overrides;
 
@@ -272,7 +304,9 @@ final class FormFieldGuesser
 
         if ($meta->isSingleValuedAssociation($property)) {
             $options = $overrides;
-            $options['label']    ??= ucwords(str_replace('_', ' ', $property));
+            // Title case over the property's words, camelCase split too:
+            // `connectedContact` reads "Connected Contact", not one word.
+            $options['label']    ??= Str::ucwords(self::words($property));
             $options['relation'] ??= new RelationOptions($target, $this->guessLabelField($target), 'uuid');
 
             // A relation is required when its join column refuses null — or
@@ -288,10 +322,10 @@ final class FormFieldGuesser
             // 'relation' option (uuid → the media entity) a BelongsTo would, so
             // the write path needs no special case for it.
             if ($this->mediaEntityClass !== null && $target === $this->mediaEntityClass) {
-                return [ImageType::class, $options];
+                return [$this->declaredType($meta, $property) ?? ImageType::class, $options];
             }
 
-            return [BelongsToType::class, $options];
+            return [$this->declaredType($meta, $property) ?? BelongsToType::class, $options];
         }
 
         // Owning ManyToMany → multiselect of existing records.
@@ -299,14 +333,59 @@ final class FormFieldGuesser
             $options = $overrides;
             $options['relation'] ??= new RelationOptions($target, $this->guessLabelField($target), 'uuid');
 
-            return [ManyToManyType::class, $options];
+            return [$this->declaredType($meta, $property) ?? ManyToManyType::class, $options];
         }
 
         // Mapped-by OneToMany → repeater over the child's own scalar fields.
+        //
+        // `fields` in the overrides is either a full declaration (a list of
+        // specs, handed over verbatim) or a map of sub-field key => overrides,
+        // merged onto the guessed row the way top-level overrides are — so a
+        // resource can widen one column without writing the whole row out.
         $options = $overrides;
-        $options['fields'] ??= $this->guessSubFields($target, $meta->getName());
+        $declared = $options['fields'] ?? null;
 
-        return [HasManyType::class, $options];
+        if (!is_array($declared) || $declared === [] || !array_is_list($declared)) {
+            $guessed = $this->guessSubFields($target, $mapping['mappedBy'] ?? null);
+
+            if (is_array($declared) && $declared !== []) {
+                foreach ($guessed as $index => $subField) {
+                    $key = (string) ($subField['key'] ?? '');
+
+                    if (isset($declared[$key]) && is_array($declared[$key])) {
+                        $guessed[$index] = [...$subField, ...$declared[$key]];
+                    }
+                }
+            }
+
+            $options['fields'] = $guessed;
+        }
+
+        return [$this->declaredType($meta, $property) ?? HasManyType::class, $options];
+    }
+
+    /**
+     * The field type the property declares for itself with {@see FormType},
+     * or null to fall back to what the mapping implies.
+     *
+     * Read off the reflection the metadata already holds: Doctrine's driver
+     * only reads its own attributes into the mapping, so this one is invisible
+     * to `getFieldMapping()` and has to be asked for by name.
+     *
+     * @param ClassMetadata<object> $meta
+     *
+     * @return class-string|null
+     */
+    private function declaredType(ClassMetadata $meta, string $property): ?string
+    {
+        $reflection = $meta->getReflectionProperty($property);
+        $attributes = $reflection?->getAttributes(FormType::class) ?? [];
+
+        if ($attributes === []) {
+            return null;
+        }
+
+        return $attributes[0]->newInstance()->type;
     }
 
     /**
@@ -315,10 +394,12 @@ final class FormFieldGuesser
      * which become BelongsTo selects.
      *
      * @param class-string $childClass
+     * @param string|null  $inverse    the child's property that points back at
+     *                                 the parent — the OneToMany's `mappedBy`
      *
      * @return list<array<string, mixed>>
      */
-    private function guessSubFields(string $childClass, string $parentClass): array
+    private function guessSubFields(string $childClass, ?string $inverse): array
     {
         $childMeta = $this->em->getClassMetadata($childClass);
 
@@ -339,16 +420,26 @@ final class FormFieldGuesser
                 // The inverse side back to the parent is structural, not
                 // editable: the row already belongs to the record being
                 // edited, and offering it would let a row be reparented.
-                && $childMeta->getAssociationMapping($name)['targetEntity'] !== $parentClass,
+                // Named by the mapping, not matched by class: a row may also
+                // reference *another* record of the parent's class, and that
+                // one is a real field (a contact's connections).
+                && $name !== $inverse,
         ));
 
-        // A row's fields share its width when there are few enough to stay
-        // readable side by side — two halves, three thirds. Beyond that the
-        // columns get too narrow for a label, so each field takes its own
-        // row. The grid is twelve columns, which is why four quarters is
+        // A textarea is a paragraph, not a cell: it takes the whole row and
+        // does not count towards how the others share it.
+        $paragraphs = array_values(array_filter(
+            $editable,
+            static fn (string $field): bool => (string) $childMeta->getTypeOfField($field) === 'text',
+        ));
+
+        // The remaining fields share the row when there are few enough to
+        // stay readable side by side — two halves, three thirds. Beyond that
+        // the columns get too narrow for a label, so each field takes its
+        // own row. The grid is twelve columns, which is why four quarters is
         // expressible but four is where a repeater row starts feeling like a
         // spreadsheet.
-        $width = match (count($editable) + count($associations)) {
+        $width = match (count($editable) - count($paragraphs) + count($associations)) {
             2       => '1/2',
             3       => '1/3',
             default => 'full',
@@ -358,6 +449,11 @@ final class FormFieldGuesser
 
         foreach ($associations as $association) {
             [$type, $options] = $this->guessAssociation($childMeta, $association, []);
+
+            // Sentence case, like the row's scalar fields beside it — a row
+            // reading "Connected contact / Connection type / Notes" in one
+            // register, rather than the top level's title case in another.
+            $options['label'] = Str::ucfirst(self::words($association));
 
             // Same `_id` convention the top level uses: the form edits
             // `actor_id`, the entity keeps `setActor()`.
@@ -373,9 +469,12 @@ final class FormFieldGuesser
             // hid the difference until a child grew a two-word one, whose
             // rows then round-tripped as `unitCost` against a presenter
             // sending `unit_cost` — an always-empty field.
-            $options['label'] ??= ucfirst(strtolower(trim(preg_replace('/(?<!^)[A-Z]/', ' $0', $field) ?? $field)));
+            $options['label'] ??= Str::ucfirst(self::words($field));
 
-            $builder->add(Str::snake($field), $type, [...$options, 'width' => $width]);
+            $builder->add(Str::snake($field), $type, [
+                ...$options,
+                'width' => in_array($field, $paragraphs, true) ? 'full' : $width,
+            ]);
         }
 
         return $builder->fields();
@@ -407,10 +506,27 @@ final class FormFieldGuesser
         return false;
     }
 
+    /**
+     * A property name as lowercase words: `connectedContact` and
+     * `connected_contact` both give "connected contact". Studly first folds
+     * the separators, snake with a space then splits the capitals.
+     */
+    private static function words(string $property): string
+    {
+        return Str::snake(Str::studly($property), ' ');
+    }
+
     /** @param class-string $target */
     private function guessLabelField(string $target): string
     {
         $targetMeta = $this->em->getClassMetadata($target);
+
+        // The entity's own say first: a #[LabelField] on a mapped column.
+        foreach ($targetMeta->getFieldNames() as $field) {
+            if ($targetMeta->getReflectionProperty($field)?->getAttributes(LabelField::class) !== []) {
+                return $field;
+            }
+        }
 
         foreach (self::LABEL_FIELDS as $candidate) {
             if ($targetMeta->hasField($candidate)) {
@@ -419,7 +535,7 @@ final class FormFieldGuesser
         }
 
         throw new \InvalidArgumentException(sprintf(
-            '%s maps none of [%s]; declare the relation explicitly with a RelationOptions naming its label field.',
+            '%s maps none of [%s] and marks no column with #[LabelField]; add the attribute, or declare the relation explicitly with a RelationOptions naming its label field.',
             $target,
             implode(', ', self::LABEL_FIELDS),
         ));

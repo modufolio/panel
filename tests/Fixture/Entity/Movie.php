@@ -7,6 +7,8 @@ namespace Modufolio\Panel\Tests\Fixture\Entity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Modufolio\Panel\Blueprint\FormType;
+use Modufolio\Panel\Field\UrlType;
 use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -54,6 +56,19 @@ class Movie
     #[ORM\Column(name: 'released_on', type: 'date_immutable', nullable: true)]
     private ?\DateTimeImmutable $releasedOn = null;
 
+    /** A moment, not a day: guessed as a datetime control, which a date picker could not read. */
+    #[ORM\Column(name: 'premiere_at', type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $premiereAt = null;
+
+    /** A choice among enum cases: the mapping says so through enumType, and the form is a select. */
+    #[ORM\Column(length: 20, nullable: true, enumType: Genre::class)]
+    private ?Genre $genre = null;
+
+    /** A string column the mapping can only call text; the attribute says what it is. */
+    #[ORM\Column(length: 200, nullable: true)]
+    #[FormType(UrlType::class)]
+    private ?string $website = null;
+
     /**
      * Nullable at the column so the schema can `ON DELETE SET NULL`, while the
      * constraint keeps the form treating it as mandatory — the case the
@@ -74,6 +89,15 @@ class Movie
     #[ORM\OrderBy(['position' => 'ASC'])]
     private Collection $cast;
 
+    /** @var Collection<int, Remake> */
+    #[ORM\OneToMany(targetEntity: Remake::class, mappedBy: 'movie', cascade: ['persist'], orphanRemoval: true)]
+    private Collection $remakes;
+
+    /** Optional, and labelled by the target's own #[LabelField]. */
+    #[ORM\ManyToOne(targetEntity: Distributor::class)]
+    #[ORM\JoinColumn(name: 'distributor_id', nullable: true, onDelete: 'SET NULL')]
+    private ?Distributor $distributor = null;
+
     #[ORM\Column(name: 'deleted_at', type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $deletedAt = null;
 
@@ -85,6 +109,7 @@ class Movie
         $this->uuid      = Uuid::uuid4();
         $this->tags      = new ArrayCollection();
         $this->cast      = new ArrayCollection();
+        $this->remakes = new ArrayCollection();
         $this->createdAt = new \DateTimeImmutable();
     }
 
@@ -179,6 +204,60 @@ class Movie
     public function getReleasedOn(): ?\DateTimeImmutable
     {
         return $this->releasedOn;
+    }
+
+    /** @return Collection<int, Remake> */
+    public function getRemakes(): Collection
+    {
+        return $this->remakes;
+    }
+
+    public function getDistributor(): ?Distributor
+    {
+        return $this->distributor;
+    }
+
+    public function setDistributor(?Distributor $distributor): self
+    {
+        $this->distributor = $distributor;
+
+        return $this;
+    }
+
+    public function getPremiereAt(): ?\DateTimeImmutable
+    {
+        return $this->premiereAt;
+    }
+
+    public function setPremiereAt(?\DateTimeImmutable $premiereAt): self
+    {
+        $this->premiereAt = $premiereAt;
+
+        return $this;
+    }
+
+    public function getGenre(): ?Genre
+    {
+        return $this->genre;
+    }
+
+    public function setGenre(?Genre $genre): self
+    {
+        $this->genre = $genre;
+
+        return $this;
+    }
+
+    public function getWebsite(): ?string
+    {
+        return $this->website;
+    }
+
+    public function setWebsite(?string $website): self
+    {
+        $this->website = $website;
+
+        return $this;
     }
 
     public function setReleasedOn(?\DateTimeImmutable $releasedOn): self

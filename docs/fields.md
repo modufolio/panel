@@ -43,6 +43,84 @@ select from a to-one association, a multiselect from a many-to-many, a repeater
 over a one-to-many's own fields. Overrides always win, so you state only what
 the schema cannot know — layout, choices, bounds.
 
+### Separators
+
+A long form reads better as runs of fields than as one grid. A `Separator`
+entry between two keys draws a rule across the full row, or leaves the same
+gap with nothing drawn in it:
+
+```php
+use Modufolio\Panel\Blueprint\Separator;
+
+return [
+    'first_name' => ['width' => '1/2'],
+    'last_name'  => ['width' => '1/2'],
+    Separator::Line,
+    'email'      => ['width' => '1/2'],
+    'phone'      => ['width' => '1/2'],
+    Separator::Space,
+    'note'       => [],
+];
+```
+
+It is a plain list entry, not an option on a field, because a break is a thing
+in the sequence rather than a property of whichever field happens to follow it.
+A hand-written form gets the same from `BlueprintBuilder::separator()`. A
+separator is never validated and never written.
+
+A column mapped with `enumType` is a choice among the enum's cases: the
+guesser makes it a select, labelled by the enum's own `getLabel()` where it
+declares one, and the write path hands the setter the case rather than its
+value. A resource's `options` override still wins.
+
+A `string` column is only ever a text input from the mapping's point of view,
+and some strings are emails, URLs or colours. That is a fact about the
+property, true for every form over the entity, so it is declared beside the
+column with `#[FormType]` rather than repeated in each resource:
+
+```php
+use Modufolio\Panel\Blueprint\FormType;
+use Modufolio\Panel\Field\EmailType;
+
+#[ORM\Column(length: 200, nullable: true)]
+#[FormType(EmailType::class)]
+private ?string $email = null;
+```
+
+The attribute names the type and nothing else — layout, access and conditions
+describe one form, not the property, and stay in the resource. Precedence is
+the attribute over the column mapping (including the `options` shorthand that
+would otherwise make a select), and a resource's overrides over both. Doctrine
+never sees it: the guesser reads it off the metadata's reflection.
+
+A lookup needs a label for each option, and the guesser tries `name`, `title`
+and `label` on the target. An entity with none of them, or whose `label` column
+means something else, marks the column it is referred to by:
+
+```php
+use Modufolio\Panel\Blueprint\LabelField;
+
+#[ORM\Column(length: 150)]
+#[LabelField]
+private ?string $addressLine1 = null;
+```
+
+A guessed repeater lays its row out by count — two fields share halves, three
+share thirds, more take a row each — with a `text` column always taking the
+whole row. To adjust one column without writing the row out, pass `fields` as
+a map of sub-field key to overrides; a list of full specs still replaces the
+row entirely:
+
+```php
+'connections' => [
+    'label'  => 'Connections',
+    'fields' => ['connection_type' => ['width' => '1/3']],
+],
+```
+
+Every relation pointing at that entity, from any resource, uses it. It has to be
+a mapped column, because the options endpoint orders and searches by it in DQL.
+
 Its one hard limit: **every key must resolve to a mapped property.** A key that
 names nothing throws (naming the class and the key), and there is no way to
 force a type. So a field with no column behind it — a `computed` value, a `set`
@@ -62,7 +140,8 @@ of sub-fields stored as one JSON object, an `embed` — has to come from
 | `SelectType` | `select` | needs `options` |
 | `TemplateSelectType` | `select` | choices are the application's templates |
 | `ToggleType` | `toggle` | |
-| `DateType` | `date` | |
+| `DateType` | `date` | a day, `YYYY-MM-DD` |
+| `DateTimeType` | `datetime` | a moment, `YYYY-MM-DDTHH:mm`; what a datetime column guesses as |
 | `ColorType` | `color` | |
 | `TagsType` | `tags` | |
 | `ImageType` | `image` | media-library reference |
@@ -74,6 +153,7 @@ of sub-fields stored as one JSON object, an `embed` — has to come from
 | `SetType` | `set` | several sub-fields, **one** stored object |
 | `EmbedType` | `embed` | external URL; oEmbed resolution stays server-side |
 | `HiddenType` | `hidden` | stored, never rendered |
+| `SeparatorType` | `separator` | a rule or a gap across the row; never a value — see [Separators](#separators) |
 | `DataType` | `data` | shown, never edited — the importer's parking spot |
 | `ComputedType` | `data` | server-computed; requires `accessor` |
 
@@ -252,8 +332,8 @@ are static helpers an application's controller invokes. Declaring `when` or
 `access` in a blueprint and never calling them yields a form that *looks*
 guarded and is not.
 
-The reference wiring (appkit-playground's `ResourceController`), in this order,
-because each step depends on the last:
+`SubmissionHandler::handle()` runs them in this order, because each step
+depends on the last; a hand-written write path has to do the same:
 
 ```php
 $values = FieldAccess::stripDenied($access, $values, $user, $entity);

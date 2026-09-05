@@ -15,6 +15,7 @@ use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Tests\Case\DoctrineTestCase;
 use Modufolio\Panel\Tests\Fixture\Entity\Actor;
 use Modufolio\Panel\Tests\Fixture\Entity\CastMember;
+use Modufolio\Panel\Tests\Fixture\Entity\Genre;
 use Modufolio\Panel\Tests\Fixture\Entity\Movie;
 use Modufolio\Panel\Tests\Fixture\Entity\Studio;
 use Modufolio\Panel\Tests\Fixture\Entity\Tag;
@@ -250,6 +251,63 @@ final class SubmissionHandlerTest extends DoctrineTestCase
                 return [];
             }
         };
+    }
+
+    /**
+     * A Movie form of only the keys named, guessed — for the columns the fixture resource's own form leaves out.
+     *
+     * @param array<int|string, mixed> $keys
+     */
+    private function movieResourceWith(array $keys): PanelResource
+    {
+        return new class($keys) extends PanelResource {
+            /** @param array<int|string, mixed> $keys */
+            public function __construct(private readonly array $keys) {}
+
+            public function key(): string
+            {
+                return 'movies';
+            }
+
+            public function entityClass(): string
+            {
+                return Movie::class;
+            }
+
+            public function listQueryClass(): string
+            {
+                return StubListQuery::class;
+            }
+
+            public function formFieldKeys(): array
+            {
+                return $this->keys;
+            }
+
+            public function present(array $entities): array
+            {
+                return [];
+            }
+        };
+    }
+
+    // ── Enum columns ─────────────────────────────────────────────────────────
+
+    /** The select submits the case's value; the setter wants the case. An empty choice is no case at all. */
+    public function testAnEnumColumnIsSetFromTheSubmittedValueAndClearedByABlank(): void
+    {
+        // Reloaded so the movie and its studio are managed: this form does
+        // not name the studio, so nothing re-resolves it the way body() does.
+        $movie    = $this->reload($this->movie('Heat', $this->studio('Warner')));
+        $resource = $this->movieResourceWith(['title', 'genre']);
+
+        self::assertSame([], $this->handler()->handle($resource, $movie, ['title' => 'Heat', 'genre' => 'sci_fi']));
+
+        $movie = $this->reload($movie);
+        self::assertSame(Genre::SCI_FI, $movie->getGenre());
+
+        self::assertSame([], $this->handler()->handle($resource, $movie, ['title' => 'Heat', 'genre' => '']));
+        self::assertNull($this->reload($movie)->getGenre());
     }
 
     // ── Creating ─────────────────────────────────────────────────────────────

@@ -697,6 +697,12 @@ final class SubmissionHandler
             };
         }
 
+        // A backed enum setter takes the case, not its value: the select
+        // submits the string, and an empty choice is no case at all.
+        if (is_a($name, \BackedEnum::class, true) && is_string($value)) {
+            return $value === '' ? null : ($name::tryFrom($value) ?? $value);
+        }
+
         if (!is_string($value) || $value === '') {
             return $value;
         }
@@ -901,9 +907,11 @@ final class SubmissionHandler
      */
     private static function scalarFields(array $fields): array
     {
+        // Repeaters have their own path; separators have none — a break
+        // between fields is not a value and never reaches a setter.
         return array_values(array_filter(
             $fields,
-            static fn (array $field): bool => ($field['type'] ?? null) !== 'repeater',
+            static fn (array $field): bool => !in_array($field['type'] ?? null, ['repeater', 'separator'], true),
         ));
     }
 
