@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
-import { evaluateCondition, useBlueprint, BlueprintForm, defineBlueprint, resolveFieldComponent, type FieldDef } from '../src/index'
+import { flushPromises } from '@vue/test-utils'
+import { evaluateCondition, useBlueprint, defineBlueprint, resolveFieldComponent, type FieldDef } from '../src/index'
+import { mountBlueprintForm } from './support/mountBlueprintForm'
 
 describe('conditions', () => {
   const form = { status: 'published', count: 5, tags: ['a', 'b'], cover: '', title: 'Hi' }
@@ -88,14 +89,12 @@ describe('BlueprintForm', () => {
       { type: 'text', key: 'reason', label: 'Reason', when: ['status', 'rejected'] },
     ] satisfies FieldDef[])
 
-    const wrapper = mount(BlueprintForm, {
-      props: { fields, modelValue: { status: 'pending', title: '', reason: '' } },
-    })
-
-    // Field components are resolved with defineAsyncComponent, so nothing is
-    // in the DOM until those promises settle — without this the "hidden"
-    // assertion below would pass against an empty render.
-    await flushPromises()
+    // Only the unconditional field renders at first; asserting "Reason" is
+    // absent against an empty render would prove nothing, so wait for the one.
+    const wrapper = await mountBlueprintForm(
+      { fields, modelValue: { status: 'pending', title: '', reason: '' } },
+      1,
+    )
 
     expect(wrapper.text()).toContain('Title')
     expect(wrapper.text()).not.toContain('Reason')

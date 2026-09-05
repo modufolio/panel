@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { ref } from 'vue'
-import { mount, flushPromises } from '@vue/test-utils'
+import { flushPromises } from '@vue/test-utils'
+import { mountBlueprintForm } from './support/mountBlueprintForm'
 import {
   required, min, max, email, url, pattern, integer, same, firstError,
-  useBlueprint, defineBlueprint, BlueprintForm, rulesFromSpec, type FieldDef,
+  useBlueprint, defineBlueprint, rulesFromSpec, type FieldDef,
 } from '../src/index'
 
 const form = {}
@@ -115,10 +116,7 @@ describe('BlueprintForm error display', () => {
   ] satisfies FieldDef[])
 
   it('stays quiet until the field is touched or a submit is attempted', async () => {
-    const wrapper = mount(BlueprintForm, {
-      props: { fields, modelValue: { title: '' } },
-    })
-    await flushPromises()
+    const wrapper = await mountBlueprintForm({ fields, modelValue: { title: '' } }, 1)
 
     expect(wrapper.text()).not.toContain('Title is required.')
 
@@ -129,10 +127,10 @@ describe('BlueprintForm error display', () => {
   })
 
   it('shows a server error until that field is edited', async () => {
-    const wrapper = mount(BlueprintForm, {
-      props: { fields, modelValue: { title: 'Taken' }, errors: { title: 'Already in use.' } },
-    })
-    await flushPromises()
+    const wrapper = await mountBlueprintForm(
+      { fields, modelValue: { title: 'Taken' }, errors: { title: 'Already in use.' } },
+      1,
+    )
 
     expect(wrapper.text()).toContain('Already in use.')
 

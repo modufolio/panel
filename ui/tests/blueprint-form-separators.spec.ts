@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
-import { BlueprintForm, type FieldDef } from '../src/index'
+import { describe, it, expect } from 'vitest'
+import { type FieldDef } from '../src/index'
+import { mountBlueprintForm } from './support/mountBlueprintForm'
 
 /** A separator holds its place in the grid, spans the row, and draws a rule only when asked to. */
 describe('BlueprintForm separators', () => {
@@ -12,18 +12,7 @@ describe('BlueprintForm separators', () => {
     { key: 'note', type: 'text', label: 'Note' },
   ]
 
-  async function render() {
-    const wrapper = mount(BlueprintForm, { props: { fields, modelValue: {} } })
-    // Field components load through a dynamic import. A fixed number of
-    // flushes is not enough on a cold module cache (the first spec in a CI
-    // run), so wait until every field, separators included, has mounted.
-    await vi.waitFor(() => {
-      expect(wrapper.findAll('label')).toHaveLength(3)
-      expect(wrapper.findAll('.ui-field-separator')).toHaveLength(2)
-    }, { timeout: 4000 })
-    await flushPromises()
-    return wrapper
-  }
+  const render = () => mountBlueprintForm({ fields, modelValue: {} }, fields.length)
 
   it('renders one element per separator, spanning the row', async () => {
     const wrapper = await render()
