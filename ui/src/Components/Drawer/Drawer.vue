@@ -162,6 +162,9 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'back', 'update:isOpen', 'activate'])
 
+/** Module-level on purpose: the frame that started a visit is replaced by the one it loads. */
+let recordNavigationInFlight = false
+
 const isActiveDrawer = computed(() => props.level === props.stackSize - 1)
 
 const baseZIndex = 50
@@ -241,14 +244,34 @@ function handleKeyDown(event: KeyboardEvent): void {
 
   if (event.key === 'ArrowUp' && props.previousRecordUrl) {
     event.preventDefault()
-    visitDrawer(props.previousRecordUrl)
+    navigateTo(props.previousRecordUrl)
     return
   }
 
   if (event.key === 'ArrowDown' && props.nextRecordUrl) {
     event.preventDefault()
-    visitDrawer(props.nextRecordUrl)
+    navigateTo(props.nextRecordUrl)
   }
+}
+
+/**
+ * One record navigation at a time.
+ *
+ * A held or double-pressed arrow used to fire a second visit while the first
+ * was in flight — to the same link, since the frame had not changed yet. Two
+ * concurrent requests for one record is at best wasted, and when one of them
+ * fails the page's state and the drawer on screen stop agreeing: the next
+ * press then navigates from a frame the user is no longer looking at. The
+ * flag is shared by every drawer, because the stack replaces the frame (and
+ * this component) while the visit is still settling.
+ */
+function navigateTo(url: string): void {
+  if (recordNavigationInFlight) {
+    return
+  }
+
+  recordNavigationInFlight = true
+  visitDrawer(url, { onFinish: () => { recordNavigationInFlight = false } })
 }
 
 watch(() => props.isOpen, (isOpen) => {

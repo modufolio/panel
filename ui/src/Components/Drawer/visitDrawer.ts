@@ -25,6 +25,8 @@ export interface VisitDrawerOptions {
   preserveState?: boolean
   preserveScroll?: boolean
   replace?: boolean
+  /** Runs when the visit settles, succeeded, failed or cancelled. */
+  onFinish?: () => void
 }
 
 /**
@@ -37,6 +39,7 @@ export function drawerVisitOptions(options: VisitDrawerOptions = {}) {
     preserveState: options.preserveState ?? true,
     preserveScroll: options.preserveScroll ?? true,
     ...(options.replace !== undefined ? { replace: options.replace } : {}),
+    ...(options.onFinish !== undefined ? { onFinish: options.onFinish } : {}),
     // The server keys "render the page underneath with a stack on top" off
     // exactly this header. Mirrors DrawerStack::HEADER in PHP.
     headers: { [DRAWER_HEADER]: '1' },
