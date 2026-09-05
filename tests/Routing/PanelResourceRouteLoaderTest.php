@@ -68,7 +68,7 @@ final class PanelResourceRouteLoaderTest extends TestCase
             }
         };
 
-        return (new PanelResourceRouteLoader($locator, FixtureController::class, $resolver, $prefix))
+        return (new PanelResourceRouteLoader($locator, $resolver, FixtureController::class, $prefix))
             ->load($file, 'panel_resource');
     }
 
@@ -257,12 +257,11 @@ final class PanelResourceRouteLoaderTest extends TestCase
         }
     }
 
-    /** The entry rides the index route alone: that is what it links to, and the export shares its roles anyway. */
+    /** The resource's own menu() rides the index route alone: that is what it links to, and the export shares its roles anyway. */
     public function testTheMenuEntryRidesTheIndexRoute(): void
     {
         $routes = $this->load('function (PanelResourceConfigurator $panel): void {
-            $panel->resource(\\' . GuardedReadOnlyResource::class . '::class)
-                ->menu(\'Events\', icon: \'calendar\', group: \'Main\', order: 16);
+            $panel->resource(\\' . GuardedReadOnlyResource::class . '::class);
         }');
 
         self::assertSame(
@@ -376,7 +375,7 @@ final class PanelResourceRouteLoaderTest extends TestCase
             }
         };
 
-        $loader = new PanelResourceRouteLoader($locator, FixtureController::class, self::resolver());
+        $loader = new PanelResourceRouteLoader($locator, self::resolver(), FixtureController::class);
 
         self::assertTrue($loader->supports('anything', 'panel_resource'));
         self::assertFalse($loader->supports('anything', 'yaml'));

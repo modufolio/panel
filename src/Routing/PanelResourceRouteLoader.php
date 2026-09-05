@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Routing;
 
+use Modufolio\Panel\Http\ResourceController;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\PanelResourceConfigurator;
 use Symfony\Component\Config\FileLocatorInterface;
@@ -41,11 +42,14 @@ final class PanelResourceRouteLoader extends Loader
      * @param \Closure(class-string<PanelResource>): PanelResource $resources
      *        how a configured class becomes an instance — the host's
      *        container, in practice
+     * @param class-string $controllerClass what every generated route dispatches
+     *        to, as `[$controllerClass, 'handle']`. The package ships one; a
+     *        host names its own only when it has outgrown it.
      */
     public function __construct(
         private readonly FileLocatorInterface $fileLocator,
-        private readonly string $controllerClass,
         private readonly \Closure $resources,
+        private readonly string $controllerClass = ResourceController::class,
         private readonly string $prefix = '/panel',
     ) {
         parent::__construct();
@@ -74,10 +78,9 @@ final class PanelResourceRouteLoader extends Loader
 
             // The write trio needs a form to render and validate against; a
             // resource without one stays read-only whatever the options say.
-            // formFields() is a static list of entries here — nothing is
-            // guessed until a request needs the form — so the loader stays
-            // database-free.
-            $hasForm = $instance->formFields() !== null;
+            // form() is a static declaration here — nothing is guessed until
+            // a request needs the form — so the loader stays database-free.
+            $hasForm = $instance->form() !== null;
 
             if ($options->generates('index')) {
                 $index = $this->createRoute("{$prefix}/{$key}", ['GET'], 'index', $resourceClass, $roles);
@@ -85,8 +88,8 @@ final class PanelResourceRouteLoader extends Loader
                 // The menu entry rides the route it links to, so a host's
                 // navigation finds every resource by walking its routes —
                 // see ResourceMenu — and the route's roles gate the entry.
-                if (($menu = $options->menuItem()) !== null) {
-                    $index->setDefault(ResourceMenu::DEFAULT, $menu);
+                if (($menu = $instance->menu()) !== null) {
+                    $index->setDefault(ResourceMenu::DEFAULT, $menu->toArray());
                 }
 
                 $routes->add($key, $index);

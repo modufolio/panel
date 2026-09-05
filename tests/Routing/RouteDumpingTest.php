@@ -61,10 +61,10 @@ final class RouteDumpingTest extends TestCase
             }
         };
 
-        return (new PanelResourceRouteLoader($locator, FixtureController::class, static function (string $class): PanelResource {
+        return (new PanelResourceRouteLoader($locator, static function (string $class): PanelResource {
             /** @var class-string<PanelResource> $class */
             return new $class();
-        }))
+        }, FixtureController::class))
             ->load($file, 'panel_resource');
     }
 

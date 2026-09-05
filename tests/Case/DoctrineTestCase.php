@@ -279,11 +279,11 @@ abstract class DoctrineTestCase extends TestCase
 
         return (new PanelResourceRouteLoader(
             new FileLocator([dirname($file)]),
-            FixtureController::class,
             static function (string $class): PanelResource {
-            /** @var class-string<PanelResource> $class */
-            return new $class();
-        },
+                /** @var class-string<PanelResource> $class */
+                return new $class();
+            },
+            FixtureController::class,
         ))
             ->load($file, 'panel_resource');
     }
