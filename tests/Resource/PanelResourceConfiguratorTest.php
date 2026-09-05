@@ -65,17 +65,25 @@ final class PanelResourceConfiguratorTest extends TestCase
         self::assertFalse($options->generates('teleport'));
     }
 
-    /**
-     * One group of OR-ed roles: any declared role grants access, and the
-     * kernel enforces it before the controller runs.
-     */
-    public function testRolesBecomeASingleOredGroup(): void
+    public function testAMenuEntryIsDeclaredWhereTheResourceIs(): void
     {
-        self::assertSame([], $this->options()->roleGroups(), 'No roles means no role gate.');
+        self::assertNull($this->options()->menuItem(), 'No menu() means no entry — the route still works.');
         self::assertSame(
-            [['ROLE_USER', 'ROLE_ADMIN']],
-            $this->options()->roles(['ROLE_USER', 'ROLE_ADMIN'])->roleGroups(),
+            ['label' => 'Movies', 'icon' => 'film', 'group' => 'Library', 'order' => 10],
+            $this->options()->menu('Movies', icon: 'film', group: 'Library', order: 10)->menuItem(),
         );
+        self::assertSame(
+            ['label' => 'Movies', 'icon' => null, 'group' => null, 'order' => 50],
+            $this->options()->menu('Movies')->menuItem(),
+            'Only the label is required.',
+        );
+    }
+
+    public function testAMenuEntryWithoutALabelIsRefused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->options()->menu('  ');
     }
 
     public function testThePrefixFallsBackToTheCallersDefault(): void
@@ -87,7 +95,7 @@ final class PanelResourceConfiguratorTest extends TestCase
     public function testRegisteredResourcesAreReturnedFromTheConfig(): void
     {
         $configurator = new PanelResourceConfigurator();
-        $configurator->resource(ReadOnlyResource::class)->roles(['ROLE_USER']);
+        $configurator->resource(ReadOnlyResource::class);
         $configurator->resource(WritableResource::class);
 
         $config = $configurator->buildConfig();

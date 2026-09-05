@@ -6,7 +6,6 @@ namespace Modufolio\Panel\Routing;
 
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\PanelResourceConfigurator;
-use Modufolio\Panel\Resource\PanelResourceOptions;
 use Symfony\Component\Config\FileLocatorInterface;
 use Symfony\Component\Config\Loader\Loader;
 use Symfony\Component\Routing\Route;
@@ -68,18 +67,29 @@ final class PanelResourceRouteLoader extends Loader
             $instance = $this->resourceFor($resourceClass);
             $key      = $instance->key();
             $prefix   = $options->prefixOr($this->prefix);
+            // The resource's own Permissions name the roles; the kernel
+            // enforces them on every route generated below. No database is
+            // touched: roles() is a declaration, read at route-build time.
+            $roles    = $instance->permissions()->roles();
 
             // The write trio needs a form to render and validate against; a
             // resource without one stays read-only whatever the options say.
-            // Either declaration style counts — the guessed one is still a
-            // static key list here, so the loader stays database-free.
-            $hasForm = $instance->formFields() !== null || $instance->formFieldKeys() !== null;
+            // formFields() is a static list of entries here — nothing is
+            // guessed until a request needs the form — so the loader stays
+            // database-free.
+            $hasForm = $instance->formFields() !== null;
 
             if ($options->generates('index')) {
-                $routes->add(
-                    $key,
-                    $this->createRoute("{$prefix}/{$key}", ['GET'], 'index', $resourceClass, $options),
-                );
+                $index = $this->createRoute("{$prefix}/{$key}", ['GET'], 'index', $resourceClass, $roles);
+
+                // The menu entry rides the route it links to, so a host's
+                // navigation finds every resource by walking its routes —
+                // see ResourceMenu — and the route's roles gate the entry.
+                if (($menu = $options->menuItem()) !== null) {
+                    $index->setDefault(ResourceMenu::DEFAULT, $menu);
+                }
+
+                $routes->add($key, $index);
 
                 // Downloading the list is reading the list, so this rides the
                 // index's opt-in and its roles rather than having its own. It
@@ -88,18 +98,18 @@ final class PanelResourceRouteLoader extends Loader
                 // query string, exactly as they do for the page itself.
                 $routes->add(
                     "{$key}_export",
-                    $this->createRoute("{$prefix}/{$key}/export", ['POST'], 'export', $resourceClass, $options),
+                    $this->createRoute("{$prefix}/{$key}/export", ['POST'], 'export', $resourceClass, $roles),
                 );
             }
 
             if ($hasForm && $options->generates('create')) {
                 $routes->add(
                     "{$key}_create",
-                    $this->createRoute("{$prefix}/{$key}/create", ['GET'], 'create', $resourceClass, $options),
+                    $this->createRoute("{$prefix}/{$key}/create", ['GET'], 'create', $resourceClass, $roles),
                 );
                 $routes->add(
                     "{$key}_store",
-                    $this->createRoute("{$prefix}/{$key}", ['POST'], 'store', $resourceClass, $options),
+                    $this->createRoute("{$prefix}/{$key}", ['POST'], 'store', $resourceClass, $roles),
                 );
             }
 
@@ -111,7 +121,7 @@ final class PanelResourceRouteLoader extends Loader
                         ['GET'],
                         'edit',
                         $resourceClass,
-                        $options,
+                        $roles,
                         ['uuid' => Uuid::PATTERN],
                     ),
                 );
@@ -122,7 +132,7 @@ final class PanelResourceRouteLoader extends Loader
                         ['PUT'],
                         'update',
                         $resourceClass,
-                        $options,
+                        $roles,
                         ['uuid' => Uuid::PATTERN],
                     ),
                 );
@@ -140,7 +150,7 @@ final class PanelResourceRouteLoader extends Loader
                         ['GET'],
                         'relationOptions',
                         $resourceClass,
-                        $options,
+                        $roles,
                         // Dots address a repeater's sub-field (`cast.actor_id`).
                         ['field' => '[a-zA-Z0-9_.]+'],
                     ),
@@ -157,7 +167,7 @@ final class PanelResourceRouteLoader extends Loader
                         ['POST'],
                         'relationCreate',
                         $resourceClass,
-                        $options,
+                        $roles,
                         ['field' => '[a-zA-Z0-9_.]+'],
                     ),
                 );
@@ -172,7 +182,7 @@ final class PanelResourceRouteLoader extends Loader
                         ['POST'],
                         'relationStore',
                         $resourceClass,
-                        $options,
+                        $roles,
                         ['uuid' => Uuid::PATTERN, 'field' => '[a-zA-Z0-9_]+'],
                     ),
                 );
@@ -187,7 +197,7 @@ final class PanelResourceRouteLoader extends Loader
             // existing: a board is a way of reading records, and grouping them
             // by a field they already have does not require a form to edit
             // them through. The move itself is still an edit, and the handler
-            // asks canEdit() before writing anything.
+            // asks Permissions::edit() before writing anything.
             foreach ($instance->views() as $declaredView) {
                 if (!$declaredView->isBoard()) {
                     continue;
@@ -200,7 +210,7 @@ final class PanelResourceRouteLoader extends Loader
                         ['POST'],
                         'boardMove',
                         $resourceClass,
-                        $options,
+                        $roles,
                         ['uuid' => Uuid::PATTERN],
                     ),
                 );
@@ -218,7 +228,7 @@ final class PanelResourceRouteLoader extends Loader
                         ['GET'],
                         'deletePreview',
                         $resourceClass,
-                        $options,
+                        $roles,
                         ['uuid' => Uuid::PATTERN],
                     ),
                 );
@@ -235,7 +245,7 @@ final class PanelResourceRouteLoader extends Loader
                         ['POST'],
                         'bulkDestroy',
                         $resourceClass,
-                        $options,
+                        $roles,
                     ),
                 );
 
@@ -246,7 +256,7 @@ final class PanelResourceRouteLoader extends Loader
                         ['DELETE'],
                         'destroy',
                         $resourceClass,
-                        $options,
+                        $roles,
                         ['uuid' => Uuid::PATTERN],
                     ),
                 );
@@ -261,7 +271,7 @@ final class PanelResourceRouteLoader extends Loader
                     ['GET'],
                     'show',
                     $resourceClass,
-                    $options,
+                    $roles,
                     ['uuid' => Uuid::PATTERN],
                 );
                 $route->setDefault('_priority', -1);
@@ -316,6 +326,7 @@ final class PanelResourceRouteLoader extends Loader
 
     /**
      * @param list<string>          $methods
+     * @param list<string>          $roles        what the resource's Permissions require; empty gates nothing
      * @param array<string, string> $requirements
      */
     private function createRoute(
@@ -323,7 +334,7 @@ final class PanelResourceRouteLoader extends Loader
         array $methods,
         string $operation,
         string $resourceClass,
-        PanelResourceOptions $options,
+        array $roles,
         array $requirements = [],
     ): Route {
         $defaults = [
@@ -334,9 +345,10 @@ final class PanelResourceRouteLoader extends Loader
 
         // Same route default #[IsGranted] writes, so the kernel enforces a
         // generated resource exactly as it does a hand-written one — with the
-        // role hierarchy, and before the controller is reached.
-        if (($roleGroups = $options->roleGroups()) !== []) {
-            $defaults['_is_granted_roles'] = $roleGroups;
+        // role hierarchy, and before the controller is reached. One group:
+        // any declared role admits.
+        if ($roles !== []) {
+            $defaults['_is_granted_roles'] = [$roles];
         }
 
         return new Route(

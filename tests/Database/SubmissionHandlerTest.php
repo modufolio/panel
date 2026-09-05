@@ -4,14 +4,10 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Database;
 
-use Modufolio\Panel\Blueprint\BlueprintBuilder;
-use Modufolio\Panel\Field\DateType;
-use Modufolio\Panel\Field\TextareaType;
-use Modufolio\Panel\Field\TextType;
-use Modufolio\Panel\Field\ToggleType;
 use Modufolio\Panel\Form\FormResolver;
 use Modufolio\Panel\Form\SubmissionHandler;
 use Modufolio\Panel\Resource\PanelResource;
+use Modufolio\Panel\Resource\Permissions;
 use Modufolio\Panel\Tests\Case\DoctrineTestCase;
 use Modufolio\Panel\Tests\Fixture\Entity\Actor;
 use Modufolio\Panel\Tests\Fixture\Entity\CastMember;
@@ -194,30 +190,21 @@ final class SubmissionHandlerTest extends DoctrineTestCase
     }
 
     /**
-     * A Movie resource with a hand-written form in place of the guessed one,
-     * the way a resource that outgrew `formFieldKeys()` would declare it.
+     * A Movie resource with the given form in place of the fixture's.
+     *
+     * @param array<int|string, string|array<string, mixed>> $fields
      */
-    private function movieWithForm(BlueprintBuilder $builder): MovieResource
+    private function movieWithForm(array $fields): MovieResource
     {
-        return new class ($builder->fields(), $builder->access()) extends MovieResource {
-            /**
-             * @param list<array<string, mixed>>                              $fields
-             * @param array<string, array{read?: callable, write?: callable}> $access
-             */
-            public function __construct(
-                private readonly array $fields,
-                private readonly array $access,
-            ) {
+        return new class ($fields) extends MovieResource {
+            /** @param array<int|string, string|array<string, mixed>> $fields */
+            public function __construct(private readonly array $fields)
+            {
             }
 
             public function formFields(): array
             {
                 return $this->fields;
-            }
-
-            public function formAccess(): array
-            {
-                return $this->access;
             }
         };
     }
@@ -241,7 +228,7 @@ final class SubmissionHandlerTest extends DoctrineTestCase
                 return StubListQuery::class;
             }
 
-            public function formFieldKeys(): array
+            public function formFields(): array
             {
                 return ['name', 'city'];
             }
@@ -279,7 +266,7 @@ final class SubmissionHandlerTest extends DoctrineTestCase
                 return StubListQuery::class;
             }
 
-            public function formFieldKeys(): array
+            public function formFields(): array
             {
                 return $this->keys;
             }
@@ -597,9 +584,7 @@ final class SubmissionHandlerTest extends DoctrineTestCase
      */
     public function testTheEntitysConstraintsAreTheFinalWord(): void
     {
-        $resource = $this->movieWithForm(
-            (new BlueprintBuilder())->add('title', TextType::class, ['required' => true]),
-        );
+        $resource = $this->movieWithForm(['title' => ['required' => true]]);
 
         $errors = $this->handler()->handle($resource, new Movie(), ['title' => 'Heat']);
 
@@ -617,9 +602,14 @@ final class SubmissionHandlerTest extends DoctrineTestCase
     public function testAReadonlyFieldIgnoresTheSubmittedValue(): void
     {
         $resource = new class extends MovieResource {
-            public function readonlyFields(?object $record = null, ?object $user = null): array
+            public function permissions(): Permissions
             {
-                return ['title'];
+                return new class extends Permissions {
+                    public function writable(string $field, ?object $user, ?object $record = null): bool
+                    {
+                        return $field !== 'title';
+                    }
+                };
             }
         };
 
@@ -633,19 +623,27 @@ final class SubmissionHandlerTest extends DoctrineTestCase
     }
 
     /**
-     * Per-field access is the finer version of the same guard: a `write`
-     * callable answering false for this user strips the value before
-     * validation, so the field keeps what it had.
+     * The same guard on a declared form: writable() answering false for this
+     * user strips the value before validation, so the field keeps what it had.
      */
     public function testAFieldTheUserMayNotWriteKeepsItsValue(): void
     {
-        $resource = $this->movieWithForm(
-            (new BlueprintBuilder())
-                ->add('title', TextType::class, ['required' => true])
-                ->add('synopsis', TextareaType::class, [
-                    'access' => ['write' => static fn (?object $user, ?object $record): bool => false],
-                ]),
-        );
+        $resource = new class extends MovieResource {
+            public function formFields(): array
+            {
+                return ['title' => ['required' => true], 'synopsis' => []];
+            }
+
+            public function permissions(): Permissions
+            {
+                return new class extends Permissions {
+                    public function writable(string $field, ?object $user, ?object $record = null): bool
+                    {
+                        return $field !== 'synopsis';
+                    }
+                };
+            }
+        };
 
         $studio = $this->studio('Warner Bros.');
         $movie  = $this->movie('Heat', $studio)->setSynopsis('The original synopsis.');
@@ -670,12 +668,11 @@ final class SubmissionHandlerTest extends DoctrineTestCase
      */
     public function testAValueForAHiddenFieldIsDropped(): void
     {
-        $resource = $this->movieWithForm(
-            (new BlueprintBuilder())
-                ->add('title', TextType::class, ['required' => true])
-                ->add('released', ToggleType::class)
-                ->add('released_on', DateType::class, ['when' => ['released', true]]),
-        );
+        $resource = $this->movieWithForm([
+            'title'       => ['required' => true],
+            'released',
+            'released_on' => ['when' => ['released', true]],
+        ]);
 
         $studio = $this->studio('Warner Bros.');
         $movie  = $this->movie('Heat', $studio);
@@ -708,11 +705,10 @@ final class SubmissionHandlerTest extends DoctrineTestCase
      */
     public function testADeclaredDefaultFillsAnAbsentDateWithToday(): void
     {
-        $resource = $this->movieWithForm(
-            (new BlueprintBuilder())
-                ->add('title', TextType::class, ['required' => true])
-                ->add('released_on', DateType::class, ['default' => '@today']),
-        );
+        $resource = $this->movieWithForm([
+            'title'       => ['required' => true],
+            'released_on' => ['default' => '@today'],
+        ]);
 
         $studio = $this->studio('Warner Bros.');
         $movie  = $this->movie('Heat', $studio);
@@ -725,11 +721,10 @@ final class SubmissionHandlerTest extends DoctrineTestCase
 
     public function testADeclaredDefaultDoesNotOverrideASubmittedValue(): void
     {
-        $resource = $this->movieWithForm(
-            (new BlueprintBuilder())
-                ->add('title', TextType::class, ['required' => true])
-                ->add('released_on', DateType::class, ['default' => '@today']),
-        );
+        $resource = $this->movieWithForm([
+            'title'       => ['required' => true],
+            'released_on' => ['default' => '@today'],
+        ]);
 
         $studio = $this->studio('Warner Bros.');
         $movie  = $this->movie('Heat', $studio);

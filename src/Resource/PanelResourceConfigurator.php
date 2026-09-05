@@ -15,7 +15,7 @@ namespace Modufolio\Panel\Resource;
  *     return function (PanelResourceConfigurator $panel): void {
  *         $panel->resource(MovieResource::class)
  *             ->only(['index'])
- *             ->roles(['ROLE_ADMIN'])
+ *             ->menu('Movies', icon: 'film', group: 'Library', order: 10)
  *             ->prefix('/panel/library');
  *
  *         // or, when the defaults are all you need:
@@ -80,10 +80,10 @@ final class PanelResourceOptions
     /** @var list<string> */
     private array $operations = PanelResourceConfigurator::OPERATIONS;
 
-    /** @var list<string> */
-    private array $roles = [];
-
     private ?string $prefix = null;
+
+    /** @var array{label: string, icon: string|null, group: string|null, order: int}|null */
+    private ?array $menu = null;
 
     /**
      * Generate only these operations.
@@ -115,23 +115,6 @@ final class PanelResourceOptions
         return $this;
     }
 
-    /**
-     * Roles allowed to reach this resource, any one of which suffices.
-     *
-     * Stored on the route as `_is_granted_roles`, the same default
-     * #[IsGranted] writes, so the kernel enforces it with the role hierarchy
-     * before the controller runs — a generated resource is guarded exactly
-     * like a hand-written one.
-     *
-     * @param list<string> $roles
-     */
-    public function roles(array $roles): self
-    {
-        $this->roles = array_values(array_filter($roles, static fn (string $r): bool => $r !== ''));
-
-        return $this;
-    }
-
     /** Mount the resource somewhere other than `/panel`. */
     public function prefix(string $prefix): self
     {
@@ -140,20 +123,42 @@ final class PanelResourceOptions
         return $this;
     }
 
+    /**
+     * Put the resource in the panel's menu.
+     *
+     * The menu is part of a resource's public identity, so it is declared
+     * where the resource is registered rather than in a file of its own that
+     * nothing errors for forgetting. The loader stores it on the index route
+     * as `_panel_menu`; {@see \Modufolio\Panel\Routing\ResourceMenu} reads
+     * every such route back, and the host's navigation renders them beside
+     * whatever hand-written entries it has. The route's own roles gate the
+     * entry — there is no second role list to keep in step.
+     *
+     * @param string      $label what the sidebar says
+     * @param string|null $icon  an icon name the panel's `<Icon>` knows
+     * @param string|null $group the heading the entry sits under
+     * @param int         $order position within the menu; lower comes first
+     */
+    public function menu(string $label, ?string $icon = null, ?string $group = null, int $order = 50): self
+    {
+        if (trim($label) === '') {
+            throw new \InvalidArgumentException('menu(): a menu entry needs a label.');
+        }
+
+        $this->menu = ['label' => $label, 'icon' => $icon, 'group' => $group, 'order' => $order];
+
+        return $this;
+    }
+
+    /** @return array{label: string, icon: string|null, group: string|null, order: int}|null */
+    public function menuItem(): ?array
+    {
+        return $this->menu;
+    }
+
     public function generates(string $operation): bool
     {
         return in_array($operation, $this->operations, true);
-    }
-
-    /**
-     * The route default the kernel enforces: a list of AND-ed groups, each an
-     * OR-ed role list. One group here — any declared role grants access.
-     *
-     * @return list<list<string>>
-     */
-    public function roleGroups(): array
-    {
-        return $this->roles === [] ? [] : [$this->roles];
     }
 
     public function prefixOr(string $default): string

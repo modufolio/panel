@@ -7,6 +7,7 @@ namespace Modufolio\Panel\Tests\Routing;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\PanelResourceConfigurator;
 use Modufolio\Panel\Routing\PanelResourceRouteLoader;
+use Modufolio\Panel\Routing\ResourceMenu;
 use Modufolio\Panel\Routing\Uuid;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\FileLocatorInterface;
@@ -240,11 +241,11 @@ final class PanelResourceRouteLoaderTest extends TestCase
         self::assertNotContains('actors_bulk_destroy', $names);
     }
 
-    /** Roles land on the route so the kernel enforces them before dispatch. */
+    /** The roles the resource's Permissions name land on every route, so the kernel enforces them before dispatch. */
     public function testRolesAreAttachedToEveryGeneratedRoute(): void
     {
         $routes = $this->load('function (PanelResourceConfigurator $panel): void {
-            $panel->resource(\\' . ReadOnlyResource::class . '::class)->roles([\'ROLE_ADMIN\']);
+            $panel->resource(\\' . GuardedReadOnlyResource::class . '::class);
         }');
 
         foreach ($routes->all() as $name => $route) {
@@ -254,6 +255,40 @@ final class PanelResourceRouteLoaderTest extends TestCase
                 $name . ' must carry the declared roles',
             );
         }
+    }
+
+    /** The entry rides the index route alone: that is what it links to, and the export shares its roles anyway. */
+    public function testTheMenuEntryRidesTheIndexRoute(): void
+    {
+        $routes = $this->load('function (PanelResourceConfigurator $panel): void {
+            $panel->resource(\\' . GuardedReadOnlyResource::class . '::class)
+                ->menu(\'Events\', icon: \'calendar\', group: \'Main\', order: 16);
+        }');
+
+        self::assertSame(
+            ['label' => 'Events', 'icon' => 'calendar', 'group' => 'Main', 'order' => 16],
+            $this->route($routes, 'events')->getDefault(ResourceMenu::DEFAULT),
+        );
+
+        foreach ($routes->all() as $name => $route) {
+            if ($name !== 'events') {
+                self::assertNull($route->getDefault(ResourceMenu::DEFAULT), $name . ' carries no menu entry.');
+            }
+        }
+
+        self::assertSame(
+            [['route' => 'events', 'label' => 'Events', 'icon' => 'calendar', 'group' => 'Main', 'order' => 16, 'roles' => ['ROLE_ADMIN']]],
+            ResourceMenu::fromRoutes($routes),
+            'The host reads the entry back with the roles the route enforces.',
+        );
+    }
+
+    public function testAResourceWithoutAMenuEntryIsNotInTheMenu(): void
+    {
+        $routes = $this->load($this->readOnlyConfig());
+
+        self::assertNull($this->route($routes, 'events')->getDefault(ResourceMenu::DEFAULT));
+        self::assertSame([], ResourceMenu::fromRoutes($routes));
     }
 
     public function testAResourceWithoutRolesCarriesNoRoleGate(): void

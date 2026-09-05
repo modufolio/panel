@@ -31,8 +31,7 @@ easy to forget because nothing errors when you do.
 | 5 | List query | `src/Query/{Name}ListQuery.php` |
 | 6 | Presenter | `src/Presenter/{Name}Presenter.php` |
 | 7 | Resource | `src/Panel/{Name}Resource.php` |
-| 8 | Register the resource | `config/services.php` and `config/panel_resources.php` |
-| 9 | Menu item | `config/areas/{key}.php` |
+| 8 | Register the resource, and its menu entry | `config/services.php` and `config/panel_resources.php` |
 
 Then tests. See [Verifying it](#verifying-it) — the assertions worth writing
 are the ones that catch the silent failures below.
@@ -188,20 +187,22 @@ final class EventResource extends PanelResource
     public function tableSchema(): TableSchema
     {
         return TableSchema::make()
-            ->recordUrl('/panel/events/{id}')          // ← 1. where a row points
             ->emptyState('No events yet', '…')
             ->filters([...])
             ->columns([
-                Column::make('title')->linksToRecord() // ← 2. which cell is the link
+                Column::make('title')->linksToRecord() // which cells open the record
                     ->weight('medium'),
                 Column::make('when')->linksToRecord()->label('When'),
             ]);
     }
 ```
 
-**Both lines are required for a clickable row.** `recordUrl` says where a row
-goes; `linksToRecord()` opts a *cell* into being the link. Neither implies the
-other, and missing either leaves rows that look right and do nothing.
+`linksToRecord()` says which cells open the row's record. *Where* the record
+is comes from the resource's generated show route, so nothing else has to be
+declared; `->recordUrl('/panel/…/{id}')` on the schema overrides that for a
+table whose rows open something other than their own drawer. A linking column
+on a resource with neither is refused when the listing renders, naming the
+column, rather than shipped as a row that looks clickable and does nothing.
 
 ### The drawer
 
@@ -225,24 +226,41 @@ link target, a `has_passed` that dims a past row. Name the fields.
 ### Read-only or writable
 
 Write routes — create, edit, update, delete — are generated **only if
-`formFieldKeys()` or `formFields()` returns non-null**:
+`formFields()` returns non-null**:
 
 ```php
-// Writable: field keys, with any layout or rules the schema cannot infer.
-public function formFieldKeys(): array
+// Writable: the fields, with any layout or rules the mapping cannot infer.
+public function formFields(): array
 {
     return ['name' => ['width' => '1/2'], 'birth_year' => ['width' => '1/2']];
 }
 ```
 
-So a read-only resource is one that simply declares no form fields. Overriding
-`canCreate()`/`canEdit()`/`canDelete()` to `false` on top of that is belt-and-
-braces: it states the intent, and keeps deletes off if someone later adds form
-fields to make the listing editable.
+So a read-only resource is one that simply declares no form fields. A
+permissions class answering `false` to `create()`/`edit()`/`delete()` on top
+of that is belt-and-braces: it states the intent, and keeps deletes off if
+someone later adds form fields to make the listing editable.
 
 Everything the form can declare — conditions, defaults, validation messages,
-per-field access, and the field types a guessed form cannot reach — is in
-[fields.md](fields.md).
+and the field types a guessed form cannot reach — is in [fields.md](fields.md).
+
+### Who may do what
+
+The roles the routes require, and every finer rule, live on one class the
+resource names:
+
+```php
+    public function permissions(): Permissions
+    {
+        return new Permissions(['ROLE_USER']);      // roles alone: no class to write
+    }
+```
+
+The base class allows everything else. A resource that refuses something
+extends it — `EventPermissions` with a `delete()` that says no, a `scope()`
+that narrows rows to the viewer's tenant, a `writable()` that freezes a field
+on a closed record — and returns `new EventPermissions()` instead. See
+[panel-resources.md](panel-resources.md#permissions) for the full method list.
 
 ---
 
@@ -266,32 +284,34 @@ not-found message, naming the class.
 `config/panel_resources.php` says which routes it gets:
 
 ```php
-$panel->resource(EventResource::class)
-    ->roles(['ROLE_USER']);
+$panel->resource(EventResource::class);
 ```
 
-The roles land on the route as `_is_granted_roles`, enforced by the kernel
-before `ResourceController` runs — no guard clause needed.
+The roles its permissions name land on every generated route as
+`_is_granted_roles`, enforced by the kernel before `ResourceController` runs —
+no guard clause needed, and no second role list at registration.
 
 ---
 
-## 9. Give it a menu item
+## 9. Give it a menu entry
 
-`config/areas/{key}.php`. **Nothing errors if you skip this** — the route works,
-and nothing in the panel links to it:
+Where the resource is registered:
 
 ```php
-return [
-    'label' => 'Events',
-    'link'  => ['name' => 'events'],   // the route PanelResourceRouteLoader
-    'icon'  => 'calendar',             //   generated from key()
-    'group' => 'Main',
-    'order' => 16,
-];
+$panel->resource(EventResource::class)
+    ->menu('Events', icon: 'calendar', group: 'Main', order: 16);
 ```
 
+The entry is stored on the generated index route and read back by
+`Routing\ResourceMenu::fromRoutes()`, which the host's navigation renders
+beside its hand-written entries. The route's own roles gate it, so there is no
+second role list to keep in step — a viewer the kernel admits sees the entry,
+one it refuses does not.
+
 Icon names come from the panel's built-in set (`ui/src/Components/Core/Icon.vue`
-in this package) or anything the app registered via `registerIcons()`.
+in this package) or anything the app registered via `registerIcons()`. A
+resource registered without `menu()` still works; it is simply not linked from
+the sidebar, which is right for a resource only reached from another's drawer.
 
 ---
 
@@ -301,15 +321,15 @@ Every one of these was hit while building `EventResource`. None of them throws.
 
 | Symptom | Cause |
 |---------|-------|
-| Rows render but clicking does nothing; Actions ▸ View is present | No `->recordUrl(...)` on the schema |
-| `recordUrl` is set, still nothing clickable | No column has `->linksToRecord()` |
+| Rows render but nothing in them is clickable | No column has `->linksToRecord()` |
+| `Column "title" links to the record, but … has no record URL` at render | The resource generates no show route (`->only([...])` without `'show'`) and declares no `->recordUrl()`; add either |
 | Drawer shows `Contact Id`, `Has Passed` as if they were fields | No `drawerTabs()` — the details grid prints every presenter key |
-| Route works, nothing in the panel links to it | Missing `config/areas/{key}.php` |
+| Route works, nothing in the panel links to it | No `->menu(...)` on the registration |
 | The area file exists, an admin still sees no menu item | Its `roles` are intersected literally, with no role hierarchy — a `ROLE_SUPER_ADMIN` does not match an area gated on `ROLE_ADMIN`, though the *route* admits them. Name both |
-| A `when` or `access` declaration that guards nothing | The write path bypasses `SubmissionHandler` and never calls `stripHidden()` / `stripDenied()` itself — see [fields.md](fields.md#wiring-the-guards) |
+| A `when` condition or a `readable()`/`writable()` rule that guards nothing | The write path bypasses `SubmissionHandler` and never calls `stripHidden()` / `stripDenied()` itself — see [fields.md](fields.md#wiring-the-guards) |
 | Listing fine, drawer errors | Entity has no `uuid` |
-| A create button that opens an empty form | `formFieldKeys()` returns keys the presenter/entity does not carry |
-| Blueprint form throws `Unknown field type "x"` | A PHP `FieldType` emits a type string with no component registered in `ui/src/Components/Fields/fieldRegistry.ts` |
+| A create button that opens an empty form | `formFields()` names keys the presenter/entity does not carry |
+| The form shows `Unknown field type "x"` with a `createPanel` snippet | A PHP `FieldType` emits a component the client neither ships nor the app registered; register it as the snippet says. `Field\FieldComponents::missing()` finds this before a page does — the reference application's `panel:lint` runs it over every resource |
 | A column renders as a raw value | Its `type` has no case in `SchemaTable.vue` — or register one with `registerColumnType()` |
 
 ---

@@ -14,7 +14,7 @@ use PHPUnit\Framework\TestCase;
  * What a move refuses before it writes anything.
  *
  * These are the checks that hold when a resource does *not* override
- * canMoveTo() — the default allows every move, so the declaration is the only
+ * Permissions::move() — the default allows every move, so the declaration is the only
  * thing standing between a dropped card and an arbitrary column value. Tested
  * here rather than through a board endpoint because an endpoint whose resource
  * has a workflow refuses first, and would pass whether this check existed or

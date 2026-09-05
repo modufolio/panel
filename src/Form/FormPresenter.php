@@ -8,6 +8,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Modufolio\Panel\Blueprint\FieldAccess;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\RelationOptionResolver;
+use Modufolio\Panel\Routing\ResourceBaseUrl;
 use Modufolio\Panel\Table\RelationOptions;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -43,7 +44,7 @@ final class FormPresenter
         return [
             'resource' => [
                 'key'        => $resource->key(),
-                'baseUrl'    => '/panel/' . $resource->key(),
+                'baseUrl'    => ResourceBaseUrl::resolve($this->urlGenerator, $resource->key()),
                 'drawerType' => $resource->drawerType(),
                 'label'      => self::label($resource),
                 'canDelete'  => $this->routeExists($resource->key() . '_destroy'),
@@ -56,33 +57,17 @@ final class FormPresenter
      * The fields the client renders for this viewer and record.
      *
      * A field this user may not read is gone entirely — not rendered but
-     * hidden, not disabled: never serialised. One they may not write comes
-     * back read-only, and one the resource freezes for this record is
-     * disabled on the client while {@see SubmissionHandler} drops it on write.
+     * hidden: never serialised. One they may not write comes back disabled,
+     * while {@see SubmissionHandler} drops its value on write. Both
+     * answers come from the resource's {@see Permissions}, asked per field
+     * with the record in hand — so a rule about *this* record and a rule
+     * about *this* user are the same kind of rule.
      *
      * @return list<array<string, mixed>>
      */
     public function fields(PanelResource $resource, ?object $record = null, ?object $user = null): array
     {
-        $readonly = $resource->readonlyFields($record, $user);
-
-        return array_map(
-            static function (array $field) use ($readonly): array {
-                if (!in_array((string) ($field['key'] ?? ''), $readonly, true)) {
-                    return $field;
-                }
-
-                $props = is_array($field['props'] ?? null) ? $field['props'] : [];
-
-                return [...$field, 'props' => [...$props, 'disabled' => true]];
-            },
-            FieldAccess::resolve(
-                $this->resolvedFields($resource),
-                $this->forms->accessFor($resource),
-                $user,
-                $record,
-            ),
-        );
+        return FieldAccess::resolve($this->resolvedFields($resource), $resource->permissions(), $user, $record);
     }
 
     /**

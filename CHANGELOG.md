@@ -7,6 +7,137 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A field type nothing renders is caught, and says how to fix itself.**
+  `Field\FieldComponents::BUILT_IN` lists the components `@modufolio/panel`
+  ships, pinned to `ui/src/Components/Fields/fieldTypes.json` by a test on
+  each side of the boundary, and `FieldComponents::missing($fields,
+  $registered)` reports what a form needs that neither the package ships nor
+  the host registered — a lint over every resource, before a page. On the
+  client, `BlueprintForm` shows an unregistered type in the form with the
+  `createPanel({ fields: … })` snippet that registers it, logs the same, and
+  renders the fields it can; `missingFieldTypes()` and
+  `unknownFieldTypeMessage()` are exported for hosts that want the check
+  elsewhere. Before, the type failed inside an async import and the field
+  was simply absent.
+- **`ResourcePage` and `ResourceForm` render a resource from its props.**
+  The generic listing page — table or board, filters, column toggle, export,
+  the create action, the drawer stack with each record's tabs and lists, and
+  the over-drawer add-row form — is now a component of `@modufolio/panel`,
+  fed the server's props as they arrive: `<ResourcePage v-bind="$attrs" />`.
+  The host keeps only the chrome around it. `#cell-{key}` slots replace one
+  generated cell; any other slot dresses a drawer tab. `ResourceForm` is the
+  create/edit half. `useResourceListing()` and `useListFilters()`, which the
+  page is built on, ship with it, so a page wanting its own markup calls
+  the same composable the generic page does. The reference application's
+  three generic pages went from 630 lines to shells.
+- **The menu entry is declared where the resource is registered.**
+  `$panel->resource(X::class)->menu('Events', icon: 'calendar', group:
+  'Main', order: 16)` puts the resource in the sidebar. The loader stores the
+  entry on the generated index route, and `Routing\ResourceMenu::fromRoutes()`
+  hands a host every declared entry with the roles the route enforces, so
+  the host's navigation renders them beside its own and no separate menu
+  file can be forgotten — the one step of adding a resource that nothing
+  errored for skipping.
+
+### Changed
+
+- **Permissions are a class the application writes.** `Resource\Permissions`
+  replaces the six hooks on `PanelResource` (`canView()`, `canCreate()`,
+  `canEdit()`, `canDelete()`, `scopeQuery()`, `readonlyFields()`), the
+  `canMoveTo()` board hook, the per-field `access` option, and `->roles()` at
+  registration — one object, returned from `PanelResource::permissions()`,
+  whose every method answers "yes" until overridden: `roles()`, `view()`,
+  `create()`, `edit()`, `delete()`, `export()`, `scope($qb, $alias, $user)`,
+  `readable($field, $user, $record)`, `writable($field, $user, $record)` and
+  `move($record, $lane, $user)`. A resource gated by roles alone returns
+  `new Permissions(['ROLE_USER'])` and writes no class. Rules are behaviour —
+  typed record, typed user, testable without a resource, reusable through a
+  base class, free to take a service through the resource's constructor —
+  which is why they are a class and not closures in a builder. The loader
+  reads `roles()` off the resource for every generated route, so there is no
+  second role list to keep in step. `writable()` answers both questions the
+  package used to ask apart ("frozen on this record", "off limits to this
+  role"): a field it refuses renders disabled, and leaves the submission with
+  none of its rules run, so a required field frozen on a closed record still
+  lets the rest of the record save. `FieldAccess::resolve()` and
+  `stripDenied()` take the permissions and the fields; `Blueprint\FormDefinition`,
+  `FormFieldGuesser::guessForm()`, `FormResolver::formFor()` and
+  `accessFor()` are gone with the access map they carried.
+  `PermissionInspector` interrogates the class directly: its report names the
+  permissions class, `overrides` lists the methods it answers itself, and the
+  field verdicts drop `frozen` (now part of `writeDenied`).
+
+- **One form declaration.** `formFields()` is now the only form hook, and it
+  takes what `formFieldKeys()` took: a list of entries in display order —
+  a mapped field's key, a key with options, a `Separator`. New is that an
+  entry with a `type` is declared outright: the type is taken as written,
+  ahead of the column and of `#[FormType]`, and the key need not be mapped
+  at all, so a set, an embed, a computed value or a hidden import reference
+  sits in the same list as the guessed fields. What the mapping knows still
+  applies to a mapped key, so a `TextareaType` pinned over a string column
+  keeps the column's `max`. Per-field `access` is an option on the entry,
+  and the guesser carries the callables to `FormDefinition::$access` as it
+  always did. A hand-written form is therefore the list with types written
+  in, not a `BlueprintBuilder` held apart from the guesser — one path, one
+  validation, one place to read a form. See [fields.md](docs/fields.md).
+- **A linked cell knows where the record is.** `Column::linksToRecord()`
+  used to need a matching `TableSchema::recordUrl()`, and the docs warned
+  that forgetting either left rows that looked clickable and did nothing.
+  The listing now derives the record URL from the resource's generated show
+  route, so the common case is one declaration; `recordUrl()` remains as the
+  override for rows that open something other than their own drawer. A
+  linking column on a resource with neither is refused at render with the
+  column's name and both remedies, and so is a child-table column linking
+  with no child `recordUrl()`. Schemas that still declare `recordUrl()` are
+  unaffected.
+
+- **A non-nullable boolean column is not guessed as required.** A toggle
+  has no blank state and NOT NULL is satisfied by false; the guessed
+  `required` only turned an unchecked box, or a client that omitted the
+  key, into a validation error. Surfaced by the reference application's
+  screening form, which used to declare its toggles by hand.
+
+### Removed
+
+- **`PanelResource::formFieldKeys()` and `formAccess()`.** Both folded into
+  `formFields()`, above. A resource that returned `$builder->fields()` and
+  `$builder->access()` now returns the entries with their `type` and `access`
+  written in; the route loader reads `formFields()` alone.
+
+### Fixed
+
+- **A prefixed resource's generated UI targets its own prefix.**
+  `ResourceListing` and `FormPresenter` built the `resource.baseUrl` they
+  send as `/panel/{key}`, whatever the loader's prefix or a per-resource
+  `->prefix('/admin')` said — so create, edit, delete, board moves, filters
+  and drawer navigation all pointed at pages that did not exist. The base
+  URL is now asked of the router: `Routing\ResourceBaseUrl::resolve()`
+  generates it from the index route, falling back through the store, create,
+  show, update, destroy and edit routes for a resource routed without an
+  index, and only then to the historical default. On the client,
+  `useResourceListing()` hands that URL to `useListFilters()` as-is — a new
+  `absolute` option skips `panelUrl()` — instead of rebuilding the endpoint
+  from the key, and `goToPage()` without a page size now omits it rather
+  than sending `undefined`.
+
+- **Arrow-key navigation walks the listing's actual order.** The 0.4.0 notes
+  below describe this fix, but the release carried only the note: the change
+  to `ResourceListing` was still in the working tree when the tag was cut, so
+  it lands here. A request naming a field the query cannot sort on is ordered
+  by the query's default, but "previous" reversed the request's own entry —
+  reversing nothing — and so ran ascending and answered with the first row
+  below instead of the nearest one. The reversal now uses the resolved sort
+  field and direction, so both directions describe the same order whatever
+  the request said.
+
+  The case that surfaced it was `?sort=`, which the reference application
+  appended to every listing URL to "clear" a sort the server never
+  remembered, and which parsed to a sort on the empty string. Both halves
+  are gone: the application no longer sends it, and `modufolio/json-api`
+  now parses an empty sort as no sort, so the listing never sees one.
+
 ## [0.4.0] - 2026-09-05
 
 ### Changed

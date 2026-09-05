@@ -216,7 +216,7 @@ final class ResourceView
     /**
      * Offer a button per card for each column it may move to.
      *
-     * Which columns those are is asked of {@see PanelResource::canMoveTo()},
+     * Which columns those are is asked of {@see Permissions::move()},
      * per card — so the buttons and the drag answer to the same rule. The
      * board this replaced kept a TRANSITION_MAP in the client and a state
      * machine on the server, and nothing kept the two agreeing.

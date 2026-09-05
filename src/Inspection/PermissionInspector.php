@@ -7,17 +7,19 @@ namespace Modufolio\Panel\Inspection;
 use Modufolio\Panel\Blueprint\FieldAccess;
 use Modufolio\Panel\Form\FormResolver;
 use Modufolio\Panel\Resource\PanelResource;
+use Modufolio\Panel\Resource\Permissions;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
 
 /**
- * The four permission layers, combined and read back without a request.
+ * The permission layers, combined and read back without a request.
  *
- * Route roles, the operation hooks, the row scope and per-field access are
- * each plain code on a resource, which is what keeps them testable — and also
- * what keeps their combined effect invisible until someone signs in as each
- * role and clicks around. This asks every layer the question a request would,
- * for a stand-in user per role, and reports the answers side by side.
+ * Route roles, the operation verdicts, the row scope and per-field access all
+ * live on a resource's {@see Permissions} class, which is what keeps them
+ * testable — and also what keeps their combined effect invisible until
+ * someone signs in as each role and clicks around. This asks every layer the
+ * question a request would, for a stand-in user per role, and reports the
+ * answers side by side.
  *
  * The route collection is the single source for what is generated and which
  * roles a route names: feeding the configurator's config in as well would let
@@ -49,7 +51,8 @@ final class PermissionInspector
         'show'   => ['_show'],
     ];
 
-    private const HOOKS = ['canView', 'canCreate', 'canEdit', 'canDelete', 'scopeQuery', 'readonlyFields'];
+    /** The Permissions methods whose override says "this may answer per record". */
+    private const HOOKS = ['view', 'create', 'edit', 'delete', 'scope', 'readable', 'writable', 'move'];
 
     /** @var \Closure(string): list<string> */
     private readonly \Closure $reachableRoles;
@@ -116,12 +119,12 @@ final class PermissionInspector
      */
     private function inspectResource(PanelResource $resource, array $roles, \Closure $userFactory, array &$notes): array
     {
-        $key       = $resource->key();
-        $routes    = $this->routesOf($resource);
-        $overrides = $this->overridesOf($resource);
-        $declared  = $this->forms->fieldsFor($resource);
-        $access    = $this->forms->accessFor($resource);
-        $verdicts  = [];
+        $key         = $resource->key();
+        $permissions = $resource->permissions();
+        $routes      = $this->routesOf($resource);
+        $overrides   = $this->overridesOf($permissions);
+        $declared    = $this->forms->fieldsFor($resource);
+        $verdicts    = [];
 
         if ($routes !== [] && !$this->anyRouteGuarded($routes)) {
             $notes[] = $this->note('unguarded', $key, null, sprintf(
@@ -140,24 +143,24 @@ final class PermissionInspector
             }
 
             $can = [
-                'view'   => $resource->canView(null, $user),
-                'create' => $resource->canCreate($user),
-                'edit'   => $resource->canEdit(null, $user),
-                'delete' => $resource->canDelete(null, $user),
+                'view'   => $permissions->view(null, $user),
+                'create' => $permissions->create($user),
+                'edit'   => $permissions->edit(null, $user),
+                'delete' => $permissions->delete(null, $user),
             ];
 
-            $fields = $this->fieldVerdicts($resource, $declared, $access, $user, $key, $role, $notes);
+            $fields = $this->fieldVerdicts($permissions, $declared, $user, $key, $role, $notes);
 
             $verdicts[$role] = ['routes' => $admitted, 'can' => $can, 'fields' => $fields];
 
             $this->noteRouteAdmitsHookDenies($key, $role, $admitted, $can, $notes);
         }
 
-        foreach (['canView', 'canCreate', 'canEdit', 'canDelete'] as $hook) {
+        foreach (['view', 'edit', 'delete'] as $hook) {
             if ($overrides[$hook]) {
                 $notes[] = $this->note('record_dependent', $key, null, sprintf(
                     '%s overrides %s(); the verdicts shown are for the type, a record may answer differently.',
-                    $key,
+                    $permissions::class,
                     $hook,
                 ));
             }
@@ -166,12 +169,13 @@ final class PermissionInspector
         $this->noteHierarchyDivergence($key, $roles, $verdicts, $notes);
 
         return [
-            'key'       => $key,
-            'class'     => $resource::class,
-            'prefix'    => $this->prefixOf($routes, $key),
-            'routes'    => array_keys($routes),
-            'overrides' => $overrides,
-            'roles'     => $verdicts,
+            'key'         => $key,
+            'class'       => $resource::class,
+            'permissions' => $permissions::class,
+            'prefix'      => $this->prefixOf($routes, $key),
+            'routes'      => array_keys($routes),
+            'overrides'   => $overrides,
+            'roles'       => $verdicts,
         ];
     }
 
@@ -258,75 +262,74 @@ final class PermissionInspector
     // ── Hooks ────────────────────────────────────────────────────────────────
 
     /**
-     * Which hooks the resource overrides. An overridden hook may answer
-     * per record; the verdict shown for the type is then only half the story.
+     * Which methods the permissions class answers itself rather than
+     * inheriting the base's "yes". An overridden method may answer per
+     * record; the verdict shown for the type is then only half the story.
      *
-     * @return array{canView: bool, canCreate: bool, canEdit: bool, canDelete: bool, scopeQuery: bool, readonlyFields: bool}
+     * @return array{view: bool, create: bool, edit: bool, delete: bool, scope: bool, readable: bool, writable: bool, move: bool}
      */
-    private function overridesOf(PanelResource $resource): array
+    private function overridesOf(Permissions $permissions): array
     {
         $overrides = [];
 
         foreach (self::HOOKS as $hook) {
-            $overrides[$hook] = (new \ReflectionMethod($resource, $hook))->getDeclaringClass()->getName() !== PanelResource::class;
+            $overrides[$hook] = (new \ReflectionMethod($permissions, $hook))->getDeclaringClass()->getName() !== Permissions::class;
         }
 
         return [
-            'canView'        => $overrides['canView'],
-            'canCreate'      => $overrides['canCreate'],
-            'canEdit'        => $overrides['canEdit'],
-            'canDelete'      => $overrides['canDelete'],
-            'scopeQuery'     => $overrides['scopeQuery'],
-            'readonlyFields' => $overrides['readonlyFields'],
+            'view'     => $overrides['view'],
+            'create'   => $overrides['create'],
+            'edit'     => $overrides['edit'],
+            'delete'   => $overrides['delete'],
+            'scope'    => $overrides['scope'],
+            'readable' => $overrides['readable'],
+            'writable' => $overrides['writable'],
+            'move'     => $overrides['move'],
         ];
     }
 
     // ── Fields ───────────────────────────────────────────────────────────────
 
     /**
-     * What this user sees of the form: fields removed by a read denial,
-     * marked read-only by a write denial, or frozen by the resource for the
-     * type. Metadata only — the relation options a rendered form would
+     * What this user sees of the form: fields removed by a read denial and
+     * fields disabled by a write denial, asked about the type (no record). Metadata only — the relation options a rendered form would
      * resolve are not consulted, so nothing here reads rows.
      *
-     * @param list<array<string, mixed>>                              $declared
-     * @param array<string, array{read?: callable, write?: callable}> $access
-     * @param list<Note>                                              $notes
-     * @return array{readable: list<string>, readDenied: list<string>, writeDenied: list<string>, frozen: list<string>}
+     * @param list<array<string, mixed>> $declared
+     * @param list<Note>                 $notes
+     * @return array{readable: list<string>, readDenied: list<string>, writeDenied: list<string>}
      */
     private function fieldVerdicts(
-        PanelResource $resource,
+        Permissions $permissions,
         array $declared,
-        array $access,
         object $user,
         string $key,
         string $role,
         array &$notes,
     ): array {
         $declaredKeys     = self::keysOf($declared);
-        $declaredReadonly = self::readonlyKeysOf($declared);
+        $declaredDisabled = self::disabledKeysOf($declared);
 
         try {
-            $resolved = FieldAccess::resolve($declared, $access, $user, null);
+            $resolved = FieldAccess::resolve($declared, $permissions, $user, null);
         } catch (\Throwable $e) {
             $notes[] = $this->note('access_threw', $key, $role, sprintf(
-                'An access closure of "%s" needs a record and threw for the type (%s); field verdicts are unknown for %s.',
-                $key,
+                'A field rule of %s needs a record and threw for the type (%s); field verdicts are unknown for %s.',
+                $permissions::class,
                 $e->getMessage(),
                 $role,
             ));
 
-            return ['readable' => [], 'readDenied' => [], 'writeDenied' => [], 'frozen' => []];
+            return ['readable' => [], 'readDenied' => [], 'writeDenied' => []];
         }
 
         $readable    = self::keysOf($resolved);
-        $writeDenied = array_values(array_diff(self::readonlyKeysOf($resolved), $declaredReadonly));
+        $writeDenied = array_values(array_diff(self::disabledKeysOf($resolved), $declaredDisabled));
 
         return [
             'readable'    => $readable,
             'readDenied'  => array_values(array_diff($declaredKeys, $readable)),
             'writeDenied' => $writeDenied,
-            'frozen'      => array_values(array_filter($resource->readonlyFields(null, $user), 'is_string')),
         ];
     }
 
@@ -349,14 +352,14 @@ final class PermissionInspector
      * @param list<array<string, mixed>> $fields
      * @return list<string>
      */
-    private static function readonlyKeysOf(array $fields): array
+    private static function disabledKeysOf(array $fields): array
     {
         $keys = [];
 
         foreach ($fields as $field) {
             $props = is_array($field['props'] ?? null) ? $field['props'] : [];
 
-            if (($props['readonly'] ?? false) === true) {
+            if (($props['disabled'] ?? false) === true) {
                 $keys[] = (string) ($field['key'] ?? '');
             }
         }
@@ -384,10 +387,10 @@ final class PermissionInspector
             foreach ($suffixes as $suffix) {
                 if (($admitted[$key . $suffix] ?? false) && !$can[$hook]) {
                     $notes[] = $this->note('route_admits_hook_denies', $key, $role, sprintf(
-                        'Route "%s" admits %s, but can%s() refuses; the request reaches the controller only to be denied.',
+                        'Route "%s" admits %s, but %s() refuses; the request reaches the controller only to be denied.',
                         $key . $suffix,
                         $role,
-                        ucfirst($hook),
+                        $hook,
                     ));
 
                     continue 2;
@@ -416,7 +419,7 @@ final class PermissionInspector
 
                 foreach ($verdicts[$reached]['can'] as $hook => $allowed) {
                     if ($allowed && !$verdicts[$role]['can'][$hook]) {
-                        $lost[] = 'can' . ucfirst($hook) . '()';
+                        $lost[] = $hook . '()';
                     }
                 }
 

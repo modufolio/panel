@@ -11,14 +11,15 @@ namespace Modufolio\Panel\Inspection;
  * @phpstan-type RoleVerdict array{
  *     routes: array<string, bool>,
  *     can: array{view: bool, create: bool, edit: bool, delete: bool},
- *     fields: array{readable: list<string>, readDenied: list<string>, writeDenied: list<string>, frozen: list<string>}
+ *     fields: array{readable: list<string>, readDenied: list<string>, writeDenied: list<string>}
  * }
  * @phpstan-type ResourceEntry array{
  *     key: string,
  *     class: class-string,
  *     prefix: string|null,
  *     routes: list<string>,
- *     overrides: array{canView: bool, canCreate: bool, canEdit: bool, canDelete: bool, scopeQuery: bool, readonlyFields: bool},
+ *     permissions: class-string,
+ *     overrides: array{view: bool, create: bool, edit: bool, delete: bool, scope: bool, readable: bool, writable: bool, move: bool},
  *     roles: array<string, RoleVerdict>
  * }
  * @phpstan-type Note array{kind: string, resource: string, role: string|null, message: string}

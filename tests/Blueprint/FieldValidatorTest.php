@@ -9,6 +9,7 @@ use Modufolio\Panel\Blueprint\Defaults;
 use Modufolio\Panel\Blueprint\FieldAccess;
 use Modufolio\Panel\Blueprint\FieldValidator;
 use Modufolio\Panel\Field\TextType;
+use Modufolio\Panel\Resource\Permissions;
 use PHPUnit\Framework\TestCase;
 
 final class FieldValidatorTest extends TestCase
@@ -100,26 +101,34 @@ final class FieldValidatorTest extends TestCase
     {
         $builder = new BlueprintBuilder();
         $builder->add('title', TextType::class);
-        $builder->add('internal_notes', TextType::class, [
-            'access' => ['read' => static fn (?object $user): bool => $user instanceof FlaggedUser && $user->admin],
-        ]);
-        $builder->add('slug', TextType::class, [
-            'access' => ['write' => static fn (): bool => false],
-        ]);
+        $builder->add('internal_notes', TextType::class);
+        $builder->add('slug', TextType::class);
+
+        $permissions = new class extends Permissions {
+            public function readable(string $field, ?object $user, ?object $record = null): bool
+            {
+                return $field !== 'internal_notes' || ($user instanceof FlaggedUser && $user->admin);
+            }
+
+            public function writable(string $field, ?object $user, ?object $record = null): bool
+            {
+                return $field !== 'slug';
+            }
+        };
 
         $admin = new FlaggedUser(admin: true);
         $editor = new FlaggedUser(admin: false);
 
-        $forAdmin = FieldAccess::resolve($builder->fields(), $builder->access(), $admin);
-        $forEditor = FieldAccess::resolve($builder->fields(), $builder->access(), $editor);
+        $forAdmin = FieldAccess::resolve($builder->fields(), $permissions, $admin);
+        $forEditor = FieldAccess::resolve($builder->fields(), $permissions, $editor);
 
         $this->assertContains('internal_notes', array_column($forAdmin, 'key'));
         $this->assertNotContains('internal_notes', array_column($forEditor, 'key'), 'Hidden means never shipped.');
 
         $slug = array_values(array_filter($forAdmin, static fn (array $f): bool => 'slug' === $f['key']))[0];
-        $this->assertTrue($slug['props']['readonly'], 'Write-denied renders read-only.');
+        $this->assertTrue($slug['props']['disabled'], 'Write-denied renders disabled.');
 
-        $values = FieldAccess::stripDenied($builder->access(), [
+        $values = FieldAccess::stripDenied($builder->fields(), $permissions, [
             'title' => 'ok', 'internal_notes' => 'smuggled', 'slug' => 'hacked',
         ], $editor);
 

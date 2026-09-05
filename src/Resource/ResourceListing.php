@@ -8,6 +8,7 @@ use Modufolio\Panel\Http\JsonApiPaginationTrait;
 use Modufolio\Panel\Contracts\PageRendererInterface;
 use Modufolio\Panel\Contracts\SharedPropsInterface;
 use Modufolio\Panel\Query\ListQueryInterface;
+use Modufolio\Panel\Routing\ResourceBaseUrl;
 use Modufolio\Panel\Routing\Uuid;
 use Modufolio\Panel\Table\BulkAction;
 use Modufolio\Panel\Table\Column;
@@ -61,7 +62,7 @@ final class ResourceListing
         private readonly UrlGeneratorInterface $urlGenerator,
         private readonly SharedPropsInterface $sharedProps,
         private readonly PageRendererInterface $renderer,
-        /** Who is asking — the resource's scopeQuery() decides what that means. Null when nobody is signed in. */
+        /** Who is asking — the resource's Permissions decide what that means. Null when nobody is signed in. */
         private readonly ?UserInterface $user = null,
     ) {
     }
@@ -151,9 +152,11 @@ final class ResourceListing
             ->getQuery()
             ->getSingleScalarResult();
 
-        $key = $this->resource->key();
+        $key         = $this->resource->key();
+        $permissions = $this->resource->permissions();
 
         if ($schema !== null) {
+            $schema = $this->resolveRecordUrl($schema, $key);
             $schema = $this->resolveFilterOptions($schema);
             $schema = $this->resolveActions($schema, $key);
         }
@@ -189,17 +192,20 @@ final class ResourceListing
                 // one resource knows all of this already and ignores it.
                 'resource' => [
                     'key'        => $key,
-                    'baseUrl'    => '/panel/' . $key,
+                    // Asked of the router: a `->prefix('/admin')` resource
+                    // lives under /admin, and every write URL the client
+                    // builds hangs off this path.
+                    'baseUrl'    => ResourceBaseUrl::resolve($this->urlGenerator, $key),
                     'drawerType' => $this->resource->drawerType(),
                     // Both must hold: the route has to exist *and* this user
                     // has to be allowed. Route existence alone told the client
                     // what the resource supports, not what the viewer may do.
                     'canCreate'  => $this->routeExists($key . '_create')
-                        && $this->resource->canCreate($this->user),
+                        && $permissions->create($this->user),
                     'canEdit'    => $this->routeExists($key . '_edit')
-                        && $this->resource->canEdit(null, $this->user),
+                        && $permissions->edit(null, $this->user),
                     'canDelete'  => $this->routeExists($key . '_destroy')
-                        && $this->resource->canDelete(null, $this->user),
+                        && $permissions->delete(null, $this->user),
                     // Null when the resource has no generated export route, in
                     // which case ExportButton falls back to its client-side
                     // path — which can only ever see the loaded page.
@@ -220,7 +226,7 @@ final class ResourceListing
                     // require is the move route and the edit permission, which
                     // is exactly what the endpoint itself checks.
                     'canMove'    => $this->routeExists($key . '_board_move')
-                        && $this->resource->canEdit(null, $this->user),
+                        && $permissions->edit(null, $this->user),
                 ],
                 ...($board !== null ? ['board' => $board] : []),
                 ...($schema !== null ? ['table' => $schema->toArray($this->resource->listQueryClass())] : []),
@@ -234,7 +240,7 @@ final class ResourceListing
     /**
      * The columns each card may be moved to, keyed by the card's id.
      *
-     * Asked of {@see PanelResource::canMoveTo()}, which is the same predicate
+     * Asked of {@see Permissions::move()}, which is the same predicate
      * the move endpoint enforces — so a button is offered exactly when the
      * move behind it would be allowed. A board deriving its buttons from a map
      * of its own is how the buttons and the rules drift apart.
@@ -253,7 +259,8 @@ final class ResourceListing
             return [];
         }
 
-        $moves = [];
+        $moves       = [];
+        $permissions = $this->resource->permissions();
 
         foreach ($entities as $index => $entity) {
             $id = (string) ($presented[$index]['id'] ?? '');
@@ -269,7 +276,7 @@ final class ResourceListing
                     continue;
                 }
 
-                if ($this->resource->canMoveTo($entity, $target['value'], $this->user) === true) {
+                if ($permissions->move($entity, $target['value'], $this->user) === true) {
                     $targets[] = $target;
                 }
             }
@@ -399,14 +406,15 @@ final class ResourceListing
             $currentId,
         );
 
-        // Walking backwards means reversing the *effective* sort, otherwise an
-        // empty sort param returns the global first row rather than the
-        // immediate predecessor.
-        $effectiveSort = $params['sort'] ?: [$sortField => $sortDirection];
-        $reversedSort  = array_map(
-            static fn (string $direction): string => $direction === 'ASC' ? 'DESC' : 'ASC',
-            $effectiveSort,
-        );
+        // Walking backwards means reversing the sort the listing *actually*
+        // applies — the resolved field and direction, not the request's own
+        // sort param. Those differ whenever the request names a field the
+        // query cannot sort on: the query drops it in favour of its default,
+        // and reversing the dropped entry reversed nothing — so "previous"
+        // ran ascending and returned the first row below rather than the
+        // nearest. Resolving first means the two directions always describe
+        // the same order.
+        $reversedSort = [$sortField => $sortDirection === 'ASC' ? 'DESC' : 'ASC'];
 
         $previous = $this->findAdjacent(
             $this->resource->buildListQuery([...$params, 'sort' => $reversedSort], null, null),
@@ -484,7 +492,7 @@ final class ResourceListing
         // every query that must agree — the page, the count, the export, the
         // prev/next navigation — passes through this method, and a scope
         // applied to only some of them advertises rows that cannot be opened.
-        $this->resource->scopeQuery($qb, $this->user);
+        $this->resource->permissions()->scope($qb, $alias, $this->user);
 
         $values = $params['filters'] ?? [];
 
@@ -546,8 +554,9 @@ final class ResourceListing
      */
     private function resolveActions(TableSchema $schema, string $key): TableSchema
     {
-        $mayEdit   = $this->resource->canEdit(null, $this->user);
-        $mayDelete = $this->resource->canDelete(null, $this->user);
+        $permissions = $this->resource->permissions();
+        $mayEdit     = $permissions->edit(null, $this->user);
+        $mayDelete   = $permissions->delete(null, $this->user);
 
         $actions = $schema->declaredActions();
 
@@ -588,6 +597,64 @@ final class ResourceListing
         }
 
         return $schema->withActions($actions, $bulkActions);
+    }
+
+    /**
+     * Where a linked cell goes.
+     *
+     * A resource with a show route has a record URL whether or not its schema
+     * spells one out: the route's own template, `{id}` where the uuid goes.
+     * A declared `->recordUrl()` still wins, for a listing whose rows open
+     * something other than their own drawer. What is refused is a column
+     * that links to the record while nothing says where — that used to
+     * render as a row that looked clickable and did nothing, with no error
+     * anywhere. Child tables have no route to derive from, so they are only
+     * checked.
+     */
+    private function resolveRecordUrl(TableSchema $schema, string $key): TableSchema
+    {
+        if ($schema->declaredRecordUrl() === null && ($template = $this->routeTemplate($key . '_show')) !== null) {
+            $schema = $schema->withRecordUrl($template);
+        }
+
+        if ($schema->declaredRecordUrl() === null) {
+            $this->assertNoRecordLinks($schema->declaredColumns(), sprintf(
+                '%s\'s table has no record URL: generate its show route, or declare ->recordUrl() on the TableSchema.',
+                $this->resource::class,
+            ));
+        }
+
+        foreach ($schema->declaredChildren() as $child) {
+            if ($child->declaredRecordUrl() === null) {
+                $this->assertNoRecordLinks($child->declaredColumns(), sprintf(
+                    'child table "%s" has no record URL: declare ->recordUrl() on the ChildTable.',
+                    $child->key(),
+                ));
+            }
+        }
+
+        return $schema;
+    }
+
+    /**
+     * @param list<Column> $columns
+     */
+    private function assertNoRecordLinks(array $columns, string $remedy): void
+    {
+        $linking = array_values(array_filter(
+            $columns,
+            static fn (Column $column): bool => $column->wantsRecordLink(),
+        ));
+
+        if ($linking === []) {
+            return;
+        }
+
+        throw new \LogicException(sprintf(
+            'Column "%s" links to the record, but %s',
+            implode('", "', array_map(static fn (Column $column): string => $column->key(), $linking)),
+            $remedy,
+        ));
     }
 
     /**

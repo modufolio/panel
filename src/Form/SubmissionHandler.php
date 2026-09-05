@@ -47,19 +47,23 @@ final class SubmissionHandler
      */
     public function handle(PanelResource $resource, object $entity, array $body, ?object $user = null): array
     {
-        $fields = $this->forms->fieldsFor($resource);
+        $declared    = $this->forms->fieldsFor($resource);
+        $permissions = $resource->permissions();
 
-        // A field this user may not change is not merely disabled in the
-        // form: the submission is dropped here, because a disabled input is
-        // a suggestion and the request is what actually arrives.
-        $readonly = $resource->readonlyFields($entity, $user);
+        // A field this user may not write leaves the submission entirely: its
+        // value is dropped below, and none of its own rules are left to fail,
+        // so a required field frozen for this record still lets the rest of
+        // the record save. A disabled input is a suggestion; the request is
+        // what actually arrives.
+        $fields = array_values(array_filter(
+            $declared,
+            static function (array $field) use ($permissions, $user, $entity): bool {
+                $key = (string) ($field['key'] ?? '');
 
-        if ($readonly !== []) {
-            $fields = array_values(array_filter(
-                $fields,
-                static fn (array $field): bool => !in_array((string) ($field['key'] ?? ''), $readonly, true),
-            ));
-        }
+                return $key === ''
+                    || ($permissions->readable($key, $user, $entity) && $permissions->writable($key, $user, $entity));
+            },
+        ));
 
         $values = $this->coerceValues($fields, $body);
 
@@ -74,7 +78,7 @@ final class SubmissionHandler
         //     every record it writes;
         //  3. drop what a `when` says is not on screen — after defaults, so
         //     a hidden field cannot arrive by way of its own default either.
-        $values = FieldAccess::stripDenied($this->forms->accessFor($resource), $values, $user, $entity);
+        $values = FieldAccess::stripDenied($declared, $permissions, $values, $user, $entity);
         $values = Defaults::resolve($fields, $values);
         $values = FieldValidator::stripHidden($fields, $values);
 

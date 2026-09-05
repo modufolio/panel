@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Database;
 
-use Modufolio\Panel\Blueprint\BlueprintBuilder;
 use Modufolio\Panel\Field\ComputedType;
 use Modufolio\Panel\Field\TextType;
 use Modufolio\Panel\Form\FormPresenter;
 use Modufolio\Panel\Form\FormResolver;
 use Modufolio\Panel\Resource\PanelResource;
+use Modufolio\Panel\Resource\Permissions;
 use Modufolio\Panel\Table\RelationOptions;
 use Modufolio\Panel\Tests\Case\DoctrineTestCase;
 use Modufolio\Panel\Tests\Fixture\Entity\Movie;
@@ -44,30 +44,37 @@ final class FormPresenterTest extends DoctrineTestCase
 
     // ── Fixtures ─────────────────────────────────────────────────────────────
 
-    /** A hand-written form: one readable field, one nobody may read, one nobody may write. */
+    /** One readable field, one nobody may read, one nobody may write. */
     private function accessResource(): PanelResource
     {
         return new class extends MovieResource {
             public function formFields(): array
             {
-                return (new BlueprintBuilder())
-                    ->add('title', TextType::class)
-                    ->add('secret', TextType::class, ['access' => ['read' => static fn (): bool => false]])
-                    ->add('locked', TextType::class, ['access' => ['write' => static fn (): bool => false]])
-                    ->fields();
+                return [
+                    'title',
+                    'secret' => ['type' => TextType::class],
+                    'locked' => ['type' => TextType::class],
+                ];
             }
 
-            public function formAccess(): array
+            public function permissions(): Permissions
             {
-                return [
-                    'secret' => ['read' => static fn (): bool => false],
-                    'locked' => ['write' => static fn (): bool => false],
-                ];
+                return new class extends Permissions {
+                    public function readable(string $field, ?object $user, ?object $record = null): bool
+                    {
+                        return $field !== 'secret';
+                    }
+
+                    public function writable(string $field, ?object $user, ?object $record = null): bool
+                    {
+                        return $field !== 'locked';
+                    }
+                };
             }
         };
     }
 
-    /** A hand-written form with a computed field reading the given accessor. */
+    /** A form with a computed field reading the given accessor. */
     private function computedResource(string $accessor): PanelResource
     {
         return new class ($accessor) extends MovieResource {
@@ -77,10 +84,10 @@ final class FormPresenterTest extends DoctrineTestCase
 
             public function formFields(): array
             {
-                return (new BlueprintBuilder())
-                    ->add('title', TextType::class)
-                    ->add('heading', ComputedType::class, ['accessor' => $this->accessor])
-                    ->fields();
+                return [
+                    'title',
+                    'heading' => ['type' => ComputedType::class, 'accessor' => $this->accessor],
+                ];
             }
         };
     }
@@ -218,7 +225,7 @@ final class FormPresenterTest extends DoctrineTestCase
         $resource = new class extends MovieResource {
             public function formFields(): array
             {
-                return (new BlueprintBuilder())->add('title', TextType::class)->fields();
+                return ['title'];
             }
         };
 
@@ -226,6 +233,19 @@ final class FormPresenterTest extends DoctrineTestCase
 
         self::assertFalse($this->resourceBlock($props)['canDelete']);
         self::assertSame('movies', $this->resourceBlock($props)['key']);
+    }
+
+    /** The form posts to the base URL, so a prefixed resource must be sent its prefix. */
+    public function testThePrefixedResourceSendsItsPrefixedBaseUrl(): void
+    {
+        $urls = $this->urlGeneratorFromConfig(
+            'function (PanelResourceConfigurator $panel): void { '
+            . '$panel->resource(\\' . MovieResource::class . '::class)->prefix(\'/admin\'); }',
+        );
+
+        $props = $this->presenter($urls)->props(new MovieResource());
+
+        self::assertSame('/admin/movies', $this->resourceBlock($props)['baseUrl']);
     }
 
     // ── fields(): relations ──────────────────────────────────────────────────
@@ -347,8 +367,8 @@ final class FormPresenterTest extends DoctrineTestCase
         $fields = $this->byKey($this->presenter()->fields($this->accessResource()));
 
         self::assertSame(['title', 'locked'], array_keys($fields));
-        self::assertTrue($this->section($fields['locked'], 'props')['readonly']);
-        self::assertArrayNotHasKey('readonly', $this->section($fields['title'], 'props'));
+        self::assertTrue($this->section($fields['locked'], 'props')['disabled']);
+        self::assertArrayNotHasKey('disabled', $this->section($fields['title'], 'props'));
     }
 
     /** resolvedFields() is the declaration before access: the drawer's addable tab builds from it. */
@@ -357,25 +377,35 @@ final class FormPresenterTest extends DoctrineTestCase
         $fields = $this->byKey($this->presenter()->resolvedFields($this->accessResource()));
 
         self::assertSame(['title', 'secret', 'locked'], array_keys($fields));
-        self::assertArrayNotHasKey('readonly', $this->section($fields['locked'], 'props'));
+        self::assertArrayNotHasKey('disabled', $this->section($fields['locked'], 'props'));
 
         $studio = $this->byKey($this->presenter()->resolvedFields(new MovieResource()))['studio_id'];
         self::assertSame('/panel/movies/relations/studio_id', $this->section($studio, 'props')['searchUrl']);
     }
 
-    /** A field the resource freezes for this record is disabled on the client. */
-    public function testReadonlyFieldsAreDisabledForTheRecordAndViewer(): void
+    /** A field the permissions freeze for this record renders disabled, and the rule sees the record and the viewer. */
+    public function testAFieldNotWritableForTheRecordAndViewerIsReadOnly(): void
     {
-        $resource = new class extends MovieResource {
+        $permissions = new class extends Permissions {
             public ?object $seenRecord = null;
             public ?object $seenUser = null;
 
-            public function readonlyFields(?object $record = null, ?object $user = null): array
+            public function writable(string $field, ?object $user, ?object $record = null): bool
             {
                 $this->seenRecord = $record;
                 $this->seenUser   = $user;
 
-                return ['title'];
+                return $field !== 'title';
+            }
+        };
+        $resource = new class ($permissions) extends MovieResource {
+            public function __construct(private readonly Permissions $permissions)
+            {
+            }
+
+            public function permissions(): Permissions
+            {
+                return $this->permissions;
             }
         };
 
@@ -386,8 +416,8 @@ final class FormPresenterTest extends DoctrineTestCase
 
         self::assertTrue($this->section($fields['title'], 'props')['disabled']);
         self::assertArrayNotHasKey('disabled', $this->section($fields['year'], 'props'));
-        self::assertSame($movie, $resource->seenRecord);
-        self::assertSame($viewer, $resource->seenUser);
+        self::assertSame($movie, $permissions->seenRecord);
+        self::assertSame($viewer, $permissions->seenUser);
     }
 
     // ── record() ─────────────────────────────────────────────────────────────

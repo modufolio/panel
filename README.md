@@ -54,21 +54,40 @@ differently.
 
 ## Authorization
 
-Five layers, all declared rather than coded:
+One class per resource, extending `Resource\Permissions`, whose every method
+answers "yes" until overridden. The resource returns it from `permissions()`,
+so a rule that needs a service takes it through the resource's constructor:
 
-| Layer | Hook |
+```php
+final class EventPermissions extends Permissions
+{
+    public function __construct() { parent::__construct(['ROLE_USER']); }
+
+    public function delete(?object $record, ?object $user): bool { return false; }
+
+    public function scope(QueryBuilder $qb, string $alias, ?object $user): void
+    {
+        $qb->andWhere("{$alias}.tenant = :t")->setParameter('t', $user?->tenant());
+    }
+
+    public function writable(string $field, ?object $user, ?object $record = null): bool
+    {
+        return $field !== 'notes' || $user?->isAdmin() === true;
+    }
+}
+```
+
+| Layer | Method |
 |---|---|
-| Route | roles declared where the resource is registered |
-| Operation | `canCreate()` / `canEdit()` / `canDelete()` |
-| Row | `scopeQuery($qb, $user)` |
-| Field, per record | `readonlyFields($record, $user)` — dropped from the submission |
-| Field, per user | `'access' => ['read' => …, 'write' => …]` on the field itself |
+| Route | `roles()` — stored on every generated route, enforced by the kernel |
+| Operation | `view()` / `create()` / `edit()` / `delete()` / `export()` |
+| Row | `scope($qb, $alias, $user)` — what the listing and the record lookup can see at all |
+| Field | `readable($field, $user, $record)` / `writable($field, $user, $record)` — per user, and per record when there is one |
+| Board | `move($record, $lane, $user)` — which drags a workflow allows |
 
-The server drops the field rather than trusting a disabled input, and a
-read-denied field is never serialised at all. The two field layers answer
-different questions — "frozen on this record" and "visible to this user" — and
-the access callables are held apart from the field definitions, since closures
-cannot cross the JSON boundary. See
+A field this user may not read is never serialised; one they may not write
+renders disabled and has its submitted value dropped, so the disabled input is
+presentation and the server is the guard. See
 [docs/fields.md](docs/fields.md#per-field-access).
 
 > The guards run inside the package's own form services: `FormPresenter`
@@ -98,8 +117,8 @@ refusal, a validation failure or a success becomes.
 ## Read-only resources
 
 Create, edit, update and delete routes are generated only when
-`formFieldKeys()` or `formFields()` returns non-null. A resource that declares
-no form fields is index-and-show only, with no configuration.
+`formFields()` returns non-null. A resource that declares no form fields is
+index-and-show only, with no configuration.
 
 ## Development
 

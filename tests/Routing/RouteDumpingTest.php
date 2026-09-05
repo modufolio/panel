@@ -47,7 +47,7 @@ final class RouteDumpingTest extends TestCase
         $file = tempnam(sys_get_temp_dir(), 'panel_dump_') . '.php';
         file_put_contents($file, "<?php\n\nuse " . PanelResourceConfigurator::class . ";\n\n"
             . 'return function (PanelResourceConfigurator $panel): void {'
-            . '$panel->resource(\\' . WritableResource::class . '::class)->roles([\'ROLE_ADMIN\']);'
+            . '$panel->resource(\\' . GuardedWritableResource::class . '::class);'
             . '$panel->resource(\\' . ReadOnlyResource::class . '::class);'
             . "};\n");
         $this->tempFiles[] = $file;

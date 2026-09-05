@@ -87,33 +87,51 @@ the write actions too — override it only for a resource that has outgrown it
 
 | Method | Purpose |
 |---|---|
-| `formFieldKeys()` | Which columns the form edits, plus overrides; the rest is guessed from Doctrine |
-| `formFields()` | The whole declaration, by hand; wins over `formFieldKeys()` |
-| `formAccess()` | Per-field read/write callables for a hand-written form |
+| `formFields()` | The form's entries in order: mapped fields with options, fields declared outright by `type`, separators. The rest is guessed from Doctrine; per-field `access` rides along as an option |
 
-Returning non-null from either form method is the opt-in for the generated
-create/edit/delete routes. See [fields.md](fields.md).
+Returning non-null is the opt-in for the generated create/edit/delete routes.
+See [fields.md](fields.md).
 
 ### Permissions
 
+Who may do what is one class the application writes, extending
+`Resource\Permissions`, and the resource returns it from `permissions()`:
+
+```php
+public function permissions(): Permissions
+{
+    return new EventPermissions($this->workflow);   // or: new Permissions(['ROLE_USER'])
+}
+```
+
+The base class allows everything and names no role, so a resource gated by
+its routes alone returns `new Permissions([...roles])` and writes no class.
+One that refuses anything overrides the method for it:
+
 | Method | Scope |
 |---|---|
-| `canView()` / `canCreate()` / `canEdit()` / `canDelete()` | Operation |
-| `scopeQuery()` | Row — narrow what the listing can see at all |
-| `readonlyFields()` | Field, per record: frozen fields are dropped from the submission |
+| `roles()` | Route — stored on every generated route as `_is_granted_roles`, enforced by the kernel with the role hierarchy |
+| `view()` / `create()` / `edit()` / `delete()` / `export()` | Operation, about the type (no record) or one record |
+| `scope($qb, $alias, $user)` | Row — what the listing, its counts and the record lookup can see at all |
+| `readable($field, $user, $record)` / `writable($field, $user, $record)` | Field, per user and per record — see [fields.md](fields.md#per-field-access) |
+| `move($record, $lane, $user)` | Board — which lanes a card may be dragged into; a string is the refusal shown |
 
-Per-field access that depends on the *user* rather than the record is declared
-on the field instead, as `access` — see [fields.md](fields.md#per-field-access).
+A class rather than hooks on the resource, because rules are behaviour: typed
+record, typed user, testable without a resource, reusable through a base class
+(`TenantPermissions` carrying the scope for every resource that shares it),
+and free to take a service — the resource's constructor is where it arrives.
+Which operations *exist* stays structural (`formFields()`, `only()`,
+`except()`); permissions only ever narrow what exists.
 
-Four layers of code are easy to reason about one at a time and hard to see
-combined. `Inspection\PermissionInspector` reads them back together without a
-request: per resource and per role, which generated routes admit the role,
-what the hooks answer for a stand-in user, whether `scopeQuery()` is
-overridden, and which fields are readable, read-denied, write-denied or
-frozen — plus notes on divergences, such as a hook that reads a literal role
-while the route layer honours the hierarchy. The host wires it with its route
-collection, its resource factory, a `FormResolver`, the role hierarchy and a
-user factory, and can expose it as a console command, a page, or both.
+The layers are easy to reason about one at a time and hard to see combined.
+`Inspection\PermissionInspector` reads them back together without a request:
+per resource and per role, which generated routes admit the role, what the
+permissions answer for a stand-in user, which methods the class overrides
+(and so may answer per record), and which fields are readable, read-denied or
+write-denied — plus notes on divergences, such as a rule that reads a literal
+role while the route layer honours the hierarchy. The host wires it with its
+route collection, its resource factory, a `FormResolver`, the role hierarchy
+and a user factory, and can expose it as a console command, a page, or both.
 
 ### Registration
 
@@ -213,10 +231,10 @@ A drag posts to `{key}_board_move` with the target column and the ids of the
 cards either side of the drop. The client never sends a position: only the
 server sees two people dropping into the same gap.
 
-The endpoint asks `canEdit()`, then the resource's `canMoveTo()`:
+The endpoint asks the permissions' `edit()`, then their `move()`:
 
 ```php
-public function canMoveTo(object $entity, string $column, ?object $user): bool|string
+public function move(object $record, string $lane, ?object $user): bool|string
 {
     // true to allow, or a message explaining the refusal
 }
@@ -230,13 +248,13 @@ it. Return the message rather than a bare `false`: it is what the board shows
 when it puts the card back.
 
 `BoardMover` independently refuses a column the view does not declare. That
-check is what protects a resource using the default `canMoveTo()`, where the
+check is what protects a resource using the default `move()`, where the
 declaration is the only thing between a dropped card and an arbitrary value.
 
 ### Quick-move buttons
 
 `->quickMove()` puts a button on each card for every column it may move to.
-The targets are computed per card from the resource's own `canMoveTo()`, so a
+The targets are computed per card from the permissions' own `move()`, so a
 button is offered exactly when the move behind it would be accepted — and a
 guarded transition disappears while its guard blocks. Dragging stays the
 general gesture; the buttons are for the move taken often enough to deserve one
@@ -264,16 +282,16 @@ button.
 ### Who may export
 
 **Being allowed to view a listing and being allowed to download it are the same
-permission.** The generated export route asks `canView()` and nothing else — a
-role that reaches the listing can export every row it can see.
+permission.** The generated export route asks the permissions' `export()`,
+which follows `view()` unless overridden — a role that reaches the listing
+can export every row it can see.
 
 That is deliberate: a download is a read, and a listing that renders 500 rows
-on screen has already disclosed them. If a resource needs a stricter rule, it
-needs a hand-written export route; `canView()` is the only hook the generated
-one consults.
+on screen has already disclosed them. A resource that needs a stricter rule
+overrides `export()`; nothing else is consulted.
 
-`scopeQuery()` still applies, so an export can never reach rows the listing
-itself could not.
+`scope()` still applies, so an export can never reach rows the listing itself
+could not.
 
 ### Which columns
 

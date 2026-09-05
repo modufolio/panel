@@ -7,6 +7,7 @@ namespace Modufolio\Panel\Tests\Database;
 use Modufolio\Appkit\Security\User\UserInterface;
 use Doctrine\ORM\Query\QueryException;
 use Doctrine\ORM\QueryBuilder;
+use Modufolio\Panel\Resource\Permissions;
 use Modufolio\Panel\Table\BulkAction;
 use Modufolio\Panel\Table\RowAction;
 use Modufolio\Panel\Table\TableSchema;
@@ -104,6 +105,21 @@ final class ResourceListingTest extends DoctrineTestCase
         $movie->setDeletedAt(new \DateTimeImmutable('2026-02-01 12:00:00'));
         self::em()->flush();
         $this->clear();
+    }
+
+    /** The fixture resource with its permissions swapped for the given object. */
+    private function withPermissions(Permissions $permissions): MovieResource
+    {
+        return new class ($permissions) extends MovieResource {
+            public function __construct(private readonly Permissions $permissions)
+            {
+            }
+
+            public function permissions(): Permissions
+            {
+                return $this->permissions;
+            }
+        };
     }
 
     /** Routes for the plain resource, for a listing over an anonymous subclass. */
@@ -344,6 +360,59 @@ final class ResourceListingTest extends DoctrineTestCase
 
         self::assertSame(['user' => null], $props['auth']);
         self::assertSame([], $props['flash']);
+    }
+
+    /**
+     * A resource with a show route has a record URL without saying so: the
+     * fixture declares none, and the props carry the route's template. That
+     * used to be two declarations — `recordUrl()` and `linksToRecord()` —
+     * where forgetting either left rows that looked clickable and did nothing.
+     */
+    public function testTheRecordUrlIsDerivedFromTheShowRoute(): void
+    {
+        $this->seed();
+
+        $props = $this->renderProps($this->listing(new MovieResource()));
+
+        self::assertNull((new MovieResource())->tableSchema()->declaredRecordUrl(), 'Precondition: the fixture declares no record URL.');
+        self::assertSame('/panel/movies/{id}', $props['table']['recordUrl']);
+    }
+
+    /** A declared record URL wins, for rows that open something other than their own drawer. */
+    public function testADeclaredRecordUrlOverridesTheShowRoute(): void
+    {
+        $this->seed();
+
+        $resource = new class () extends MovieResource {
+            public function tableSchema(): TableSchema
+            {
+                return parent::tableSchema()->recordUrl('/panel/films/{id}');
+            }
+        };
+
+        // The routes are the fixture's; the anonymous subclass only changes the schema.
+        $props = $this->renderProps($this->listing($resource, urls: $this->movieRoutes()));
+
+        self::assertSame('/panel/films/{id}', $props['table']['recordUrl']);
+    }
+
+    /**
+     * A linked cell with nowhere to go is a declaration error, not a row that
+     * silently does nothing — and the message says which column and what to do.
+     */
+    public function testALinkingColumnWithNoRecordUrlIsRefused(): void
+    {
+        $this->seed();
+
+        $urls = $this->urlGeneratorFromConfig(
+            'function (PanelResourceConfigurator $panel): void { '
+            . '$panel->resource(\\' . MovieResource::class . '::class)->only([\'index\']); }',
+        );
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Column "title" links to the record, but ' . MovieResource::class . '\'s table has no record URL: generate its show route, or declare ->recordUrl() on the TableSchema.');
+
+        $this->listing(new MovieResource(), urls: $urls)->render();
     }
 
     /**
@@ -602,23 +671,21 @@ final class ResourceListingTest extends DoctrineTestCase
     /** A resource whose listing shows only released movies. */
     private function releasedOnlyResource(): MovieResource
     {
-        return new class extends MovieResource {
-            public function scopeQuery(object $query, ?object $user = null): void
+        return $this->withPermissions(new class extends Permissions {
+            public function scope(QueryBuilder $qb, string $alias, ?object $user): void
             {
-                if ($query instanceof QueryBuilder) {
-                    $query->andWhere('e.released = :scopeReleased')->setParameter('scopeReleased', true);
-                }
+                $qb->andWhere("{$alias}.released = :scopeReleased")->setParameter('scopeReleased', true);
             }
-        };
+        });
     }
 
     /**
-     * scopeQuery() rides along with the schema filters, so it reaches every
+     * The scope rides along with the schema filters, so it reaches every
      * query that has to agree: the rows, their count and the footer
      * aggregates. A scope applied to only some of them advertises rows that
      * cannot be opened, or a total the page contradicts.
      */
-    public function testScopeQueryNarrowsRowsTotalAndSummaries(): void
+    public function testTheScopeNarrowsRowsTotalAndSummaries(): void
     {
         $this->seed();
 
@@ -635,14 +702,14 @@ final class ResourceListingTest extends DoctrineTestCase
     }
 
     /** The scope is the resource's chance to ask *who* is looking. */
-    public function testScopeQueryReceivesTheViewer(): void
+    public function testTheScopeReceivesTheViewer(): void
     {
         $this->seed();
 
-        $resource = new class extends MovieResource {
+        $permissions = new class extends Permissions {
             public ?object $seenUser = null;
 
-            public function scopeQuery(object $query, ?object $user = null): void
+            public function scope(QueryBuilder $qb, string $alias, ?object $user): void
             {
                 $this->seenUser = $user;
             }
@@ -650,9 +717,9 @@ final class ResourceListingTest extends DoctrineTestCase
 
         $viewer = $this->createStub(UserInterface::class);
 
-        $this->renderProps($this->listing($resource, [], $viewer, $this->movieRoutes()));
+        $this->renderProps($this->listing($this->withPermissions($permissions), [], $viewer, $this->movieRoutes()));
 
-        self::assertSame($viewer, $resource->seenUser);
+        self::assertSame($viewer, $permissions->seenUser);
     }
 
     // ── Summaries ────────────────────────────────────────────────────────────
@@ -871,17 +938,36 @@ final class ResourceListingTest extends DoctrineTestCase
         self::assertSame('/panel/movies/export', $props['resource']['exportUrl'], 'Export rides the index opt-in.');
     }
 
+    /**
+     * The base URL is asked of the router: every write URL the client builds
+     * hangs off it, so a `->prefix('/admin')` resource must send /admin.
+     */
+    public function testThePrefixedResourceSendsItsPrefixedBaseUrl(): void
+    {
+        $this->seed();
+
+        $urls = $this->urlGeneratorFromConfig(
+            'function (PanelResourceConfigurator $panel): void { '
+            . '$panel->resource(\\' . MovieResource::class . '::class)->prefix(\'/admin\'); }',
+        );
+
+        $props = $this->renderProps($this->listing(new MovieResource(), urls: $urls));
+
+        self::assertSame('/admin/movies', $props['resource']['baseUrl']);
+        self::assertSame('/admin/movies/export', $props['resource']['exportUrl']);
+    }
+
     /** Route existence says what the resource supports; the permission says what this viewer may do. */
     public function testAViewerWhoMayNotEditLosesTheEditAction(): void
     {
         $this->seed();
 
-        $resource = new class extends MovieResource {
-            public function canEdit(?object $record = null, ?object $user = null): bool
+        $resource = $this->withPermissions(new class extends Permissions {
+            public function edit(?object $record, ?object $user): bool
             {
                 return false;
             }
-        };
+        });
 
         $props = $this->renderProps($this->listing($resource, urls: $this->movieRoutes()));
 
@@ -895,12 +981,12 @@ final class ResourceListingTest extends DoctrineTestCase
     {
         $this->seed();
 
-        $resource = new class extends MovieResource {
-            public function canDelete(?object $record = null, ?object $user = null): bool
+        $resource = $this->withPermissions(new class extends Permissions {
+            public function delete(?object $record, ?object $user): bool
             {
                 return false;
             }
-        };
+        });
 
         $props = $this->renderProps($this->listing($resource, urls: $this->movieRoutes()));
 
@@ -911,27 +997,39 @@ final class ResourceListingTest extends DoctrineTestCase
     }
 
     /**
-     * A resource that names its own actions, with its own URLs and permission
-     * hooks. Built with a constructor so one class serves both permission
-     * outcomes.
+     * A resource that names its own actions, with its own URLs and its own
+     * permissions. Built with a constructor so one class serves both
+     * permission outcomes.
      */
     private function declaringResource(bool $mayEdit, bool $mayDelete): MovieResource
     {
-        return new class ($mayEdit, $mayDelete) extends MovieResource {
+        $permissions = new class ($mayEdit, $mayDelete) extends Permissions {
             public function __construct(
                 private readonly bool $mayEdit,
                 private readonly bool $mayDelete,
             ) {
+                parent::__construct();
             }
 
-            public function canEdit(?object $record = null, ?object $user = null): bool
+            public function edit(?object $record, ?object $user): bool
             {
                 return $this->mayEdit;
             }
 
-            public function canDelete(?object $record = null, ?object $user = null): bool
+            public function delete(?object $record, ?object $user): bool
             {
                 return $this->mayDelete;
+            }
+        };
+
+        return new class ($permissions) extends MovieResource {
+            public function __construct(private readonly Permissions $permissions)
+            {
+            }
+
+            public function permissions(): Permissions
+            {
+                return $this->permissions;
             }
 
             public function tableSchema(): TableSchema
@@ -950,8 +1048,8 @@ final class ResourceListingTest extends DoctrineTestCase
     /**
      * Declared actions are the resource's answer, so the routes are not
      * consulted — the URLs stay exactly as declared. Permission is the only
-     * thing that still removes one: edit rides canEdit(), delete *and*
-     * restore ride canDelete(), and anything else is untouched.
+     * thing that still removes one: edit rides edit(), delete *and*
+     * restore ride delete(), and anything else is untouched.
      */
     public function testDeclaredActionsAreKeptWithTheirOwnUrlsButPermissionGated(): void
     {
@@ -1051,6 +1149,25 @@ final class ResourceListingTest extends DoctrineTestCase
      * titles; from either end the missing side is null rather than wrapping.
      * With no query string the URL is the bare show route.
      */
+    /**
+     * A sort on a field the query does not allow is dropped, and the listing
+     * orders by the query's default; the neighbours must follow that same
+     * order. Reversing the dropped entry used to reverse nothing, so
+     * "previous" ran ascending and returned the first row below instead of
+     * the nearest one: from Jaws it answered Collateral, skipping Heat.
+     */
+    public function testNavigationUrlsFollowTheDefaultSortWhenTheRequestedFieldIsNotSortable(): void
+    {
+        $this->seed();
+
+        $listing = $this->listing(new MovieResource(), ['sort' => 'nonsense']);
+        $urls    = $listing->navigationUrls($this->movie('Jaws'));
+
+        // The request's own query string rides along on the links unchanged.
+        self::assertSame($this->showUrl('Jurassic Park') . '?sort=nonsense', $urls['next']);
+        self::assertSame($this->showUrl('Heat') . '?sort=nonsense', $urls['previous'], 'The nearest predecessor in the default order, not the first row.');
+    }
+
     public function testNavigationUrlsStepThroughTheDefaultSort(): void
     {
         $this->seed();
@@ -1198,15 +1315,13 @@ final class ResourceListingTest extends DoctrineTestCase
     {
         $this->seed();
 
-        $trapped = new class extends MovieResource {
-            public function scopeQuery(object $query, ?object $user = null): void
+        $trapped = $this->withPermissions(new class extends Permissions {
+            public function scope(QueryBuilder $qb, string $alias, ?object $user): void
             {
-                if ($query instanceof QueryBuilder) {
-                    // Valid to build, invalid to execute: Movie has no such field.
-                    $query->andWhere('e.noSuchField = 1');
-                }
+                // Valid to build, invalid to execute: Movie has no such field.
+                $qb->andWhere("{$alias}.noSuchField = 1");
             }
-        };
+        });
 
         $listing = $this->listing($trapped, urls: $this->movieRoutes());
 

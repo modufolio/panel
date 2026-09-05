@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Database;
 
-use Modufolio\Panel\Blueprint\BlueprintBuilder;
 use Modufolio\Panel\Field\TextType;
 use Modufolio\Panel\Form\FormResolver;
 use Modufolio\Panel\Inspection\PermissionInspector;
 use Modufolio\Panel\Inspection\PermissionReport;
 use Modufolio\Panel\Resource\PanelResource;
+use Modufolio\Panel\Resource\Permissions;
 use Modufolio\Panel\Tests\Case\DoctrineTestCase;
+use Modufolio\Panel\Tests\Fixture\AdminMovieResource;
 use Modufolio\Panel\Tests\Fixture\MovieResource;
+use Modufolio\Panel\Tests\Fixture\UserMovieResource;
 use Modufolio\Panel\Tests\Routing\ReadOnlyResource;
 use Symfony\Component\Routing\RouteCollection;
 
@@ -60,11 +62,32 @@ final class PermissionInspectorTest extends DoctrineTestCase
         };
     }
 
-    private function movieRoutes(string $options = ''): RouteCollection
+    /**
+     * Routes for the movie resource — the plain fixture, or one whose
+     * permissions name a role, since roles reach the routes from there.
+     *
+     * @param class-string<MovieResource> $resourceClass
+     */
+    private function movieRoutes(string $resourceClass = MovieResource::class, string $options = ''): RouteCollection
     {
         return $this->routesFromConfig(
-            'function (PanelResourceConfigurator $panel): void { $panel->resource(\\' . MovieResource::class . '::class)' . $options . '; }',
+            'function (PanelResourceConfigurator $panel): void { $panel->resource(\\' . $resourceClass . '::class)' . $options . '; }',
         );
+    }
+
+    /** The fixture resource with its permissions swapped for the given object. */
+    private function withPermissions(Permissions $permissions): MovieResource
+    {
+        return new class ($permissions) extends MovieResource {
+            public function __construct(private readonly Permissions $permissions)
+            {
+            }
+
+            public function permissions(): Permissions
+            {
+                return $this->permissions;
+            }
+        };
     }
 
     /**
@@ -103,7 +126,7 @@ final class PermissionInspectorTest extends DoctrineTestCase
     public function testRouteAdmissionFollowsTheDeclaredRoles(): void
     {
         $report = $this->inspect(
-            $this->movieRoutes("->roles(['ROLE_ADMIN'])->only(['index', 'edit'])"),
+            $this->movieRoutes(AdminMovieResource::class, "->only(['index', 'edit'])"),
             new MovieResource(),
             [self::ADMIN, self::USER],
         );
@@ -125,7 +148,7 @@ final class PermissionInspectorTest extends DoctrineTestCase
     public function testReachableRolesWidenRouteAdmission(): void
     {
         $report = $this->inspect(
-            $this->movieRoutes("->roles(['ROLE_ADMIN'])"),
+            $this->movieRoutes(AdminMovieResource::class),
             new MovieResource(),
             [self::SUPER],
             self::hierarchy(),
@@ -144,32 +167,33 @@ final class PermissionInspectorTest extends DoctrineTestCase
 
     // ── Hooks ────────────────────────────────────────────────────────────────
 
-    /** A resource whose edit hook reads the literal role. */
+    /** A resource whose edit rule reads the literal role. */
     private function adminOnlyEdits(): MovieResource
     {
-        return new class extends MovieResource {
-            public function canEdit(?object $record = null, ?object $user = null): bool
+        return $this->withPermissions(new class extends Permissions {
+            public function edit(?object $record, ?object $user): bool
             {
                 return $user !== null && method_exists($user, 'getRoles') && in_array('ROLE_ADMIN', (array) $user->getRoles(), true);
             }
-        };
+        });
     }
 
     public function testHookVerdictsAreTakenPerRoleAndOverridesAreMarked(): void
     {
-        $report = $this->inspect($this->movieRoutes("->roles(['ROLE_USER'])"), $this->adminOnlyEdits(), [self::ADMIN, self::USER]);
+        $report = $this->inspect($this->movieRoutes(UserMovieResource::class), $this->adminOnlyEdits(), [self::ADMIN, self::USER]);
         $movies = $this->movies($report);
 
         self::assertSame(['view' => true, 'create' => true, 'edit' => true, 'delete' => true], $movies['roles'][self::ADMIN]['can']);
         self::assertSame(['view' => true, 'create' => true, 'edit' => false, 'delete' => true], $movies['roles'][self::USER]['can']);
 
-        self::assertTrue($movies['overrides']['canEdit']);
-        self::assertFalse($movies['overrides']['canDelete']);
-        self::assertFalse($movies['overrides']['scopeQuery']);
+        self::assertTrue($movies['overrides']['edit']);
+        self::assertFalse($movies['overrides']['delete']);
+        self::assertFalse($movies['overrides']['scope']);
+        self::assertStringContainsString('@anonymous', $movies['permissions'], 'The report names the permissions class.');
 
         $recordDependent = array_filter($report->notes, static fn (array $note): bool => $note['kind'] === 'record_dependent');
         self::assertCount(1, $recordDependent);
-        self::assertStringContainsString('canEdit()', array_values($recordDependent)[0]['message']);
+        self::assertStringContainsString('edit()', array_values($recordDependent)[0]['message']);
     }
 
     /**
@@ -178,14 +202,14 @@ final class PermissionInspectorTest extends DoctrineTestCase
      */
     public function testARouteThatAdmitsWhatTheHookDeniesIsNoted(): void
     {
-        $report = $this->inspect($this->movieRoutes("->roles(['ROLE_USER'])"), $this->adminOnlyEdits(), [self::USER]);
+        $report = $this->inspect($this->movieRoutes(UserMovieResource::class), $this->adminOnlyEdits(), [self::USER]);
 
         $notes = array_values(array_filter($report->notes, static fn (array $note): bool => $note['kind'] === 'route_admits_hook_denies'));
 
         self::assertCount(1, $notes);
         self::assertSame(self::USER, $notes[0]['role']);
         self::assertStringContainsString('movies_edit', $notes[0]['message']);
-        self::assertStringContainsString('canEdit()', $notes[0]['message']);
+        self::assertStringContainsString('edit()', $notes[0]['message']);
     }
 
     /**
@@ -196,7 +220,7 @@ final class PermissionInspectorTest extends DoctrineTestCase
     public function testAHookReadingTheLiteralRoleShowsAsAHierarchyDivergence(): void
     {
         $report = $this->inspect(
-            $this->movieRoutes("->roles(['ROLE_ADMIN'])"),
+            $this->movieRoutes(AdminMovieResource::class),
             $this->adminOnlyEdits(),
             [self::SUPER, self::ADMIN],
             self::hierarchy(),
@@ -204,65 +228,73 @@ final class PermissionInspectorTest extends DoctrineTestCase
 
         $movies = $this->movies($report);
         self::assertTrue($movies['roles'][self::SUPER]['routes']['movies_edit'], 'The route honours the hierarchy…');
-        self::assertFalse($movies['roles'][self::SUPER]['can']['edit'], '…the hook does not.');
+        self::assertFalse($movies['roles'][self::SUPER]['can']['edit'], '…the rule does not.');
 
         $notes = array_values(array_filter($report->notes, static fn (array $note): bool => $note['kind'] === 'hierarchy_divergence'));
         self::assertCount(1, $notes);
         self::assertSame(self::SUPER, $notes[0]['role']);
-        self::assertStringContainsString('canEdit()', $notes[0]['message']);
+        self::assertStringContainsString('edit()', $notes[0]['message']);
     }
 
     public function testAScopeOverrideIsFlagged(): void
     {
-        $scoped = new class extends MovieResource {
-            public function scopeQuery(object $query, ?object $user = null): void
+        $scoped = $this->withPermissions(new class extends Permissions {
+            public function scope(\Doctrine\ORM\QueryBuilder $qb, string $alias, ?object $user): void
             {
             }
-        };
+        });
 
         $report = $this->inspect($this->movieRoutes(), $scoped, [self::USER]);
 
-        self::assertTrue($this->movies($report)['overrides']['scopeQuery']);
+        self::assertTrue($this->movies($report)['overrides']['scope']);
     }
 
     // ── Fields ───────────────────────────────────────────────────────────────
 
-    /** A hand-written form with one read gate, one write gate, and a frozen field. */
+    /** A hand-written form whose permissions gate one field's reading, one's writing for a role, and one's writing for everyone. */
     private function gatedForm(): MovieResource
     {
-        return new class extends MovieResource {
-            private ?BlueprintBuilder $builder = null;
-
-            private function builder(): BlueprintBuilder
+        $permissions = new class extends Permissions {
+            private static function isAdmin(?object $user): bool
             {
-                if ($this->builder === null) {
-                    $isAdmin = static fn (?object $user): bool => $user !== null
-                        && method_exists($user, 'getRoles')
-                        && in_array('ROLE_ADMIN', (array) $user->getRoles(), true);
+                return $user !== null
+                    && method_exists($user, 'getRoles')
+                    && in_array('ROLE_ADMIN', (array) $user->getRoles(), true);
+            }
 
-                    $this->builder = (new BlueprintBuilder())
-                        ->add('title', TextType::class)
-                        ->add('rating', TextType::class, ['access' => ['write' => $isAdmin]])
-                        ->add('secret', TextType::class, ['access' => ['read' => $isAdmin]])
-                        ->add('year', TextType::class);
-                }
+            public function readable(string $field, ?object $user, ?object $record = null): bool
+            {
+                return $field !== 'secret' || self::isAdmin($user);
+            }
 
-                return $this->builder;
+            public function writable(string $field, ?object $user, ?object $record = null): bool
+            {
+                return match ($field) {
+                    'rating' => self::isAdmin($user),
+                    'year'   => false,
+                    default  => true,
+                };
+            }
+        };
+
+        return new class ($permissions) extends MovieResource {
+            public function __construct(private readonly Permissions $permissions)
+            {
+            }
+
+            public function permissions(): Permissions
+            {
+                return $this->permissions;
             }
 
             public function formFields(): array
             {
-                return $this->builder()->fields();
-            }
-
-            public function formAccess(): array
-            {
-                return $this->builder()->access();
-            }
-
-            public function readonlyFields(?object $record = null, ?object $user = null): array
-            {
-                return ['year'];
+                return [
+                    'title'  => ['type' => TextType::class],
+                    'rating' => ['type' => TextType::class],
+                    'secret' => ['type' => TextType::class],
+                    'year'   => ['type' => TextType::class],
+                ];
             }
         };
     }
@@ -275,18 +307,17 @@ final class PermissionInspectorTest extends DoctrineTestCase
         self::assertSame([
             'readable'    => ['title', 'rating', 'secret', 'year'],
             'readDenied'  => [],
-            'writeDenied' => [],
-            'frozen'      => ['year'],
+            'writeDenied' => ['year'],
         ], $movies['roles'][self::ADMIN]['fields']);
 
         self::assertSame([
             'readable'    => ['title', 'rating', 'year'],
             'readDenied'  => ['secret'],
-            'writeDenied' => ['rating'],
-            'frozen'      => ['year'],
+            'writeDenied' => ['rating', 'year'],
         ], $movies['roles'][self::USER]['fields']);
 
-        self::assertTrue($movies['overrides']['readonlyFields']);
+        self::assertTrue($movies['overrides']['readable']);
+        self::assertTrue($movies['overrides']['writable']);
     }
 
     /** A guessed form lists what the resource named, nothing gated. */
@@ -311,30 +342,23 @@ final class PermissionInspectorTest extends DoctrineTestCase
         self::assertStringContainsString('writing rating', $notes[0]['message']);
     }
 
-    /** An access closure that needs a record cannot be asked about the type; say so rather than fail. */
-    public function testAnAccessClosureNeedingARecordIsReportedNotFatal(): void
+    /** A field rule that needs a record cannot be asked about the type; say so rather than fail. */
+    public function testAFieldRuleNeedingARecordIsReportedNotFatal(): void
     {
-        $needsRecord = new class extends MovieResource {
-            public function formFields(): array
+        $needsRecord = $this->withPermissions(new class extends Permissions {
+            public function readable(string $field, ?object $user, ?object $record = null): bool
             {
-                return (new BlueprintBuilder())->add('title', TextType::class)->fields();
-            }
+                if ($record === null) {
+                    throw new \LogicException('needs a record');
+                }
 
-            public function formAccess(): array
-            {
-                return ['title' => ['read' => static function (?object $user, ?object $record): bool {
-                    if ($record === null) {
-                        throw new \LogicException('needs a record');
-                    }
-
-                    return true;
-                }]];
+                return true;
             }
-        };
+        });
 
         $report = $this->inspect($this->movieRoutes(), $needsRecord, [self::USER]);
 
-        self::assertSame(['readable' => [], 'readDenied' => [], 'writeDenied' => [], 'frozen' => []], $this->movies($report)['roles'][self::USER]['fields']);
+        self::assertSame(['readable' => [], 'readDenied' => [], 'writeDenied' => []], $this->movies($report)['roles'][self::USER]['fields']);
         self::assertContains('access_threw', self::kinds($report));
     }
 
