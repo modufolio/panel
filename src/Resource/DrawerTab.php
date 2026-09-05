@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Resource;
 
+use Modufolio\Panel\Blueprint\Separator;
+
 /**
  * A section of a resource's drawer.
  *
@@ -31,11 +33,14 @@ final class DrawerTab
 
     private ?string $categoryKey = null;
 
-    /** @var array<string, string|null> key => label override */
+    /** @var array<string, string|null|array{separator: string}|array{label: ?string, wide: bool}> key => label override, a separator, or a label with a width */
     private array $fields = [];
 
     /** @var list<self|string> */
     private array $sections = [];
+
+    /** A details tab that is only its sections: no grid of the record's own values. */
+    private bool $grid = true;
 
     private bool $addable = false;
 
@@ -61,6 +66,22 @@ final class DrawerTab
     public static function details(string $label = 'Details', string $key = 'details'): self
     {
         return new self($key, $label, 'details');
+    }
+
+    /**
+     * A tab that is only its sections — related lists grouped under one
+     * heading, with no grid of the record's own values above them. A
+     * contact's Communication tab: its meetings, its calls, its emails.
+     *
+     * A details tab with no fields would draw the form's grid; this one draws
+     * none and never derives one.
+     */
+    public static function group(string $label, string $key): self
+    {
+        $tab = new self($key, $label, 'details');
+        $tab->grid = false;
+
+        return $tab;
     }
 
     /**
@@ -97,16 +118,25 @@ final class DrawerTab
      * their access in another — instead of one tab showing all of it.
      *
      * Accepts a list of keys, or `key => label` where the humanised key is
-     * not the wording the drawer used ('created_at' → 'Created').
+     * not the wording the drawer used ('created_at' → 'Created'), and
+     * {@see Separator} entries between them — the same breaks a form declares.
      *
-     * @param array<int|string, string> $fields
+     * Without a list, the grid follows the resource's form: its fields, in
+     * its order, with its separators and widths — and nothing the form does
+     * not name. A record key worth showing that the form does not edit is
+     * listed here.
+     *
+     * @param array<int|string, string|Separator> $fields
      */
     public function fields(array $fields): self
     {
         $normalized = [];
+        $separators = 0;
 
         foreach ($fields as $key => $value) {
-            if (is_int($key)) {
+            if ($value instanceof Separator) {
+                $normalized['separator_' . ++$separators] = ['separator' => $value->value];
+            } elseif (is_int($key)) {
                 $normalized[$value] = null;
             } else {
                 $normalized[$key] = $value;
@@ -277,6 +307,15 @@ final class DrawerTab
                     return $declaration;
                 }
 
+                // No list of its own: the grid reads the way the form does.
+                if (!isset($declaration['fields'])) {
+                    $derived = self::fieldsFromForm($formFields, $record);
+
+                    if ($derived !== []) {
+                        $declaration['fields'] = $derived;
+                    }
+                }
+
                 $sections = [];
                 foreach ($tab->sections as $section) {
                     $resolved = $section instanceof self ? $section : ($byKey[$section] ?? null);
@@ -306,6 +345,79 @@ final class DrawerTab
             },
             $tabs,
         );
+    }
+
+    /**
+     * A details grid laid out like the form: the same fields in the same
+     * order, the same separators, a full-width field taking the full row —
+     * so the drawer and the form read the same way without the layout being
+     * declared twice. Nothing the form does not name is shown; a tab that
+     * wants more lists its fields itself.
+     *
+     * A form key names a record key directly, or its `_id` form names the
+     * presented relation (`organization_id` → `organization`), which wins
+     * even when the presenter also emits the raw id. Keys the record does not
+     * carry are skipped, as are values the grid cannot show (arrays).
+     * Separators that would sit at either end, or beside each other after
+     * skipping, are dropped rather than drawn around nothing.
+     *
+     * @param  list<array<string, mixed>> $formFields
+     * @param  array<string, mixed>       $record
+     * @return array<string, string|null|array{separator: string}|array{label: ?string, wide: bool}>
+     */
+    private static function fieldsFromForm(array $formFields, array $record): array
+    {
+        $fields     = [];
+        $separators = 0;
+        $pending    = null;
+
+        foreach ($formFields as $field) {
+            $type = (string) ($field['type'] ?? '');
+
+            if ($type === 'separator') {
+                // Held back until a field follows it; two in a row keep the last.
+                $pending = (string) (($field['props'] ?? [])['separator'] ?? 'line');
+
+                continue;
+            }
+
+            if (in_array($type, ['repeater', 'multiselect', 'hidden'], true)) {
+                continue;
+            }
+
+            $key = (string) ($field['key'] ?? '');
+
+            // A presenter often emits both `organization_id` and
+            // `organization`; the grid wants the relation, never the raw id.
+            if (str_ends_with($key, '_id') && array_key_exists(substr($key, 0, -3), $record)) {
+                $key = substr($key, 0, -3);
+            }
+
+            if (!array_key_exists($key, $record) || is_array($record[$key]) && !self::isReference($record[$key])) {
+                continue;
+            }
+
+            if ($pending !== null && $fields !== []) {
+                $fields['separator_' . ++$separators] = ['separator' => $pending];
+            }
+
+            $pending = null;
+            $label   = $field['label'] ?? null;
+            $label   = is_string($label) && $label !== '' ? $label : null;
+
+            $fields[$key] = ($field['width'] ?? null) === 'full'
+                ? ['label' => $label, 'wide' => true]
+                : $label;
+        }
+
+        return $fields;
+    }
+
+    /** A presented relation: an array with a label, as opposed to a list of rows. */
+    private static function isReference(mixed $value): bool
+    {
+        return is_array($value) && !array_is_list($value)
+            && (isset($value['name']) || isset($value['title']) || isset($value['label']) || isset($value['url']) || isset($value['thumbnail_url']));
     }
 
     /**
@@ -402,6 +514,10 @@ final class DrawerTab
         ];
 
         if ($this->type === 'details') {
+            if (!$this->grid) {
+                return [...$tab, 'fields' => [], 'grid' => false];
+            }
+
             return $this->fields === [] ? $tab : [...$tab, 'fields' => $this->fields];
         }
 

@@ -16,7 +16,7 @@
           `include` is the tab's declared field list. Without it the grid falls
           back to every key the record carries, minus ids and collections.
         -->
-        <DrawerFieldGrid :data="frame?.data ?? {}" :include="tab.fields ?? undefined" />
+        <DrawerFieldGrid v-if="tab.grid !== false" :data="frame?.data ?? {}" :include="tab.fields ?? undefined" />
 
         <DrawerRelationList
           v-for="section in tab.sections ?? []"
@@ -136,6 +136,8 @@ import { resolveRecordUrl } from '../Table/tableSchema'
  * than redeclared, so this cannot drift from what DrawerTabs itself accepts.
  */
 interface RelationSection extends DrawerTab {
+  /** False for a details tab that is only its sections. */
+  grid?: boolean
   type?: string
   // Nullable throughout: DrawerTab::toArray() emits null for anything the
   // resource did not declare, so the shape has to admit it rather than make

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Resource;
 
+use Modufolio\Panel\Blueprint\Separator;
 use Modufolio\Panel\Resource\DrawerTab;
 use PHPUnit\Framework\TestCase;
 
@@ -24,6 +25,92 @@ final class DrawerTabTest extends TestCase
 
         self::assertSame('details', $tab['type']);
         self::assertArrayNotHasKey('fields', $tab, 'No `fields` key means the grid prints the record.');
+    }
+
+    /**
+     * Without a list of its own, a details grid reads the way the form does:
+     * the form's order, separators and widths, relations by their presented
+     * key — and nothing the form does not name.
+     */
+    public function testADetailsTabWithoutFieldsFollowsTheForm(): void
+    {
+        $record = [
+            'id'              => 7,
+            'created_at'      => '2026-01-01',
+            'note'            => 'n',
+            // Both the raw id and the presented relation, as presenters do:
+            // the grid must show the relation once and the id never.
+            'organization_id' => 'uuid-of-cave7',
+            'organization'    => ['name' => 'Cave7'],
+            'email'        => 'a@b.c',
+            'first_name'   => 'Leila',
+            'tags'         => ['x', 'y'],
+        ];
+        $form = [
+            ['key' => 'first_name', 'type' => 'text', 'label' => 'First name'],
+            ['key' => 'separator_1', 'type' => 'separator', 'props' => ['separator' => 'line']],
+            ['key' => 'email', 'type' => 'text', 'label' => 'Email'],
+            ['key' => 'organization_id', 'type' => 'belongs-to', 'label' => 'Organization'],
+            ['key' => 'separator_2', 'type' => 'separator', 'props' => ['separator' => 'space']],
+            ['key' => 'missing', 'type' => 'text', 'label' => 'Not on the record'],
+            ['key' => 'tags', 'type' => 'multiselect', 'label' => 'Tags'],
+            ['key' => 'note', 'type' => 'textarea', 'label' => 'Note', 'width' => 'full'],
+        ];
+
+        [$tab] = DrawerTab::collect([DrawerTab::details()], $record, $form);
+
+        self::assertSame([
+            'first_name'   => 'First name',
+            'separator_1'  => ['separator' => 'line'],
+            'email'        => 'Email',
+            'organization' => 'Organization',
+            'separator_2'  => ['separator' => 'space'],
+            'note'         => ['label' => 'Note', 'wide' => true],
+        ], $tab['fields'], 'created_at is on the record but not on the form, so it is not shown.');
+    }
+
+    public function testADetailsTabDrawsNoSeparatorAroundNothing(): void
+    {
+        $form = [
+            ['key' => 'separator_1', 'type' => 'separator', 'props' => ['separator' => 'line']],
+            ['key' => 'title', 'type' => 'text', 'label' => 'Title'],
+            ['key' => 'separator_2', 'type' => 'separator', 'props' => ['separator' => 'line']],
+            ['key' => 'separator_3', 'type' => 'separator', 'props' => ['separator' => 'space']],
+            ['key' => 'gone', 'type' => 'text', 'label' => 'Gone'],
+        ];
+
+        [$tab] = DrawerTab::collect([DrawerTab::details()], ['title' => 't'], $form);
+
+        self::assertSame(['title' => 'Title'], $tab['fields'], 'Leading, trailing and orphaned separators are dropped.');
+    }
+
+    public function testAnExplicitFieldListMayCarrySeparators(): void
+    {
+        $tab = DrawerTab::details()->fields(['title', Separator::Line, 'year' => 'Released'])->toArray([]);
+
+        self::assertSame([
+            'title'       => null,
+            'separator_1' => ['separator' => 'line'],
+            'year'        => 'Released',
+        ], $tab['fields']);
+    }
+
+    /** A group is sections under a heading: it declares no grid and never derives one from the form. */
+    public function testAGroupTabHasNoGridAndDerivesNone(): void
+    {
+        $form = [['key' => 'title', 'type' => 'text', 'label' => 'Title']];
+
+        [$tab] = DrawerTab::collect(
+            [DrawerTab::group('Communication', 'communication')->sections(DrawerTab::relation('meetings', 'Meetings'))],
+            ['title' => 't', 'meetings' => [['id' => 1]]],
+            $form,
+        );
+
+        self::assertSame('details', $tab['type']);
+        self::assertFalse($tab['grid']);
+        self::assertSame([], $tab['fields']);
+        self::assertSame('meetings', $tab['sections'][0]['key']);
+        self::assertSame(1, $tab['sections'][0]['badge']);
     }
 
     public function testNamedFieldsAreCarriedInOrder(): void

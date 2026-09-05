@@ -29,4 +29,9 @@ export interface DrawerField {
    * that opted into the object shape gets the image treatment.
    */
   image?: string
+  /**
+   * A break rather than a field: a rule (`line`) or a gap (`space`) across
+   * the full row, the same breaks the form declares between its fields.
+   */
+  separator?: 'line' | 'space'
 }

@@ -7,6 +7,8 @@ import { visitDrawer, withDrawerParams } from './visitDrawer'
  * tabs existed.
  */
 export interface StackItemTab {
+  /** False for a tab that is only its sections — no grid of the record's values. */
+  grid?: boolean
   key: string
   label: string
   /** 'custom' bodies are rendered by the page, not the shared components. */

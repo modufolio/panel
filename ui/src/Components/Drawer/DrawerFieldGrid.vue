@@ -5,6 +5,15 @@
       :key="field.key"
       :class="field.wide ? spanClass : undefined"
     >
+      <!-- A break between runs of fields: nothing to label, nothing to show. -->
+      <div
+        v-if="field.separator"
+        class="ui-drawer-field-separator"
+        :class="field.separator === 'line' ? 'border-t border-gray-200' : 'h-2'"
+        role="separator"
+        aria-hidden="true"
+      />
+      <template v-else>
       <dt class="text-sm font-medium text-gray-500">{{ field.label }}</dt>
       <dd class="mt-1 text-sm text-gray-900 whitespace-pre-line">
         <slot :name="`field-${field.key}`" :field="field" :value="field.raw">
@@ -29,6 +38,7 @@
           <template v-else>{{ field.value }}</template>
         </slot>
       </dd>
+      </template>
     </div>
   </dl>
 </template>
@@ -72,7 +82,7 @@ const props = withDefaults(defineProps<{
    * only these are shown — that is what lets one record be split across two
    * grids. Omitted, every eligible key is shown, in the record's own order.
    */
-  include?: Record<string, string | null>
+  include?: Record<string, string | null | { separator: 'line' | 'space' } | { label?: string | null; wide?: boolean }>
   /** Characters after which a derived value claims the full row. */
   wideThreshold?: number
 }>(), {
@@ -193,6 +203,16 @@ const resolvedFields = computed<DrawerField[]>(() => {
     ))
 
   return entries.map(([key, value]) => {
+    const declared = props.include?.[key]
+
+    if (typeof declared === 'object' && declared !== null && 'separator' in declared) {
+      return { key, label: '', value: '', wide: true, separator: declared.separator }
+    }
+
+    // A label with a width, from a form that laid this field out full-row.
+    const declaredLabel = typeof declared === 'object' && declared !== null ? declared.label : declared
+    const declaredWide = typeof declared === 'object' && declared !== null ? declared.wide === true : false
+
     const image = imageUrl(value)
     const reference = image ? undefined : referenceLabel(value)
     const isEmptyObject = !image
@@ -212,9 +232,9 @@ const resolvedFields = computed<DrawerField[]>(() => {
 
     return {
       key,
-      label: props.include?.[key] ?? humanize(key),
+      label: (typeof declaredLabel === 'string' ? declaredLabel : undefined) ?? humanize(key),
       value: image ? '' : text,
-      wide: !image && !href && text.length > props.wideThreshold,
+      wide: declaredWide || (!image && !href && text.length > props.wideThreshold),
       raw: value,
       image,
       href,
