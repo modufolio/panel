@@ -15,9 +15,20 @@ const originalInert = new WeakMap<Element, boolean>()
  */
 const supportsInert = typeof HTMLElement !== 'undefined' && 'inert' in HTMLElement.prototype
 
-/** Elements that must stay announced and reachable — a toast keeps speaking. */
+/**
+ * Elements that must stay announced and reachable — a toast keeps speaking,
+ * and an overlay's own backdrop keeps taking the click that dismisses it.
+ */
 function isExempt(element: Element): boolean {
   if (element.tagName === 'SCRIPT' || element.tagName === 'STYLE' || element.tagName === 'LINK') {
+    return true
+  }
+
+  // The dimmed backdrop behind a stack of drawers is a sibling of every
+  // drawer under the teleport root. Made inert along with the rest of the
+  // page, it would still dim the screen but swallow the click meant to close
+  // everything — which is the one thing it exists to receive.
+  if (element.hasAttribute('data-overlay-backdrop')) {
     return true
   }
 

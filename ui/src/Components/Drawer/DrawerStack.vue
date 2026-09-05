@@ -14,6 +14,7 @@
           v-if="hasDrawerFrames"
           class="ui-drawer-stack-overlay fixed inset-0 z-50 bg-gray-900/25"
           data-testid="drawer-overlay"
+          data-overlay-backdrop
           @click="guarded(0, closeAll)"
         />
       </Transition>
