@@ -28,11 +28,12 @@ class Remake
     #[ORM\JoinColumn(name: 'movie_id', nullable: false, onDelete: 'CASCADE')]
     private ?Movie $movie = null;
 
-    // SET NULL, not a second CASCADE onto movies: SQL Server refuses a table
-    // with two cascading paths to the same parent, and losing the original
-    // should not delete the remake anyway.
+    // No referential action: SQL Server refuses a table with two cascading
+    // paths to the same parent, and it counts SET NULL as one. Deleting a
+    // movie that is someone's original is refused instead, which is what the
+    // delete collector's default (protect) says as well.
     #[ORM\ManyToOne(targetEntity: Movie::class)]
-    #[ORM\JoinColumn(name: 'original_id', nullable: true, onDelete: 'SET NULL')]
+    #[ORM\JoinColumn(name: 'original_id', nullable: true)]
     private ?Movie $original = null;
 
     #[ORM\Column(type: 'text')]
