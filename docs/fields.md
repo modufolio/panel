@@ -326,14 +326,19 @@ role-dependent visibility.
 
 ## Wiring the guards
 
-**The package declares these guards; it does not call them.** It owns no
-request cycle, so `stripHidden()`, `stripDenied()` and `Defaults::resolve()`
-are static helpers an application's controller invokes. Declaring `when` or
-`access` in a blueprint and never calling them yields a form that *looks*
-guarded and is not.
+**The package's form services call these guards.** `SubmissionHandler::handle()`
+runs the write side and `FormPresenter` the read side, so a host whose
+controller hands the request body to `SubmissionHandler` and serialises forms
+through `FormPresenter` has nothing further to wire — the reference
+application's `ResourceController` does exactly that and calls none of the
+helpers directly.
 
-`SubmissionHandler::handle()` runs them in this order, because each step
-depends on the last; a hand-written write path has to do the same:
+The helpers stay public for a write path the package does not own: a bespoke
+controller that persists a form without `SubmissionHandler`. Such a path has
+to reproduce the order below, because declaring `when` or `access` in a
+blueprint and never applying them yields a form that *looks* guarded and is
+not. `SubmissionHandler` runs them in this order, because each step depends on
+the last:
 
 ```php
 $values = FieldAccess::stripDenied($access, $values, $user, $entity);

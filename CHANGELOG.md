@@ -7,6 +7,184 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-05
+
+### Changed
+
+- **Resources are built by the host's container, and only there.**
+  `PanelResourceRouteLoader` takes a resolver closure and never instantiates a
+  resource itself, so a resource may declare constructor dependencies and still
+  have its routes generated — the zero-argument constructor rule is gone, and
+  with it the advice to pull services in after construction.
+- **`ResourceListing` takes its viewer as appkit's `UserInterface`** rather
+  than any object. The resource hooks still accept `?object`, so nothing
+  downstream changes; a host passing something else to the listing now hears
+  about it at the constructor.
+- **Guessed labels read as words.** `connectedContact` is "Connected
+  Contact" at the top level and "Connected contact" in a repeater row —
+  camelCase split, one register per context — where it used to be the raw
+  property name.
+
+### Removed
+
+- **`ResourceListingFactory`.** Its two jobs — locating a resource by class and
+  binding a listing to a request — belong to the host: a container get, and a
+  factory method on the application. The reference application exposes them as
+  `App::resource()` and `App::resourceListing()`.
+- **`ramsey/uuid` as a dependency.** The one production use validated ids for
+  export; it now checks against the package's own `Routing\Uuid::PATTERN`.
+  Tests still receive the library through `ramsey/uuid-doctrine`.
+
+### Added
+
+- **The details grid reads the way the form does.** A `DrawerTab::details()`
+  without a field list shows the form's fields, in its order, with its
+  separators and full-width rows, relations by their presented key — and
+  nothing the form does not name. One layout, declared once. A tab wanting
+  more still lists its fields, and that list may carry separators too.
+- **`DrawerTab::group()`** — a tab that is only its sections, with no grid of
+  the record's own values above them: a contact's Communication tab, holding
+  its meetings.
+- **`DrawerRecordFrame`** renders any stacked frame from what the server
+  declared — its data, tabs, sections and field lists — so a record of
+  another resource opened over a listing needs no slot on that page. The
+  drawer field grid also renders a presented relation as its name, and as a
+  link when the presenter gave it an `href`.
+- **Repeater rows lay themselves out.** A `text` column takes the whole row
+  and does not count towards how the others share it; and `fields` on a
+  guessed repeater accepts a map of sub-field key to overrides, merged onto
+  the guessed row, so one column can be widened without writing the row out.
+
+- **`#[FormType]` on entity properties.** A property whose column type
+  under-describes it — a `string` that is an email, a URL, a colour — names its
+  field type beside the column, and `FormFieldGuesser` believes it for every
+  form over that entity. The attribute carries the type and nothing else;
+  layout, access and conditions stay in the resource. Read through the
+  metadata's reflection, so Doctrine itself never sees it.
+- **`DateTimeType`.** A datetime column now guesses as a `datetime` control
+  rather than a date picker, which could not read the stored time and showed
+  the field blank. Filters by day, as `DateType` does.
+- **`enumType` columns guess as selects.** The cases are the options, labelled
+  by the enum's `getLabel()` where it has one, and a submitted value reaches
+  the setter as the case — an empty choice as null.
+- **`#[LabelField]` on entity properties.** Marks the column a record is
+  referred to by in lookups, checked before the `name`/`title`/`label`
+  convention. Declared once on the target, honoured by every relation that
+  points at it.
+- **Separators between fields.** A `Separator::Line` or `Separator::Space`
+  entry in `formFieldKeys()` — a plain list entry between the keys it
+  separates — draws a rule or leaves a gap across the full row, so a long form
+  reads as runs of fields instead of one grid. `BlueprintBuilder::separator()`
+  does the same for a hand-written form. Never validated, never written.
+- **Listings can offer more than one view.** `PanelResource::views()` declares
+  them; `?view=<key>` selects one; the client renders a switcher only when a
+  resource declares more than one, so existing listings are unchanged. The
+  first view is the default.
+- **Board view.** `ResourceView::board($groupBy)` groups a resource's records
+  into columns as draggable cards, with the columns coming from the declaration
+  rather than the rows — so an empty column is still shown. It is a different
+  *query*, not a different renderer: one query per column, ordered by position
+  and limited per column. `BoardView.vue` and `ViewSwitcher.vue` ship with it.
+- **`BoardPosition`** — sparse 64-bit integer positions, so dropping a card
+  between two others writes one row instead of renumbering the column, and two
+  people dragging into the same gap at once get distinct positions instead of a
+  tie. A board's position column must be `bigint`.
+
+  Integers rather than decimals: a decimal column takes REAL affinity on
+  SQLite, so two positions the server computed as distinct came back equal —
+  silently, which is the failure the scheme exists to prevent. The integer
+  version is exact everywhere and needs no `ext-bcmath`.
+
+  When a gap does close, `BoardMover` rebalances the column and places the card
+  again, so an arithmetic limit never surfaces as a refused drag.
+- **`PanelResource::canMoveTo()`** — a resource's own rule about which drags
+  are legal, asked before the move is written. Returns a message rather than a
+  bare refusal, so the board can say why it put the card back. Defaults to
+  allowing every move.
+- **`ResourceView::quickMove()`** — a button per card for each column it may
+  move to, with the targets computed from the resource's own `canMoveTo()`. A
+  button is offered exactly when the move behind it would be accepted, so the
+  buttons and the drag cannot disagree; a guarded transition disappears while
+  its guard blocks.
+- **`resource.canMove`** in the listing props — whether board cards can be
+  dragged. Separate from `canEdit`, which also requires the edit form route: a
+  board groups records by a field they already have and needs no form.
+
+See [panel-resources.md](docs/panel-resources.md#views).
+
+### Fixed
+
+- **Arrow-key navigation walks the listing's actual order.** With no column
+  chosen the panel sends `?sort=`, which parses to a sort on an empty field.
+  The listing ignores it and orders by the query's default, but "previous"
+  reversed the ignored entry — reversing nothing — and so ran ascending and
+  answered with the first row below instead of the nearest one. The reversal
+  now uses the resolved sort field and direction.
+
+- **Arrow-key record navigation is one visit at a time.** A held or
+  double-pressed arrow fired a second visit while the first was in flight, to
+  the same link; when one of the two failed, the page's state and the drawer
+  on screen stopped agreeing, and the next press navigated from a frame the
+  user was no longer looking at. A press during an in-flight visit is now
+  dropped.
+
+- **Clicking the dimmed page closes the drawer stack again.** Each drawer
+  marks itself modal and the rest of the page is made `inert` — including the
+  stack's shared backdrop, a sibling under the teleport root, which then still
+  dimmed the page but ignored the click meant to close everything. The
+  backdrop is now exempt, the way live regions already were.
+
+- **A repeater row keeps a second relation to the parent's class.** The
+  guesser dropped every to-one association whose target was the parent
+  entity, which is right for the inverse side and wrong for a row that also
+  references *another* record of that class — a contact's connections, each
+  pointing at a different contact. It now excludes exactly the property the
+  OneToMany names as `mappedBy`.
+
+- **`DrawerStack` no longer warns about frames with no matching slot.** The
+  warning dated from when the fallback was a raw key/value dump, which looked
+  enough like content for a typo to go unnoticed. The fallback is now
+  `DrawerRecordFrame`, which draws the tabs and fields the server declared — so
+  having no `#type` slot is the ordinary path for every generated resource, and
+  the warning fired on correct code while advising a slot nobody needs.
+- **Inline edits no longer swallow the server's flash message.**
+  `useInlineEdit` passed the caller's `only` list to Inertia untouched, and a
+  partial reload returns only the props it names — so a table using
+  `only: ['users']` never received `flash`, Inertia kept the previous value,
+  and `AppLayout`'s watcher never fired. A refused edit looked like nothing at
+  all: the row snapped back with no explanation. `flash` and `errors` are now
+  appended to any caller-supplied `only`, for both `updateField()` and
+  `updateRecord()`. Callers pass `only` to avoid refetching expensive list
+  props, not to opt out of being told what happened.
+
+### Documentation
+
+- **The guard wiring is described as it is.** The README, [fields.md](docs/fields.md#wiring-the-guards)
+  and the reference application's README said the package *declares* the
+  field guards and the host's controller *calls* them, in a fixed order. That
+  stopped being true when `SubmissionHandler` and `FormPresenter` took the
+  calls over; the host now hands them the request and serialises through
+  them, and calls none of the helpers itself. Stale prose about a security
+  guard is worse than none, so all three now say where the guards run and
+  when a hand-written write path has to reproduce the order.
+- **UI specs wait for async fields instead of counting flushes.** Every
+  `BlueprintForm` spec mounted the form and flushed a fixed number of times
+  before asserting; that settled the dynamic field imports on a warm module
+  cache and not on a cold one, which is why the separator spec failed only as
+  the first test of a CI run. A shared `mountBlueprintForm` helper waits for
+  the rendered fields, and the three specs that guessed now use it.
+- **Exports are documented** ([panel-resources.md](docs/panel-resources.md#exports)):
+  that the generated route is gated on `canView()` alone, that the *client*
+  names the exported columns in the request body with the table schema as mere
+  fallback, and that exports present through `present()` rather than
+  `presentOne()`.
+- **`access` is scoped to the form it guards** ([fields.md](docs/fields.md#per-field-access)).
+  The previous wording — a read-denied field is "never shipped" — read as an
+  application-wide rule about the value. It is not: presenters, exports and
+  hand-written responses never consult `access`, so a field kept out of an
+  export is kept out by the presenter, not by a denial. Now stated as a table
+  of which paths honour it.
+
 ## [0.3.0] - 2026-09-02
 
 ### Added

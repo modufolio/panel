@@ -71,11 +71,12 @@ the access callables are held apart from the field definitions, since closures
 cannot cross the JSON boundary. See
 [docs/fields.md](docs/fields.md#per-field-access).
 
-> These guards are declared here and **called by the application**: the package
-> owns no request cycle, so `FieldValidator::stripHidden()`,
-> `FieldAccess::stripDenied()` and `Defaults::resolve()` are helpers a
-> controller invokes, in that order. Declaring them and never calling them
-> yields a form that looks guarded and is not —
+> The guards run inside the package's own form services: `FormPresenter`
+> applies the read side when it serialises a form, and `SubmissionHandler`
+> applies the write side, in a fixed order, before anything is validated. A
+> host that routes its writes through `SubmissionHandler` gets them for free;
+> a hand-written write path has to reproduce that order itself, or it yields a
+> form that looks guarded and is not —
 > [the wiring](docs/fields.md#wiring-the-guards).
 
 ## The write side

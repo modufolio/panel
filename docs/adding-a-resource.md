@@ -306,7 +306,7 @@ Every one of these was hit while building `EventResource`. None of them throws.
 | Drawer shows `Contact Id`, `Has Passed` as if they were fields | No `drawerTabs()` — the details grid prints every presenter key |
 | Route works, nothing in the panel links to it | Missing `config/areas/{key}.php` |
 | The area file exists, an admin still sees no menu item | Its `roles` are intersected literally, with no role hierarchy — a `ROLE_SUPER_ADMIN` does not match an area gated on `ROLE_ADMIN`, though the *route* admits them. Name both |
-| A `when` or `access` declaration that guards nothing | The application never calls `stripHidden()` / `stripDenied()` — see [fields.md](fields.md#wiring-the-guards) |
+| A `when` or `access` declaration that guards nothing | The write path bypasses `SubmissionHandler` and never calls `stripHidden()` / `stripDenied()` itself — see [fields.md](fields.md#wiring-the-guards) |
 | Listing fine, drawer errors | Entity has no `uuid` |
 | A create button that opens an empty form | `formFieldKeys()` returns keys the presenter/entity does not carry |
 | Blueprint form throws `Unknown field type "x"` | A PHP `FieldType` emits a type string with no component registered in `ui/src/Components/Fields/fieldRegistry.ts` |

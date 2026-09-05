@@ -1,6 +1,6 @@
 {
   "name": "@modufolio/panel",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Schema-driven admin panel components for Inertia.js + Vue 3 — tables, blueprint forms, filters, actions, drawers, widgets.",
   "license": "MIT",
   "type": "module",
