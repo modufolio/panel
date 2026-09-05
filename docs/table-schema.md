@@ -8,7 +8,6 @@ per-column cell markup.
 public function tableSchema(): ?TableSchema
 {
     return TableSchema::make()
-        ->recordUrl('/panel/organizations/{id}')
         ->emptyState('No organizations found', 'Get started by creating a new organization.')
         ->bulkActions()
         ->columns([
@@ -26,7 +25,7 @@ Return `null` (the default) to keep hand-written columns in the page component.
 | Method | Effect |
 |---|---|
 | `columns(Column[])` | The columns, in render order |
-| `recordUrl(string)` | Where a `linksToRecord()` cell goes; `{placeholders}` are dot paths against the row |
+| `recordUrl(string)` | Where a `linksToRecord()` cell goes, overriding the show route's template; `{placeholders}` are dot paths against the row |
 | `emptyState(string $title, ?string $description)` | Shown instead of an empty table |
 | `actions(RowAction[])` | Row actions — see [Actions](#actions) |
 | `bulkActions(bool\|BulkAction ...)` | Enable selection, and optionally declare what to do with one. `bulkActions()` alone renders the checkbox column and leaves the buttons to the page |
@@ -75,7 +74,7 @@ override slot name.
 |---|---|
 | `label(string)` | Header text (defaults to a humanised key) |
 | `value(string)` | Read from another field; **dot paths supported** (`organization.name`) |
-| `linksToRecord()` | Link the cell to the row's record via the schema's `recordUrl` |
+| `linksToRecord()` | Link the cell to the row's record — the resource's show route, or the schema's `recordUrl` |
 | `linksTo(string)` | Link somewhere else; `{placeholders}` are dot paths against the row |
 | `arrow()` | Accented drill-down style with a trailing arrow |
 | `descriptionKey(string)` | Second line, read from another field |
@@ -301,8 +300,8 @@ listings that already hand-write theirs.
 ### Generated resources get them for nothing
 
 `ResourceListing` fills in the standard trio when a resource declares no
-actions of its own, derived from **which routes exist** and gated by
-`canEdit()` / `canDelete()` for the viewer asking:
+actions of its own, derived from **which routes exist** and gated by the
+resource's `Permissions::edit()` / `delete()` for the viewer asking:
 
 ```php
 // PostResource declares no actions — these arrive anyway:

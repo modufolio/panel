@@ -78,10 +78,20 @@ final class TableSchemaTest extends TestCase
         self::assertSame('/panel/events/{id}', $schema['recordUrl']);
     }
 
-    /** Without one, a row has nowhere to point and the drawer never opens. */
+    /** Undeclared here means "derive it from the show route", which is the listing's job. */
     public function testRecordUrlIsNullWhenNotDeclared(): void
     {
         self::assertNull(TableSchema::make()->toArray(SortableTitleOnlyQuery::class)['recordUrl']);
+    }
+
+    public function testWithRecordUrlLeavesTheDeclaredSchemaUntouched(): void
+    {
+        $declared = TableSchema::make();
+        $resolved = $declared->withRecordUrl('/panel/events/{id}');
+
+        self::assertNull($declared->declaredRecordUrl(), 'The resource\'s own schema is not mutated behind its back.');
+        self::assertSame('/panel/events/{id}', $resolved->declaredRecordUrl());
+        self::assertSame('/panel/events/{id}', $resolved->toArray(SortableTitleOnlyQuery::class)['recordUrl']);
     }
 
     public function testEmptyStateIsCarriedAsTitleAndDescription(): void

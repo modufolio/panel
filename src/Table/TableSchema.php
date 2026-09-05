@@ -26,11 +26,14 @@ use Modufolio\Panel\Query\ListQueryInterface;
  * Usage:
  *
  *     TableSchema::make()
- *         ->recordUrl('/panel/organizations/{id}')
  *         ->columns([
  *             Column::make('name')->linksToRecord()->descriptionKey('status_label'),
  *             Column::make('city')->linksToRecord(),
  *         ]);
+ *
+ * A linked cell opens the row's record. Where that is, the listing derives
+ * from the resource's show route; `->recordUrl()` is for a table whose rows
+ * open something else.
  */
 final class TableSchema
 {
@@ -186,16 +189,35 @@ final class TableSchema
     }
 
     /**
-     * URL template for a row's record, with `{id}` substituted client-side.
+     * Where a `->linksToRecord()` cell goes, as a template with `{id}` and
+     * other dot-path placeholders substituted client-side from the row.
      *
-     * Columns marked `->linksToRecord()` all point here, replacing the
-     * near-identical per-column link markup each page used to repeat.
+     * Optional: a resource with a show route gets that route's template
+     * unless this says otherwise. Declare it when a row opens something
+     * other than its own drawer.
      */
     public function recordUrl(string $template): self
     {
         $this->recordUrl = $template;
 
         return $this;
+    }
+
+    public function declaredRecordUrl(): ?string
+    {
+        return $this->recordUrl;
+    }
+
+    /**
+     * The schema with a record URL filled in — how ResourceListing hands a
+     * table its show route without the resource restating it.
+     */
+    public function withRecordUrl(string $template): self
+    {
+        $clone            = clone $this;
+        $clone->recordUrl = $template;
+
+        return $clone;
     }
 
     public function emptyState(string $title, ?string $description = null): self

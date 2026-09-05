@@ -101,6 +101,17 @@ final class ChildTable
         return $this;
     }
 
+    public function declaredRecordUrl(): ?string
+    {
+        return $this->recordUrl;
+    }
+
+    /** @return list<Column> */
+    public function declaredColumns(): array
+    {
+        return $this->columns;
+    }
+
     /** What the nested table says when the parent has no related rows. */
     public function empty(string $text): self
     {

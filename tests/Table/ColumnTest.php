@@ -87,6 +87,14 @@ final class ColumnTest extends TestCase
         self::assertTrue(Column::make('title')->linksToRecord()->toArray(false)['linksToRecord']);
     }
 
+    /** A column with its own target does not need the table's record URL. */
+    public function testAColumnWithItsOwnTargetDoesNotWantTheRecordUrl(): void
+    {
+        self::assertFalse(Column::make('title')->wantsRecordLink());
+        self::assertTrue(Column::make('title')->linksToRecord()->wantsRecordLink());
+        self::assertFalse(Column::make('studio')->linksToRecord()->linksTo('/panel/studios/{studio.id}')->wantsRecordLink());
+    }
+
     public function testMoneyCarriesItsCurrency(): void
     {
         $column = Column::make('total')->money('GBP')->toArray(false);

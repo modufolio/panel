@@ -155,8 +155,9 @@ final class Column
     }
 
     /**
-     * Make the cell link to the record (opening its drawer), using the
-     * schema's `recordUrl`. Empty cells render the placeholder unlinked.
+     * Make the cell link to the record, opening its drawer. Where that is
+     * comes from the table: its show route, or a declared `recordUrl()`.
+     * Empty cells render the placeholder unlinked.
      */
     public function linksToRecord(bool $linksToRecord = true): self
     {
@@ -463,6 +464,15 @@ final class Column
     public function wantsSorting(): bool
     {
         return $this->sortable;
+    }
+
+    /**
+     * Whether the cell relies on the table's record URL: it links to the
+     * record and names no target of its own.
+     */
+    public function wantsRecordLink(): bool
+    {
+        return $this->linksToRecord && $this->urlTemplate === null;
     }
 
     /**
