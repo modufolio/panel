@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { BlueprintForm, type FieldDef } from '../src/index'
 
@@ -14,9 +14,13 @@ describe('BlueprintForm separators', () => {
 
   async function render() {
     const wrapper = mount(BlueprintForm, { props: { fields, modelValue: {} } })
-    // Field components load through a dynamic import: one flush settles the
-    // promise, a second lets the resolved component mount.
-    await flushPromises()
+    // Field components load through a dynamic import. A fixed number of
+    // flushes is not enough on a cold module cache (the first spec in a CI
+    // run), so wait until every field, separators included, has mounted.
+    await vi.waitFor(() => {
+      expect(wrapper.findAll('label')).toHaveLength(3)
+      expect(wrapper.findAll('.ui-field-separator')).toHaveLength(2)
+    }, { timeout: 4000 })
     await flushPromises()
     return wrapper
   }
