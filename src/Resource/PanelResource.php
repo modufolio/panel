@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Resource;
 
+use Modufolio\Panel\Form\Field;
+use Modufolio\Panel\Form\Form;
+use Modufolio\Panel\Query\DerivedListQuery;
 use Modufolio\Panel\Query\ListQueryInterface;
+use Modufolio\Panel\Query\QueryInterface;
 use Modufolio\Panel\Table\TableSchema;
 use Modufolio\JsonApi\JsonApiSerializer;
 
@@ -20,7 +24,7 @@ use Modufolio\JsonApi\JsonApiSerializer;
  *   UserController had to surrender five constructor-promoted properties to
  *   move onto the base class. A resource is injected, so nothing collides.
  *
- * - **Readable from outside a request.** `tableSchema()` on a controller is
+ * - **Readable from outside a request.** `table()` on a controller is
  *   `protected`, so exports, JSON:API and tests can only reach it by issuing
  *   an HTTP request. Here it is a plain public method on a plain object.
  *
@@ -41,8 +45,42 @@ abstract class PanelResource
     /** @return class-string */
     abstract public function entityClass(): string;
 
-    /** @return class-string<ListQueryInterface> */
-    abstract public function listQueryClass(): string;
+    /**
+     * A hand-written list query, or null to derive one from the table.
+     *
+     * The derived query — {@see DerivedListQuery} — reads sorting from the
+     * columns, search from the `searchable()` ones, the default order from
+     * `TableSchema::defaultSort()` and the soft-delete scope from the entity,
+     * and is built from the same {@see QueryInterface} objects a class chains.
+     * {@see queries()} adds to it. Name a class here when the query is
+     * genuinely the resource's own: a search that is more than a LIKE across
+     * columns, an ordering that is an expression, a second entity.
+     *
+     * @return class-string<ListQueryInterface>|null
+     */
+    public function listQueryClass(): ?string
+    {
+        return null;
+    }
+
+    /**
+     * Objects chained onto the list query — the derived one or the class —
+     * for the rows and the count alike: a join a column implies nothing
+     * about, a condition that is not a permission.
+     *
+     *     return [new JoinQuery('organization')];
+     *
+     * Each is a {@see QueryInterface}, the same kind of object a list query
+     * class composes with `chain()`. Row-level *permission* is not this:
+     * {@see Permissions::scope()}.
+     *
+     * @param  array<string, mixed> $params as parseListParams() returns them
+     * @return list<QueryInterface>
+     */
+    public function queries(array $params): array
+    {
+        return [];
+    }
 
     /**
      * Inertia page component, e.g. 'Organizations/Index'.
@@ -61,12 +99,37 @@ abstract class PanelResource
     /**
      * Shape a page of entities for the table.
      *
+     * By default the rows are read off the entities: the id, then each
+     * column's key resolved through its path or its `text()` template — see
+     * {@see RecordPresenter}. Override when a row needs what no column can
+     * say, and return one array per entity with `id` the public identifier.
+     *
      * @param  array<int, object> $entities
      * @return array<int, array<string, mixed>>
      */
-    abstract public function present(array $entities): array;
+    public function present(array $entities): array
+    {
+        return (new RecordPresenter($this))->rows(array_values($entities));
+    }
 
-    public function tableSchema(): ?TableSchema
+    /**
+     * Whether rows come from the default presenter, and so from the columns.
+     * The client then reads each cell under the column's own key, since a
+     * `value()` path has already been resolved on the server.
+     */
+    final public function presentsItself(): bool
+    {
+        return (new \ReflectionMethod($this, 'present'))->getDeclaringClass()->getName() === self::class;
+    }
+
+    /**
+     * The table: columns, filters, groups, constraints, actions, summaries.
+     * See docs/table-schema.md. Null renders no table at all.
+     *
+     * A column with no label of its own takes the label {@see fields()}
+     * declares for its key.
+     */
+    public function table(): ?TableSchema
     {
         return null;
     }
@@ -88,72 +151,114 @@ abstract class PanelResource
     }
 
     /**
-     * The resource's create/edit form: its entries, in display order.
+     * The form, or null for a resource that has none.
      *
-     * Most entries name a mapped field and state only what the mapping cannot
-     * know. FormFieldGuesser reads the type from the column, `max` from its
-     * length, `required` from its nullability and relations from the
-     * associations, then merges the entry's options on top — declared options
-     * always win.
-     *
-     *     return [
+     *     return Form::make()->fields([
      *         'title'       => ['width' => '1/2'],
-     *         'director_id' => ['width' => '1/2'],
+     *         Field::make('director_id')->width('1/2'),
      *         Separator::Line,
      *         'cast',
-     *         'notes'       => ['type' => TextareaType::class, 'help' => '…'],
-     *         'days_until'  => ['type' => ComputedType::class, 'accessor' => 'daysUntil'],
-     *     ];
+     *         Field::make('days_until')->computed('daysUntil'),
+     *     ]);
      *
-     * An entry with a `type` is declared outright: the type wins over the
-     * column and over a `#[FormType]` attribute, and the key need not be
-     * mapped at all — a set, an embed, a computed value, a hidden import
-     * reference. What the mapping does know still applies to a mapped key, so
-     * a `TextareaType` over a string column keeps the column's `max`.
-     * Per-field `access` callables are options like any other; they never
-     * reach the client (see {@see \Modufolio\Panel\Blueprint\FieldAccess}). A
-     * {@see \Modufolio\Panel\Blueprint\Separator} entry draws a rule, or
-     * leaves a gap, across the row.
+     * An entry names a mapped field and states only what the mapping cannot
+     * know; one with a type is declared outright and need not be mapped at
+     * all. A bare key takes whatever {@see fields()} declares for it first.
      *
      * Returning non-null is also the opt-in for the *generated* write routes:
      * PanelResourceRouteLoader only emits create/edit/delete routes for a
      * resource that declares a form, since without one the generic
-     * ResourceController would have nothing to render or validate against.
-     *
-     * @return array<int|string, string|\Modufolio\Panel\Blueprint\Separator|array<string, mixed>>|null
+     * controller would have nothing to render or validate against.
      */
-    public function formFields(): ?array
+    public function form(): ?Form
     {
         return null;
     }
 
     /**
-     * The ways this resource's records can be looked at.
+     * What each key is, said once: label, type, options.
      *
-     * The default is the table alone, which is what every listing served
-     * before views existed. Declaring more offers a switcher in the listing
-     * header and lets `?view=` select one:
+     *     return [
+     *         Field::make('starts_at')->date()->label('When'),
+     *         Field::make('contact')->label('Contact'),
+     *     ];
      *
-     *     public function views(): array
-     *     {
-     *         return [
-     *             ResourceView::table(),
-     *             ResourceView::board('status')
-     *                 ->columns(IssueStatus::class)
-     *                 ->position('position')
-     *                 ->card('title', 'due_date'),
-     *         ];
-     *     }
+     * The table's columns, the drawer's key list and the form's entries look a
+     * bare key up here. Two levels of precedence, no more: what a part says
+     * about a key wins over this, and this wins over Doctrine's mapping. A key
+     * used in one part only can be declared inline there instead.
      *
-     * The first entry is the default. A board is a different *query*, not a
-     * different renderer over the table's payload, which is why the choice has
-     * to reach the server rather than living in the client.
+     * @return list<Field>
+     */
+    public function fields(): array
+    {
+        return [];
+    }
+
+    /**
+     * {@see fields()} as `key => options`, for the parts that merge them.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    final public function fieldDefinitions(): array
+    {
+        $definitions = [];
+
+        foreach ($this->fields() as $field) {
+            $definitions[$field->key()] = $field->toArray();
+        }
+
+        return $definitions;
+    }
+
+    /**
+     * The labels {@see fields()} declares, for a column or a drawer key with
+     * none of its own.
+     *
+     * @return array<string, string>
+     */
+    final public function fieldLabels(): array
+    {
+        $labels = [];
+
+        foreach ($this->fieldDefinitions() as $key => $options) {
+            if (is_string($options['label'] ?? null) && $options['label'] !== '') {
+                $labels[$key] = $options['label'];
+            }
+        }
+
+        return $labels;
+    }
+
+    /**
+     * The board, or null for a resource looked at as a table alone.
+     *
+     *     return Board::make('status')
+     *         ->columns(IssueStatus::class)
+     *         ->position('position')
+     *         ->card('title', 'due_date');
+     *
+     * Declaring one adds the board beside the table and offers the switcher;
+     * the table stays the default and `?view=board` selects the other. A board
+     * is a different *query*, not a different renderer over the table's
+     * payload, which is why the choice has to reach the server.
+     */
+    public function board(): ?Board
+    {
+        return null;
+    }
+
+    /**
+     * The ways this resource's records can be looked at: the table, then the
+     * board when one is declared. The first entry is the default.
      *
      * @return list<ResourceView>
      */
-    public function views(): array
+    final public function views(): array
     {
-        return [ResourceView::table()];
+        $board = $this->board();
+
+        return $board === null ? [ResourceView::table()] : [ResourceView::table(), $board->view()];
     }
 
     /**
@@ -222,6 +327,21 @@ abstract class PanelResource
         return $first === false ? '' : (string) $first;
     }
 
+    /**
+     * The resource's entry in the panel's menu, or null for one reached only
+     * from elsewhere — another resource's drawer, a dashboard tile.
+     *
+     *     return Menu::make('Events', icon: 'calendar', group: 'Main', order: 16);
+     *
+     * Stored on the generated index route and read back by the host's
+     * navigation through {@see \Modufolio\Panel\Routing\ResourceMenu}, with the
+     * roles that route enforces.
+     */
+    public function menu(): ?Menu
+    {
+        return null;
+    }
+
     // ── Permissions ──────────────────────────────────────────────────────────
 
     /**
@@ -251,35 +371,49 @@ abstract class PanelResource
     }
 
     /**
-     * Sections the drawer offers for a single record.
+     * The drawer for one record: its tabs, each a details grid or a list of
+     * related rows. See {@see Drawer}.
      *
-     * Returning none — the default — keeps the flat definition grid, which is
-     * all a resource without child collections needs. Declaring tabs is how a
-     * generated resource gets what the bespoke drawers have: a details grid
-     * plus lists of related rows, each with its own count.
-     *
-     * The lists read keys the resource's own {@see presentOne()} returns, so a
-     * tab costs no extra query — and the grid keeps dropping arrays, which is
-     * exactly the content the relation tabs now render honestly.
-     *
-     * @return list<DrawerTab>
+     * The default, no tabs, is a single details grid following the form —
+     * its fields, in its order — or the columns when there is no form. A
+     * details tab with a key list shows exactly those keys, labelled from
+     * {@see fields()} and the form.
      */
-    public function drawerTabs(): array
+    public function drawer(): Drawer
     {
-        return [];
+        return Drawer::make();
+    }
+
+    /**
+     * The drawer's tabs as the client renders them for this record: section
+     * references resolved, counts read from the record, keys labelled from
+     * {@see fields()}.
+     *
+     * @param  array<string, mixed>       $record     the presented record
+     * @param  list<array<string, mixed>> $formFields the resolved form, when the caller has it
+     * @return list<array<string, mixed>>
+     */
+    final public function drawerTabsFor(array $record, array $formFields = []): array
+    {
+        return DrawerTab::collect($this->drawer()->declaredTabs(), $record, $formFields, $this->fieldLabels());
     }
 
     /**
      * Detail payload for that drawer.
      *
-     * Defaults to the same shape the table row uses; a resource with a richer
-     * detail view (extra relations, a body field) overrides this — typically
-     * by calling its presenter's `toDetailArray()`.
+     * With the default presenter: the row, plus every form key and declared
+     * field, so the drawer can show what the form edits. With a presenter of
+     * its own: the same shape the table row uses, unless overridden —
+     * typically by calling the presenter's `toDetailArray()`.
      *
      * @return array<string, mixed>
      */
     public function presentOne(object $entity): array
     {
+        if ($this->presentsItself()) {
+            return (new RecordPresenter($this))->record($entity);
+        }
+
         return $this->present([$entity])[0] ?? [];
     }
 
@@ -350,7 +484,7 @@ abstract class PanelResource
         $filters = JsonApiSerializer::parseFilterParams($queryParams);
         $values  = [];
 
-        foreach ($this->tableSchema()?->declaredFilters() ?? [] as $filter) {
+        foreach ($this->table()?->declaredFilters() ?? [] as $filter) {
             $key = $filter->key();
 
             $values[$key] = array_key_exists($key, $params)
@@ -362,11 +496,21 @@ abstract class PanelResource
     }
 
     /**
+     * The declared list query class, constructed for these params. Only for
+     * a resource that names one; the listing derives the query otherwise.
+     *
      * @param array<string, mixed> $params
      */
     public function buildListQuery(array $params, ?int $limit, ?int $offset): ListQueryInterface
     {
         $queryClass = $this->listQueryClass();
+
+        if ($queryClass === null) {
+            throw new \LogicException(sprintf(
+                '%s names no list query class; its query is derived from the table by ResourceListing.',
+                static::class,
+            ));
+        }
 
         return new $queryClass(
             search: $params['search'],

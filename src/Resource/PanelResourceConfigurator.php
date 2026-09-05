@@ -15,12 +15,19 @@ namespace Modufolio\Panel\Resource;
  *     return function (PanelResourceConfigurator $panel): void {
  *         $panel->resource(MovieResource::class)
  *             ->only(['index'])
- *             ->menu('Movies', icon: 'film', group: 'Library', order: 10)
  *             ->prefix('/panel/library');
  *
  *         // or, when the defaults are all you need:
  *         $panel->resources([BookResource::class, AlbumReviewResource::class]);
+ *
+ *         // or every resource class under a directory:
+ *         $panel->discover(__DIR__ . '/../src/Panel', 'App\\Panel');
  *     };
+ *
+ * Which roles reach a resource and where it sits in the menu are the
+ * resource's own declarations — {@see PanelResource::permissions()} and
+ * {@see PanelResource::menu()} — not registration options: registration says
+ * which routes exist, the resource says everything about itself.
  */
 final class PanelResourceConfigurator
 {
@@ -28,7 +35,7 @@ final class PanelResourceConfigurator
      * Operations the loader knows how to generate.
      *
      * index/show always come from the resource declaration alone; the write
-     * trio additionally needs the resource to declare `formFields()` — without
+     * trio additionally needs the resource to declare `form()` — without
      * a form there is nothing to render or validate, so the loader skips them.
      */
     public const OPERATIONS = ['index', 'show', 'create', 'edit', 'delete'];
@@ -61,6 +68,54 @@ final class PanelResourceConfigurator
     }
 
     /**
+     * Register every concrete {@see PanelResource} subclass found under a
+     * directory, with the default options.
+     *
+     * Files map to classes by PSR-4: `$directory/Admin/EventResource.php` is
+     * `$namespace\Admin\EventResource`. A file whose class does not exist,
+     * is abstract, or is not a resource is skipped without comment — a
+     * directory of resources usually holds a permissions class or two beside
+     * them. A resource that must *not* get generated routes (one served by a
+     * hand-written controller) belongs in another directory, or is registered
+     * by the explicit list instead.
+     *
+     * @param string $directory absolute path
+     * @param string $namespace the namespace that directory is the root of
+     */
+    public function discover(string $directory, string $namespace): self
+    {
+        $root = rtrim($directory, '/');
+
+        if (!is_dir($root)) {
+            throw new \InvalidArgumentException(sprintf('discover(): "%s" is not a directory.', $directory));
+        }
+
+        $files = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS));
+        $classes = [];
+
+        foreach ($files as $file) {
+            if (!$file instanceof \SplFileInfo || $file->getExtension() !== 'php') {
+                continue;
+            }
+
+            $relative = substr($file->getPathname(), strlen($root) + 1, -4);
+            $class    = rtrim($namespace, '\\') . '\\' . str_replace('/', '\\', $relative);
+
+            if (!class_exists($class) || !is_subclass_of($class, PanelResource::class) || (new \ReflectionClass($class))->isAbstract()) {
+                continue;
+            }
+
+            $classes[] = $class;
+        }
+
+        // Alphabetical, so the generated routes and the menu do not depend on
+        // the order a filesystem happens to list files in.
+        sort($classes);
+
+        return $this->resources($classes);
+    }
+
+    /**
      * @return array<class-string<PanelResource>, PanelResourceOptions>
      */
     public function buildConfig(): array
@@ -81,9 +136,6 @@ final class PanelResourceOptions
     private array $operations = PanelResourceConfigurator::OPERATIONS;
 
     private ?string $prefix = null;
-
-    /** @var array{label: string, icon: string|null, group: string|null, order: int}|null */
-    private ?array $menu = null;
 
     /**
      * Generate only these operations.
@@ -121,39 +173,6 @@ final class PanelResourceOptions
         $this->prefix = rtrim($prefix, '/');
 
         return $this;
-    }
-
-    /**
-     * Put the resource in the panel's menu.
-     *
-     * The menu is part of a resource's public identity, so it is declared
-     * where the resource is registered rather than in a file of its own that
-     * nothing errors for forgetting. The loader stores it on the index route
-     * as `_panel_menu`; {@see \Modufolio\Panel\Routing\ResourceMenu} reads
-     * every such route back, and the host's navigation renders them beside
-     * whatever hand-written entries it has. The route's own roles gate the
-     * entry — there is no second role list to keep in step.
-     *
-     * @param string      $label what the sidebar says
-     * @param string|null $icon  an icon name the panel's `<Icon>` knows
-     * @param string|null $group the heading the entry sits under
-     * @param int         $order position within the menu; lower comes first
-     */
-    public function menu(string $label, ?string $icon = null, ?string $group = null, int $order = 50): self
-    {
-        if (trim($label) === '') {
-            throw new \InvalidArgumentException('menu(): a menu entry needs a label.');
-        }
-
-        $this->menu = ['label' => $label, 'icon' => $icon, 'group' => $group, 'order' => $order];
-
-        return $this;
-    }
-
-    /** @return array{label: string, icon: string|null, group: string|null, order: int}|null */
-    public function menuItem(): ?array
-    {
-        return $this->menu;
     }
 
     public function generates(string $operation): bool

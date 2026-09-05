@@ -1,9 +1,9 @@
 # Adding a resource
 
 A generated resource is a listing, a drawer and (optionally) a form, with **no
-controller, no `#[Route]` and no Vue file**. You write four small PHP classes
-and two config entries; `PanelResourceRouteLoader` and `ResourceController` do
-the rest.
+controller, no `#[Route]` and no Vue file**. You write one PHP class and one
+config entry; `PanelResourceRouteLoader` generates the routes and the package's
+`Http\ResourceController` serves them.
 
 This is the recipe. [panel-resources.md](panel-resources.md) explains *why* the
 design is shaped this way; this page is what to type, in order, and what fails
@@ -28,10 +28,10 @@ easy to forget because nothing errors when you do.
 | 2 | Repository | `src/Repository/{Name}Repository.php` |
 | 3 | Register the repository | `config/repositories.php` |
 | 4 | Migration | `database/migrations/Version{ts}.php` |
-| 5 | List query | `src/Query/{Name}ListQuery.php` |
+| 5 | List query — only when the table cannot say it | `src/Query/{Name}ListQuery.php` |
 | 6 | Presenter | `src/Presenter/{Name}Presenter.php` |
 | 7 | Resource | `src/Panel/{Name}Resource.php` |
-| 8 | Register the resource, and its menu entry | `config/services.php` and `config/panel_resources.php` |
+| 8 | Register the resource | `config/services.php` and `config/panel_resources.php` |
 
 Then tests. See [Verifying it](#verifying-it) — the assertions worth writing
 are the ones that catch the silent failures below.
@@ -99,11 +99,32 @@ every read is "this contact's events, by date".
 
 ---
 
-## 5. The list query
+## 5. The list query — usually none
 
-Extends `Modufolio\Panel\Query\AbstractListQuery`, which the package ships —
-every consumer used to re-implement the same base class. It owns sorting,
-search and eager loading:
+By default there is no list query class. The listing derives the query from
+the table in step 7: the columns say what is sortable, `searchable()` says
+what the search covers, `defaultSort()` the order, and the entity's
+`deletedAt` whether soft-deleted rows are scoped out. For an event listing
+that is:
+
+```php
+    TableSchema::make()
+        ->defaultSort('startsAt')
+        ->columns([
+            Column::make('title')->searchable()->linksToRecord(),
+            Column::make('when')->value('starts_at')->linksToRecord(),
+            Column::make('contact')->value('contact.name')->searchable(),  // joins the to-one
+        ]);
+```
+
+A join no column implies, or a condition that is not a permission, is a
+`QueryInterface` object returned from the resource's `queries()`.
+
+Write a class when the query is genuinely the resource's own — a search that
+is more than a LIKE across columns, a sort key that maps to a different
+property than the column displays, an eager load the presenter needs. It
+extends `Modufolio\Panel\Query\AbstractListQuery`, and the resource names
+it with `listQueryClass()`:
 
 ```php
 final class EventListQuery extends AbstractListQuery
@@ -134,10 +155,19 @@ count share one predicate.
 
 ---
 
-## 6. The presenter
+## 6. The presenter — usually none
 
-Shapes a row. One rule: **`id` is the uuid.** The internal integer never leaves
-the backend.
+By default the rows are read off the entity through the columns: `title`
+reads `getTitle()`, `value('contact.name')` walks `getContact()->getName()`,
+and `text('{{ event.starts_at.format("d M") }}')` renders a template over the
+entity — the same query language a Kirby blueprint uses, with `record` and
+the resource's singular key as roots. Dates travel as ISO 8601, enums as their
+value, relations as their name. The drawer's record adds every form key, so
+the drawer can show what the form edits. **`id` is the uuid** either way.
+
+Write a presenter when a row needs what no column can say — a relation list
+built from a join table, a label computed from three fields — and override
+`present()` to return one array per entity:
 
 ```php
 public function toArray(): array
@@ -172,7 +202,6 @@ final class EventResource extends PanelResource
 {
     public function key(): string           { return 'events'; }          // → /panel/events
     public function entityClass(): string   { return Event::class; }
-    public function listQueryClass(): string{ return EventListQuery::class; }
     public function queryAlias(): string    { return 'event'; }
     public function present(array $e): array{ return EventPresenter::collection($e); }
     public function presentOne(object $e): array
@@ -181,10 +210,10 @@ final class EventResource extends PanelResource
     }
 ```
 
-### The table schema
+### The table
 
 ```php
-    public function tableSchema(): TableSchema
+    public function table(): TableSchema
     {
         return TableSchema::make()
             ->emptyState('No events yet', '…')
@@ -207,36 +236,35 @@ column, rather than shipped as a row that looks clickable and does nothing.
 ### The drawer
 
 ```php
-    public function drawerTabs(): array
+    public function drawer(): Drawer
     {
-        return [
-            DrawerTab::details()->fields([
-                'when'     => 'When',
-                'contact'  => 'Contact',
-                'location' => 'Location',
-            ]),
-        ];
+        return Drawer::make()->tabs([
+            DrawerTab::details()->fields(['when', 'contact', 'location']),
+        ]);
     }
 ```
 
-Omit this and the drawer prints **every key the presenter returned**, including
-the ones that exist to make the row render — a `contact_id` that addresses a
-link target, a `has_passed` that dims a past row. Name the fields.
+The details tab is a **list of keys**, labelled from the resource's `fields()`
+and its form — so the drawer shows a subset of what the form edits without
+saying anything twice. Without a key list the grid follows the form; without a
+form, it prints **every key the presenter returned**, including the ones that
+exist to make the row render — a `contact_id` that addresses a link target, a
+`has_passed` that dims a past row. Name the fields.
 
 ### Read-only or writable
 
 Write routes — create, edit, update, delete — are generated **only if
-`formFields()` returns non-null**:
+`form()` returns non-null**:
 
 ```php
 // Writable: the fields, with any layout or rules the mapping cannot infer.
-public function formFields(): array
+public function form(): Form
 {
-    return ['name' => ['width' => '1/2'], 'birth_year' => ['width' => '1/2']];
+    return Form::make()->fields(['name' => ['width' => '1/2'], Field::make('birth_year')->width('1/2')]);
 }
 ```
 
-So a read-only resource is one that simply declares no form fields. A
+So a read-only resource is one that simply declares no form. A
 permissions class answering `false` to `create()`/`edit()`/`delete()` on top
 of that is belt-and-braces: it states the intent, and keeps deletes off if
 someone later adds form fields to make the listing editable.
@@ -281,25 +309,32 @@ whatever it needs arrives through its constructor:
 Skip this and the first request for the resource fails with the container's
 not-found message, naming the class.
 
-`config/panel_resources.php` says which routes it gets:
+`config/panel_resources.php` says which resources get generated routes — a
+list, or a directory:
 
 ```php
-$panel->resource(EventResource::class);
+$panel->resources([EventResource::class, ContactResource::class]);
+// or every concrete resource under a directory, alphabetically:
+$panel->discover(__DIR__ . '/../src/Panel', 'App\\Panel');
 ```
 
-The roles its permissions name land on every generated route as
-`_is_granted_roles`, enforced by the kernel before `ResourceController` runs —
-no guard clause needed, and no second role list at registration.
+Everything else about the resource — its roles, its menu entry, its parts —
+is declared on the resource itself. The roles its permissions name land on
+every generated route as `_is_granted_roles`, enforced by the kernel before
+the controller runs. `->only([...])`, `->except([...])` and `->prefix()` stay
+registration options, because which routes *exist* is a routing decision.
 
 ---
 
 ## 9. Give it a menu entry
 
-Where the resource is registered:
+On the resource:
 
 ```php
-$panel->resource(EventResource::class)
-    ->menu('Events', icon: 'calendar', group: 'Main', order: 16);
+    public function menu(): Menu
+    {
+        return Menu::make('Events', icon: 'calendar', group: 'Main', order: 16);
+    }
 ```
 
 The entry is stored on the generated index route and read back by
@@ -310,8 +345,8 @@ one it refuses does not.
 
 Icon names come from the panel's built-in set (`ui/src/Components/Core/Icon.vue`
 in this package) or anything the app registered via `registerIcons()`. A
-resource registered without `menu()` still works; it is simply not linked from
-the sidebar, which is right for a resource only reached from another's drawer.
+resource without `menu()` still works; it is simply not linked from the
+sidebar, which is right for a resource only reached from another's drawer.
 
 ---
 
@@ -323,12 +358,12 @@ Every one of these was hit while building `EventResource`. None of them throws.
 |---------|-------|
 | Rows render but nothing in them is clickable | No column has `->linksToRecord()` |
 | `Column "title" links to the record, but … has no record URL` at render | The resource generates no show route (`->only([...])` without `'show'`) and declares no `->recordUrl()`; add either |
-| Drawer shows `Contact Id`, `Has Passed` as if they were fields | No `drawerTabs()` — the details grid prints every presenter key |
-| Route works, nothing in the panel links to it | No `->menu(...)` on the registration |
+| Drawer shows `Contact Id`, `Has Passed` as if they were fields | No `drawer()` and no form — the details grid prints every presenter key. Declare a form, or a details tab with a key list |
+| Route works, nothing in the panel links to it | No `menu()` on the resource |
 | The area file exists, an admin still sees no menu item | Its `roles` are intersected literally, with no role hierarchy — a `ROLE_SUPER_ADMIN` does not match an area gated on `ROLE_ADMIN`, though the *route* admits them. Name both |
 | A `when` condition or a `readable()`/`writable()` rule that guards nothing | The write path bypasses `SubmissionHandler` and never calls `stripHidden()` / `stripDenied()` itself — see [fields.md](fields.md#wiring-the-guards) |
 | Listing fine, drawer errors | Entity has no `uuid` |
-| A create button that opens an empty form | `formFields()` names keys the presenter/entity does not carry |
+| A create button that opens an empty form | `form()` names keys the presenter/entity does not carry |
 | The form shows `Unknown field type "x"` with a `createPanel` snippet | A PHP `FieldType` emits a component the client neither ships nor the app registered; register it as the snippet says. `Field\FieldComponents::missing()` finds this before a page does — the reference application's `panel:lint` runs it over every resource |
 | A column renders as a raw value | Its `type` has no case in `SchemaTable.vue` — or register one with `registerColumnType()` |
 

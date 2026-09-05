@@ -19,7 +19,7 @@ each one trades exactly one thing.
 The declaration survives every rung. A hand-written `UserController` can
 still take its listing through
 `#[Resource(UserResource::class)]` and builds its drawer from
-`UserResource::drawerTabs()` — it graduated the *controller* without giving up
+`UserResource::drawer()` — it graduated the *controller* without giving up
 the *resource*.
 
 ---
@@ -86,7 +86,9 @@ a `#tab-{key}` slot for a drawer tab's body.
 
 **When:** the *request* needs something the loader doesn't generate — extra
 props, a bespoke sub-route, a create form with a wizard, an action that isn't
-CRUD.
+CRUD. Until then every generated route is served by the package's
+`Http\ResourceController`; a host that has outgrown it for *every* resource
+names its own class as the loader's `$controllerClass`.
 
 Take the listing as an action parameter:
 
@@ -117,8 +119,8 @@ Keep index and show generated while you hand-write the form pages. This is the
 rung that used to look like a cliff; `only()`/`except()` are the steps in it.
 
 Note that create, edit, update and delete routes are generated **only when
-`formFields()` returns non-null** — so a resource with no
-form fields is already index-and-show only, without any configuration.
+`form()` returns non-null** — so a resource with no form is already
+index-and-show only, without any configuration.
 
 ---
 
@@ -127,7 +129,7 @@ form fields is already index-and-show only, without any configuration.
 **When:** the screen has stopped being a listing.
 
 At this point the resource is either deleted, or kept purely as a schema object
-the controller reads for its table. Both are legitimate — `tableSchema()` is a
+the controller reads for its table. Both are legitimate — `table()` is a
 public method on a plain object, so reading it from a controller that no longer
 renders through `ResourceListing` costs nothing.
 

@@ -5,7 +5,7 @@ A table is declared once, in PHP, and shipped to Vue as an Inertia prop.
 per-column cell markup.
 
 ```php
-public function tableSchema(): ?TableSchema
+public function table(): ?TableSchema
 {
     return TableSchema::make()
         ->emptyState('No organizations found', 'Get started by creating a new organization.')
@@ -25,6 +25,7 @@ Return `null` (the default) to keep hand-written columns in the page component.
 | Method | Effect |
 |---|---|
 | `columns(Column[])` | The columns, in render order |
+| `defaultSort(string $property, string $direction = 'ASC')` | The order applied when the request names none; read by the derived list query |
 | `recordUrl(string)` | Where a `linksToRecord()` cell goes, overriding the show route's template; `{placeholders}` are dot paths against the row |
 | `emptyState(string $title, ?string $description)` | Shown instead of an empty table |
 | `actions(RowAction[])` | Row actions — see [Actions](#actions) |
@@ -138,7 +139,9 @@ graphic (not a dash), and stays unlinked like any other empty cell. `size` and
 | Method | Effect |
 |---|---|
 | `toggleable(bool $hiddenByDefault = false)` | User can show/hide the column, via the page's `ColumnToggle` |
+| `text(string $template)` | Render the cell from a `{{ record.… }}` template over the entity, server-side; read by the default presenter only |
 | `notSortable()` | Suppress sorting the query would otherwise allow |
+| `searchable(bool = true)` | Include the column's field in the listing's search; read by the derived list query, which joins the to-one a `value('studio.name')` path crosses |
 | `width(string)` | Fixed column width |
 | `summarize(Summary\|Summary[])` | Footer aggregate(s) — see [Summaries](#summaries) |
 
@@ -196,17 +199,19 @@ truthy; `readOnlyWhen('field')` drops it for a static badge.
 ### Sortability is derived
 
 **A column cannot declare itself sortable.** There is no `sortable()` — only
-`notSortable()`. Sortability is resolved at serialisation time from the
-resource's list query:
+`notSortable()`. Sortability is resolved at serialisation time from the query
+the listing applies:
 
 ```php
-$column->wantsSorting() && $listQueryClass::mapSortField($column->key()) !== null
+$column->wantsSorting() && $query->mapSort($column->key()) !== null
 ```
 
-So "city is sortable" lives in exactly one place. Before this, it lived in the
-query's allowlist *and* in a hand-written `columns` array — and the two had
-already drifted (the query allowed ordering by `phone` while the column said
-`sortable: false`).
+With no list query class, that query is derived from the table itself, and a
+column is sortable when it reads a mapped scalar of the entity. With a class,
+its allowlist decides. Either way "city is sortable" lives in exactly one
+place. Before this, it lived in the query's allowlist *and* in a hand-written
+`columns` array — and the two had already drifted (the query allowed ordering
+by `phone` while the column said `sortable: false`).
 
 ---
 

@@ -28,7 +28,7 @@ made composition the better answer:
   had to give up five constructor-promoted properties to move onto the base
   class — PHP fatals on redeclaring an inherited `protected` property as
   `private`. An injected resource collides with nothing.
-- **A `protected` method is invisible.** `tableSchema()` on a controller could
+- **A `protected` method is invisible.** `table()` on a controller could
   only be read by issuing an HTTP request. On a resource it is a public method
   on a plain object, so exports, JSON:API and tests can read it directly.
 
@@ -39,21 +39,21 @@ resources, and a controller need not be a resource controller at all.
 
 ## Defining a resource
 
-Four methods are abstract:
+Two methods are abstract:
 
 ```php
 final class OrganizationResource extends PanelResource
 {
     public function key(): string            { return 'organizations'; }        // route prefix + prop key
     public function entityClass(): string    { return Organization::class; }
-    public function listQueryClass(): string { return OrganizationListQuery::class; }
-
-    public function present(array $entities): array
-    {
-        return OrganizationPresenter::collection($entities);
-    }
 }
 ```
+
+Rows are read off the entity through the columns (`present()` has a default —
+see [Rows](#rows)), the list query is derived from the table, and every other
+part is optional: `table()`, `form()`, `drawer()`, `board()`, `fields()`,
+`permissions()` and `menu()` — the resource says everything about itself, and
+registration only says which routes exist.
 
 `indexComponent()` defaults to the generic `Resource/Index` page, which renders
 the write actions too — override it only for a resource that has outgrown it
@@ -63,11 +63,13 @@ the write actions too — override it only for a resource that has outgrown it
 
 | Method | Purpose |
 |---|---|
-| `tableSchema()` | Columns, filters, groups, constraints — see [table-schema.md](table-schema.md) |
+| `table()` | Columns, filters, groups, constraints — see [table-schema.md](table-schema.md). A column with no label takes the one `fields()` declares |
 | `queryAlias()` | Query-builder root alias (default `e`) |
 | `defaultTrashed()` | Soft-delete scope when the request doesn't specify one |
 | `parseListParams()` | Add resource-specific filters to the parsed request |
-| `buildListQuery()` | Construct the list query (override when it takes extra arguments) |
+| `listQueryClass()` | A hand-written list query, or null (the default) to derive one from the table — see [The list query](#the-list-query) |
+| `queries()` | `QueryInterface` objects chained onto the list query, derived or not, for the rows and the count alike |
+| `buildListQuery()` | Construct the declared list query class (override when it takes extra arguments) |
 | `filterProps()` | Extra entries in the `filters` prop |
 | `recordRouteParams()` | Route params addressing one record (default `['uuid' => …]`) |
 | `sortValue()` | Read the sort field for keyset navigation |
@@ -78,8 +80,9 @@ the write actions too — override it only for a resource that has outgrown it
 
 | Method | Purpose |
 |---|---|
-| `presentOne()` | The drawer's payload (defaults to the first entry of `present()`) |
-| `drawerTabs()` | The drawer's sections — without them the details grid prints every presenter key |
+| `present()` | One row per entity — by default read off the entity through the columns, see [Rows](#rows) |
+| `presentOne()` | The drawer's payload — by default the row plus every form key and declared field |
+| `drawer()` | The drawer's tabs — a details tab is a list of keys, labelled from `fields()`; without one the grid follows the form |
 | `drawerType()` | Slot name for one record (default: the singular of `key()`) |
 | `drawerTitle()` | Heading for the open record |
 
@@ -87,7 +90,8 @@ the write actions too — override it only for a resource that has outgrown it
 
 | Method | Purpose |
 |---|---|
-| `formFields()` | The form's entries in order: mapped fields with options, fields declared outright by `type`, separators. The rest is guessed from Doctrine; per-field `access` rides along as an option |
+| `form()` | The form's entries in order: bare keys, `key => [options]`, `Field` builders, separators. The rest is guessed from Doctrine — see [fields.md](fields.md) |
+| `fields()` | What each key is, said once: label, type, options. The table, the drawer and the form look bare keys up here |
 
 Returning non-null is the opt-in for the generated create/edit/delete routes.
 See [fields.md](fields.md).
@@ -120,7 +124,7 @@ A class rather than hooks on the resource, because rules are behaviour: typed
 record, typed user, testable without a resource, reusable through a base class
 (`TenantPermissions` carrying the scope for every resource that shares it),
 and free to take a service — the resource's constructor is where it arrives.
-Which operations *exist* stays structural (`formFields()`, `only()`,
+Which operations *exist* stays structural (`form()`, `only()`,
 `except()`); permissions only ever narrow what exists.
 
 The layers are easy to reason about one at a time and hard to see combined.
@@ -135,11 +139,22 @@ and a user factory, and can expose it as a console command, a page, or both.
 
 ### Registration
 
-A resource is a service, and the application's container builds it — for the
-`#[Resource]` resolver, for the generic controller, and for the route loader
-alike. Register every resource in the application's service definitions,
-declaring whatever it needs
-through its constructor:
+Two registrations, for two questions.
+
+`config/panel_resources.php` says which resources get generated routes: a list,
+or every concrete resource under a directory. Per resource, `->only()`,
+`->except()` and `->prefix()` narrow or move the routes; nothing else is
+declared here, because the resource declares it.
+
+```php
+$panel->resources([EventResource::class, ContactResource::class]);
+$panel->discover(__DIR__ . '/../src/Panel', 'App\\Panel');
+```
+
+A resource is also a service, and the application's container builds it — for
+the `#[Resource]` resolver, for the package's controller, and for the route
+loader alike. Register every resource in the application's service
+definitions, declaring whatever it needs through its constructor:
 
 ```php
 ->set(ActorResource::class, fn () => new ActorResource())
@@ -158,27 +173,24 @@ message, naming the class, the first time anything asks for it.
 
 ---
 
-## Views
+## Board
 
-A listing renders one shape by default: the table. `views()` names others.
+A listing renders one shape by default: the table. `board()` adds the other.
 
 ```php
-public function views(): array
+public function board(): Board
 {
-    return [
-        ResourceView::table(),
-        ResourceView::board('status')
-            ->columns(IssueStatus::class)   // or a value => label map, or an
-                                            // already-built column list
-            ->position('position')
-            ->card('title', 'due_date'),
-    ];
+    return Board::make('status')
+        ->columns(IssueStatus::class)   // or a value => label map, or an
+                                        // already-built column list
+        ->position('position')
+        ->card('title', 'due_date');
 }
 ```
 
-The first entry is the default, and `?view=<key>` selects another. The client
-renders a switcher only when there is more than one, so adding `views()` to a
-resource that declares just the table changes nothing.
+The table stays the default, and `?view=board` selects the board. The client
+renders a switcher only when a board is declared, so a resource without one
+changes nothing.
 
 **A board is a different query, not a different renderer.** It runs one query
 per declared column, ordered by the position field and limited per column —
@@ -407,18 +419,78 @@ return $listing->withProps(['just_approved_url' => $this->getJustApprovedResetUr
 
 ---
 
-## The list query stays the source of truth
+## Rows
 
-A resource does **not** restate what its `ListQueryInterface` already knows.
-The query owns:
+A resource without a `present()` gets its rows from `Resource\RecordPresenter`:
+the id (the uuid where there is one), then each column's key resolved against
+the entity. A bare key reads its accessor (`released_on` reaches
+`getReleasedOn()`), a `value('studio.name')` path walks the relation, and a
+`text('{{ movie.title }} ({{ movie.year }})')` template renders over the
+entity — through appkit's query language, the one Kirby's blueprints use, with
+`record` and the resource's singular key as roots. A null along a path is a
+null cell; a segment nothing can answer is refused by column name.
 
-- the sortable-field allowlist (`sortableFields()`)
-- virtual→entity field mapping (`mapSortField()`, e.g. `name` → `lastName`)
-- the default ordering (`defaultSort()`)
-- search and soft-delete predicates
+Values are normalised for the wire: dates as ISO 8601, backed enums as their
+value, uuids and Stringables as strings, arrays keep their keys, collections
+become a list of what their items show as, and any other object shows as its
+name, title or label. With derived rows a `value()` path is already resolved
+into the column's own key, so `valueKey` is withheld from the client.
 
-Column sortability is *derived* from it at serialisation time, so the two can
-never drift. See [table-schema.md](table-schema.md#sortability-is-derived).
+`presentOne()` then returns the row plus every form key and every declared
+field — a `{relation}_id` key reading back the related record's public id —
+so the drawer can show what the form edits.
+
+A template is developer-authored, exactly as trusted as a PHP class. A request
+never contributes to one.
+
+Override `present()` when a row needs what no column can say; the client then
+reads `value()` paths itself, as before.
+
+## The list query
+
+By default a resource has no list query class. `ResourceListing` derives one
+from the table — `Query\DerivedListQuery` — and it is built from the same
+`QueryInterface` objects a hand-written class chains, so the two paths cannot
+disagree about what a predicate means:
+
+- **sortable**: every column that did not opt out with `notSortable()` and
+  reads a mapped scalar (`released_on` reads `releasedOn`; a presenter-only key
+  or a relation path renders unsortable, as a key outside a class's allowlist
+  always did);
+- **the default order**: `TableSchema::defaultSort('startsAt', 'DESC')`, else
+  the first sortable column ascending, else the id;
+- **search**: a case-insensitive `LIKE` across the `searchable()` columns,
+  joining a to-one relation a `value('studio.name')` path crosses —
+  `Query\SearchQuery`;
+- **the soft-delete scope**: `FilterTrashedQuery`, when the entity has a
+  `deletedAt`.
+
+`queries()` chains more objects onto it — a join no column implies, a
+condition that is not a permission:
+
+```php
+public function queries(array $params): array
+{
+    return [new class extends AbstractQuery {
+        public function apply(QueryBuilder $qb): QueryBuilder
+        {
+            return $qb->andWhere($this->getRootAlias($qb) . '.archived = false');
+        }
+    }];
+}
+```
+
+They narrow the rows and the count alike, because a predicate applied to one
+and not the other advertises rows that do not exist.
+
+**Name a class when the query is the resource's own.** `listQueryClass()`
+pointing at an `AbstractListQuery` subclass keeps everything as it was: the
+constants own the allowlist and the mapping (`name` → `lastName`, which a
+column cannot say without changing what it displays), `defaultSort()` the
+order, `applyFilters()` a search that is more than a LIKE, `applyEagerLoads()`
+the joins the presenter needs. Column sortability is then resolved against
+that class, so the two cannot drift. See
+[table-schema.md](table-schema.md#sortability-is-derived).
 
 Filters whose predicate the query already owns declare
 `->handledByQuery()` — the control renders, the query filters. `trashed` uses

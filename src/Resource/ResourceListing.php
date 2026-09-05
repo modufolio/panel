@@ -7,6 +7,8 @@ namespace Modufolio\Panel\Resource;
 use Modufolio\Panel\Http\JsonApiPaginationTrait;
 use Modufolio\Panel\Contracts\PageRendererInterface;
 use Modufolio\Panel\Contracts\SharedPropsInterface;
+use Modufolio\Panel\Query\ChainedListQuery;
+use Modufolio\Panel\Query\DerivedListQuery;
 use Modufolio\Panel\Query\ListQueryInterface;
 use Modufolio\Panel\Routing\ResourceBaseUrl;
 use Modufolio\Panel\Routing\Uuid;
@@ -103,8 +105,8 @@ final class ResourceListing
         $params['filters'] = $this->resource->filterValues($params, $queryParams);
         $pagination  = $this->getJsonApiPagination($queryParams);
 
-        $query  = $this->resource->buildListQuery($params, $pagination['limit'], $pagination['offset']);
-        $schema = $this->resource->tableSchema();
+        $schema = $this->resource->table();
+        $query  = $this->listQuery($params, $pagination['limit'], $pagination['offset']);
 
         // Which shape of this listing was asked for. A board is a different
         // query — grouped into columns, ordered by position, limited per
@@ -124,7 +126,7 @@ final class ResourceListing
         $this->applySchemaFilters($listQb, $alias, $params);
         $this->applyGrouping($listQb, $alias, $params);
 
-        [, $sortDirection] = $this->resolveSortField($this->resource->listQueryClass(), $params['sort']);
+        [, $sortDirection] = $this->resolveSortField($query, $params['sort']);
         $this->applyKeysetTiebreak($listQb, $alias, $sortDirection);
 
         $listQuery = $listQb->getQuery();
@@ -156,6 +158,7 @@ final class ResourceListing
         $permissions = $this->resource->permissions();
 
         if ($schema !== null) {
+            $schema = $this->resolveLabels($schema);
             $schema = $this->resolveRecordUrl($schema, $key);
             $schema = $this->resolveFilterOptions($schema);
             $schema = $this->resolveActions($schema, $key);
@@ -229,7 +232,7 @@ final class ResourceListing
                         && $permissions->edit(null, $this->user),
                 ],
                 ...($board !== null ? ['board' => $board] : []),
-                ...($schema !== null ? ['table' => $schema->toArray($this->resource->listQueryClass())] : []),
+                ...($schema !== null ? ['table' => $this->serialise($schema, $query)] : []),
                 ...$this->extraProps,
                 ...$this->sharedProps->create(),
             ],
@@ -383,10 +386,9 @@ final class ResourceListing
         // params for applySchemaFilters() rather than threading them through.
         $this->navigationParams = $params;
 
-        /** @var class-string<ListQueryInterface> $queryClass */
-        $queryClass = $this->resource->listQueryClass();
+        $query = $this->listQuery($params, null, null);
 
-        [$sortField, $sortDirection] = $this->resolveSortField($queryClass, $params['sort']);
+        [$sortField, $sortDirection] = $this->resolveSortField($query, $params['sort']);
 
         $alias        = $this->resource->queryAlias();
         $currentValue = $this->resource->sortValue($entity, $sortField);
@@ -398,7 +400,7 @@ final class ResourceListing
         $backward = $sortDirection === 'DESC' ? '>' : '<';
 
         $next = $this->findAdjacent(
-            $this->resource->buildListQuery($params, null, null),
+            $query,
             $alias,
             $sortField,
             $forward,
@@ -417,7 +419,7 @@ final class ResourceListing
         $reversedSort = [$sortField => $sortDirection === 'ASC' ? 'DESC' : 'ASC'];
 
         $previous = $this->findAdjacent(
-            $this->resource->buildListQuery([...$params, 'sort' => $reversedSort], null, null),
+            $this->listQuery([...$params, 'sort' => $reversedSort], null, null),
             $alias,
             $sortField,
             $backward,
@@ -496,7 +498,7 @@ final class ResourceListing
 
         $values = $params['filters'] ?? [];
 
-        foreach ($this->resource->tableSchema()?->declaredFilters() ?? [] as $filter) {
+        foreach ($this->resource->table()?->declaredFilters() ?? [] as $filter) {
             $filter->apply($qb, $alias, $values[$filter->key()] ?? null);
         }
 
@@ -515,7 +517,7 @@ final class ResourceListing
     {
         $declared = [];
 
-        foreach ($this->resource->tableSchema()?->declaredConstraints() ?? [] as $constraint) {
+        foreach ($this->resource->table()?->declaredConstraints() ?? [] as $constraint) {
             $declared[$constraint->key()] = $constraint;
         }
 
@@ -597,6 +599,49 @@ final class ResourceListing
         }
 
         return $schema->withActions($actions, $bulkActions);
+    }
+
+    /**
+     * The table for the client. When the rows come from the default presenter
+     * a `value()` path has already been resolved into the column's own key,
+     * so `valueKey` is withheld — the client would otherwise look for
+     * `studio.name` on a row that carries `studio`.
+     *
+     * @return array<string, mixed>
+     */
+    private function serialise(TableSchema $schema, ListQueryInterface $query): array
+    {
+        $table = $schema->toArray($query);
+
+        if ($this->resource->presentsItself()) {
+            foreach ($table['columns'] as &$column) {
+                unset($column['valueKey']);
+            }
+        }
+
+        return $table;
+    }
+
+    /**
+     * A column with no label of its own takes the one the resource's
+     * fields() declares for its key — the same label the form and the drawer
+     * show, said once.
+     */
+    private function resolveLabels(TableSchema $schema): TableSchema
+    {
+        $labels = $this->resource->fieldLabels();
+
+        if ($labels === []) {
+            return $schema;
+        }
+
+        foreach ($schema->declaredColumns() as $column) {
+            if (!$column->hasDeclaredLabel() && isset($labels[$column->key()])) {
+                $column->label($labels[$column->key()]);
+            }
+        }
+
+        return $schema;
     }
 
     /**
@@ -802,7 +847,7 @@ final class ResourceListing
      */
     private function applyGrouping(QueryBuilder $qb, string $alias, array $params): void
     {
-        $group = $this->resource->tableSchema()?->group($params['group'] ?? null);
+        $group = $this->resource->table()?->group($params['group'] ?? null);
 
         if (!$group instanceof Group) {
             return;
@@ -869,7 +914,7 @@ final class ResourceListing
         $params['filters'] = $this->resource->filterValues($params, $queryParams);
 
         $alias = $this->resource->queryAlias();
-        $query = $this->resource->buildListQuery($params, null, null);
+        $query = $this->listQuery($params, null, null);
 
         $qb = $query->apply($this->repository()->createQueryBuilder($alias));
         $this->applySchemaFilters($qb, $alias, $params);
@@ -933,7 +978,7 @@ final class ResourceListing
      */
     private function summaries(ListQueryInterface $query, string $alias, array $params): array
     {
-        $schema = $this->resource->tableSchema();
+        $schema = $this->resource->table();
 
         if ($schema === null) {
             return [];
@@ -1013,13 +1058,36 @@ final class ResourceListing
     }
 
     /**
-     * @param class-string<ListQueryInterface> $queryClass
+     * The list query for these params: the resource's class when it names
+     * one, else derived from its table — and in either case with whatever
+     * the resource's queries() chains on.
+     *
+     * @param array<string, mixed> $params
+     */
+    private function listQuery(array $params, ?int $limit, ?int $offset): ListQueryInterface
+    {
+        $base = $this->resource->listQueryClass() !== null
+            ? $this->resource->buildListQuery($params, $limit, $offset)
+            : DerivedListQuery::fromTable(
+                $this->resource->table(),
+                $this->entityManager->getClassMetadata($this->resource->entityClass()),
+                $params,
+                $limit,
+                $offset,
+            );
+
+        $extras = $this->resource->queries($params);
+
+        return $extras === [] ? $base : new ChainedListQuery($base, $extras);
+    }
+
+    /**
      * @param array<string, string> $sort
      * @return array{0: string, 1: string}
      */
-    private function resolveSortField(string $queryClass, array $sort): array
+    private function resolveSortField(ListQueryInterface $query, array $sort): array
     {
-        $default      = $queryClass::defaultSort();
+        $default      = $query->defaultOrder();
         $defaultField = (string)array_key_first($default);
 
         if ($sort === []) {
@@ -1027,7 +1095,7 @@ final class ResourceListing
         }
 
         $requested = (string)array_key_first($sort);
-        $mapped    = $queryClass::mapSortField($requested);
+        $mapped    = $query->mapSort($requested);
 
         if ($mapped === null) {
             return [$defaultField, $default[$defaultField]];

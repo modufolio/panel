@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Resource;
 
+use Modufolio\Panel\Form\Field;
+use Modufolio\Panel\Resource\Drawer;
+use Modufolio\Panel\Resource\DrawerTab;
+use Modufolio\Panel\Resource\Menu;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\Permissions;
 use Modufolio\Panel\Table\TableSchema;
@@ -40,11 +44,54 @@ final class PanelResourceTest extends TestCase
         self::assertTrue($permissions->create(null));
     }
 
-    public function testAResourceDeclaresNoFormFieldsByDefault(): void
+    public function testAResourceDeclaresNoFormByDefault(): void
     {
         // The route loader gates create/edit/update/delete on this being
         // non-null, so the default is a read-only, index-and-show resource.
-        self::assertNull($this->resource()->formFields());
+        self::assertNull($this->resource()->form());
+    }
+
+    /** The drawer's key list is labelled from fields(), so the drawer shows a subset of the form without saying anything twice. */
+    public function testDrawerTabsForLabelsListedKeysFromTheSharedFields(): void
+    {
+        $resource = new class extends PanelResource {
+            public function key(): string { return 'events'; }
+            public function entityClass(): string { return \stdClass::class; }
+            public function listQueryClass(): string { return StubListQuery::class; }
+            public function present(array $entities): array { return []; }
+
+            public function fields(): array
+            {
+                return [Field::make('starts_at')->date()->label('When')];
+            }
+
+            public function drawer(): Drawer
+            {
+                return Drawer::make()->tabs([DrawerTab::details()->fields(['title', 'starts_at'])]);
+            }
+        };
+
+        $tabs = $resource->drawerTabsFor(['title' => 'Gala', 'starts_at' => '2026-09-05']);
+
+        self::assertSame(['title' => null, 'starts_at' => 'When'], $tabs[0]['fields']);
+        self::assertSame(['starts_at' => 'When'], $resource->fieldLabels());
+    }
+
+    public function testAResourceHasNoMenuEntryByDefault(): void
+    {
+        self::assertNull($this->resource()->menu());
+        self::assertSame(
+            ['label' => 'Events', 'icon' => 'calendar', 'group' => 'Main', 'order' => 16],
+            Menu::make('Events', icon: 'calendar', group: 'Main', order: 16)->toArray(),
+        );
+        self::assertSame(['label' => 'Events', 'icon' => null, 'group' => null, 'order' => 50], Menu::make('Events')->toArray(), 'Only the label is required.');
+    }
+
+    public function testAMenuEntryWithoutALabelIsRefused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        Menu::make('  ');
     }
 
     public function testTheGenericPageIsTheDefaultComponent(): void
@@ -58,14 +105,31 @@ final class PanelResourceTest extends TestCase
         self::assertSame('event', $this->resource()->drawerType());
     }
 
-    public function testAResourceDeclaresNoDrawerTabsByDefault(): void
+    public function testAResourceDeclaresAnEmptyDrawerByDefault(): void
     {
-        self::assertSame([], $this->resource()->drawerTabs());
+        self::assertSame([], $this->resource()->drawer()->declaredTabs());
     }
 
-    public function testTableSchemaIsAbsentUntilDeclared(): void
+    /** No class named: the listing derives the query from the table. */
+    public function testAResourceNamesNoListQueryClassByDefault(): void
     {
-        self::assertNull($this->resource()->tableSchema());
+        $resource = new class extends PanelResource {
+            public function key(): string { return 'events'; }
+            public function entityClass(): string { return \stdClass::class; }
+            public function present(array $entities): array { return []; }
+        };
+
+        self::assertNull($resource->listQueryClass());
+        self::assertSame([], $resource->queries([]));
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('names no list query class');
+        $resource->buildListQuery([], null, null);
+    }
+
+    public function testTheTableIsAbsentUntilDeclared(): void
+    {
+        self::assertNull($this->resource()->table());
     }
 
     public function testADeclaredSchemaIsReturnedAsIs(): void
@@ -76,7 +140,7 @@ final class PanelResourceTest extends TestCase
             public function listQueryClass(): string { return StubListQuery::class; }
             public function present(array $entities): array { return []; }
 
-            public function tableSchema(): TableSchema
+            public function table(): TableSchema
             {
                 return TableSchema::make()->recordUrl('/panel/events/{id}');
             }
@@ -84,7 +148,7 @@ final class PanelResourceTest extends TestCase
 
         self::assertSame(
             '/panel/events/{id}',
-            $resource->tableSchema()->toArray(StubListQuery::class)['recordUrl'],
+            $resource->table()->toArray(new StubListQuery())['recordUrl'],
             'The declaration reaches the client untouched.',
         );
     }

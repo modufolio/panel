@@ -43,6 +43,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The menu entry is declared on the resource; registration is a list.**
+  `PanelResource::menu(): ?Menu` — `Menu::make('Events', icon: 'calendar',
+  group: 'Main', order: 16)` — replaces `->menu(...)` on the registration. The
+  loader stores it on the index route exactly as before, so
+  `Routing\ResourceMenu::fromRoutes()` and every host reading it are
+  unchanged. With roles and the menu both on the resource,
+  `config/panel_resources.php` is a list — `$panel->resources([...])` — or a
+  directory: the new `PanelResourceConfigurator::discover($directory,
+  $namespace)` registers every concrete `PanelResource` subclass found under
+  it, alphabetically. `->only()`, `->except()` and `->prefix()` stay
+  registration options, because which routes exist is a routing decision.
+  New `docs/coming-from-filament.md` maps Filament's and EasyAdmin's
+  vocabulary onto the package's.
+
+- **The controller ships with the package.** `Http\ResourceController` serves
+  every generated route — index, show, create, store, edit, update, destroy,
+  bulk delete, delete preview, export, relation options, relation create,
+  relation store and board move — on top of the services the package already
+  owned. An appkit `AppAwareInterface` controller: the kernel hands it the
+  application after construction and it pulls its own services, so a host
+  registers nothing to use it. `SharedPropsInterface` and
+  `PageRendererInterface` are read from the container; a
+  `Contracts\ExportAdapterProviderInterface` (with
+  `Contracts\ExportAdapterInterface` adapters) and a `FormResolver` naming
+  the media entity are read when registered. Without a provider the export
+  route answers 422. `PanelResourceRouteLoader` takes the resolver before the
+  controller class, which now defaults to the package's:
+  `new PanelResourceRouteLoader($locator, $resources)`. Responses are built
+  with `modufolio/http`, and `symfony/http-foundation` is a declared
+  dependency for the flash bag. The reference application's 761-line
+  `ResourceController` is deleted.
+
+- **Rows are read off the entity; the presenter is the override.**
+  `PanelResource::present()` is no longer abstract. Its default,
+  `Resource\RecordPresenter`, emits the id (the uuid where there is one) and
+  each column's key resolved against the entity through appkit's Kirby-ported
+  query language — a bare key reads its accessor (`released_on` reaches
+  `getReleasedOn()`), a `value('studio.name')` path walks the relation, and
+  the new `Column::text('{{ movie.title }} ({{ movie.year }})')` renders a
+  template with `record` and the resource's singular key as roots. A null
+  along a path is a null cell; a segment nothing can answer is refused by
+  column name. Values travel normalised: dates as ISO 8601, backed enums as
+  their value, uuids and Stringables as strings, arrays keep their keys,
+  collections list what their items show as. `presentOne()` defaults to the
+  row plus every form key and declared field, a `{relation}_id` key reading
+  back the related record's public id. `PanelResource::presentsItself()` says
+  whether the default is in use; `ResourceListing` then withholds `valueKey`
+  from the client, since the path is already resolved into the column's own
+  key. Needs appkit's `Query\Segment` accessor fallback (get/is/has,
+  snake_case to camelCase), landed alongside.
+
+- **The list query is derived from the table; the class is the override.**
+  `listQueryClass()` is no longer abstract and defaults to null, and
+  `ResourceListing` then builds `Query\DerivedListQuery` from the table:
+  sortable columns (those reading a mapped scalar, `released_on` → `releasedOn`),
+  the new `TableSchema::defaultSort()`, a case-insensitive LIKE across the new
+  `Column::searchable()` columns (`Query\SearchQuery`, joining the to-one a
+  `value('studio.name')` path crosses), and `FilterTrashedQuery` when the
+  entity has a `deletedAt`. It is built from the same `QueryInterface` objects
+  a hand-written class chains, so the two paths cannot disagree. A new
+  `PanelResource::queries($params)` hook chains more objects onto either
+  (`Query\ChainedListQuery`), for the rows and the count alike. A class named
+  by `listQueryClass()` keeps working unchanged. `ListQueryInterface` moved
+  from static to instance methods — `sortable()`, `defaultOrder()`,
+  `mapSort()` — so the listing asks the object it applies, never a class name;
+  `AbstractListQuery` implements them from its constants and its static
+  `defaultSort()`, which subclasses still declare. `TableSchema::toArray()`
+  takes the query instance, or nothing to serialise the columns as declared.
+  A `searchable()` column that maps no field is refused by name.
+
+- **A resource is five parts, each its own object.** `table(): ?TableSchema`
+  replaces `tableSchema()`; `form(): ?Form` replaces `formFields()`, taking
+  the same entries — bare keys, `key => [options]`, separators — plus
+  `Field::make('notes')->textarea()->width('1/2')`, the entry array with
+  autocomplete; `drawer(): Drawer` replaces `drawerTabs()`, wrapping the same
+  `DrawerTab`s; `board(): ?Board` replaces `views()`, and the table is no
+  longer a view among views but the default the switcher offers the board
+  beside — `views()` is final and derived. New: `fields(): list<Field>`, what
+  each key is said once. A column with no label, a drawer key list, and a
+  form entry with no options all look their key up there, so the drawer shows
+  a subset of what the form edits without repeating a label. Two levels of
+  precedence, no more: what a part says wins over `fields()`, which wins over
+  Doctrine's mapping. `PanelResource::drawerTabsFor($record, $formFields)`
+  collects the drawer for a record with those labels applied;
+  `DrawerTab::collect()` takes the labels as a fourth argument.
+  `Column::hasDeclaredLabel()` tells a humanised fallback from a declaration.
+
 - **Permissions are a class the application writes.** `Resource\Permissions`
   replaces the six hooks on `PanelResource` (`canView()`, `canCreate()`,
   `canEdit()`, `canDelete()`, `scopeQuery()`, `readonlyFields()`), the

@@ -8,7 +8,9 @@ use Modufolio\Appkit\Security\User\UserInterface;
 use Doctrine\ORM\Query\QueryException;
 use Doctrine\ORM\QueryBuilder;
 use Modufolio\Panel\Resource\Permissions;
+use Modufolio\Panel\Form\Field;
 use Modufolio\Panel\Table\BulkAction;
+use Modufolio\Panel\Table\Column;
 use Modufolio\Panel\Table\RowAction;
 use Modufolio\Panel\Table\TableSchema;
 use Modufolio\Panel\Tests\Case\DoctrineTestCase;
@@ -374,7 +376,7 @@ final class ResourceListingTest extends DoctrineTestCase
 
         $props = $this->renderProps($this->listing(new MovieResource()));
 
-        self::assertNull((new MovieResource())->tableSchema()->declaredRecordUrl(), 'Precondition: the fixture declares no record URL.');
+        self::assertNull((new MovieResource())->table()->declaredRecordUrl(), 'Precondition: the fixture declares no record URL.');
         self::assertSame('/panel/movies/{id}', $props['table']['recordUrl']);
     }
 
@@ -384,9 +386,9 @@ final class ResourceListingTest extends DoctrineTestCase
         $this->seed();
 
         $resource = new class () extends MovieResource {
-            public function tableSchema(): TableSchema
+            public function table(): TableSchema
             {
-                return parent::tableSchema()->recordUrl('/panel/films/{id}');
+                return parent::table()->recordUrl('/panel/films/{id}');
             }
         };
 
@@ -664,6 +666,37 @@ final class ResourceListingTest extends DoctrineTestCase
 
         self::assertSame(['Jaws'], $this->titles($explicit));
         self::assertSame('only', $explicit['filters']['trashed']);
+    }
+
+    // ── Shared fields ────────────────────────────────────────────────────────
+
+    /** A column with no label of its own takes the one fields() declares; one with a label keeps it. */
+    public function testColumnsTakeTheirLabelFromTheSharedFields(): void
+    {
+        $this->seed();
+
+        $resource = new class extends MovieResource {
+            public function fields(): array
+            {
+                return [Field::make('year')->label('Release year'), Field::make('rating')->label('Score')];
+            }
+
+            public function table(): TableSchema
+            {
+                return TableSchema::make()->columns([
+                    Column::make('title'),
+                    Column::make('year'),
+                    Column::make('rating')->label('Stars'),
+                ]);
+            }
+        };
+
+        $props  = $this->renderProps($this->listing($resource, urls: $this->movieRoutes()));
+        $labels = array_column($props['table']['columns'], 'label', 'key');
+
+        self::assertSame('Title', $labels['title'], 'Nothing declared anywhere: the humanised key.');
+        self::assertSame('Release year', $labels['year']);
+        self::assertSame('Stars', $labels['rating'], 'The column\'s own label wins.');
     }
 
     // ── Scope ────────────────────────────────────────────────────────────────
@@ -1032,9 +1065,9 @@ final class ResourceListingTest extends DoctrineTestCase
                 return $this->permissions;
             }
 
-            public function tableSchema(): TableSchema
+            public function table(): TableSchema
             {
-                return parent::tableSchema()->actions([
+                return parent::table()->actions([
                     RowAction::view(),
                     RowAction::edit('/custom/movies/{id}/edit'),
                     RowAction::delete('/custom/movies/{id}'),
@@ -1076,9 +1109,9 @@ final class ResourceListingTest extends DoctrineTestCase
         $this->seed();
 
         $resource = new class extends MovieResource {
-            public function tableSchema(): TableSchema
+            public function table(): TableSchema
             {
-                return parent::tableSchema()->bulkActions(BulkAction::post('archive', '/panel/movies/bulk-archive'));
+                return parent::table()->bulkActions(BulkAction::post('archive', '/panel/movies/bulk-archive'));
             }
         };
 

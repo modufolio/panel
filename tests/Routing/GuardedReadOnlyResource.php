@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Routing;
 
+use Modufolio\Panel\Resource\Menu;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\Permissions;
 use Modufolio\Panel\Tests\Fixture\StubListQuery;
@@ -19,5 +20,10 @@ final class GuardedReadOnlyResource extends PanelResource
     public function permissions(): Permissions
     {
         return new Permissions(['ROLE_ADMIN']);
+    }
+
+    public function menu(): Menu
+    {
+        return Menu::make('Events', icon: 'calendar', group: 'Main', order: 16);
     }
 }

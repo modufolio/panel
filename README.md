@@ -19,25 +19,27 @@ final class EventResource extends PanelResource
 {
     public function key(): string            { return 'events'; }
     public function entityClass(): string    { return Event::class; }
-    public function listQueryClass(): string { return EventListQuery::class; }
+    public function menu(): Menu             { return Menu::make('Events', icon: 'calendar'); }
 
-    public function present(array $entities): array
-    {
-        return EventPresenter::collection($entities);
-    }
-
-    public function tableSchema(): TableSchema
+    public function table(): TableSchema
     {
         return TableSchema::make()
-            ->recordUrl('/panel/events/{id}')
             ->filters([Filter::select('type')->options(EventType::class)])
+            ->defaultSort('startsAt')
             ->columns([
-                Column::make('title')->linksToRecord()->weight('medium'),
-                Column::make('when')->linksToRecord(),
+                Column::make('title')->searchable()->linksToRecord()->weight('medium'),
+                Column::make('when')->value('starts_at')->linksToRecord(),
             ]);
     }
 }
 ```
+
+No presenter and no list query class: the rows are read off the entity
+through the columns (`when` reads `getStartsAt()`), and sorting, search, the
+default order and the soft-delete scope come from the table, built from the
+same query objects a hand-written `AbstractListQuery` chains. Override
+`present()` or name a class with `listQueryClass()` when a resource needs
+what its columns cannot say.
 
 ## What the host must provide
 
@@ -51,6 +53,15 @@ Two interfaces, bound in the application's container:
 The package never names Inertia, a template engine or a session. That is what
 lets one panel serve several applications that answer those questions
 differently.
+
+Every generated route dispatches to `Http\ResourceController`, which the
+package ships: index, show, create, store, edit, update, destroy, bulk delete,
+delete preview, export, relation lookups and board moves. It is an appkit
+`AppAwareInterface` controller, so there is nothing to wire: the kernel hands
+it the application and it pulls what it needs. It reads the two interfaces
+above from the container, and, when registered, a
+`Contracts\ExportAdapterProviderInterface` for downloads and a `FormResolver`
+naming the media entity. There is no controller to write.
 
 ## Authorization
 
@@ -116,9 +127,9 @@ refusal, a validation failure or a success becomes.
 
 ## Read-only resources
 
-Create, edit, update and delete routes are generated only when
-`formFields()` returns non-null. A resource that declares no form fields is
-index-and-show only, with no configuration.
+Create, edit, update and delete routes are generated only when `form()`
+returns non-null. A resource that declares no form is index-and-show only,
+with no configuration.
 
 ## Development
 

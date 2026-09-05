@@ -13,6 +13,7 @@ use Modufolio\Panel\Table\Summary;
 use Modufolio\Panel\Table\TableSchema;
 use Modufolio\Panel\Tests\Fixture\Entity\Movie;
 use Modufolio\Panel\Tests\Fixture\Entity\Studio;
+use Modufolio\Panel\Form\Form;
 
 /**
  * A resource declaring one of everything the listing machinery resolves:
@@ -37,9 +38,9 @@ class MovieResource extends PanelResource
         return MovieListQuery::class;
     }
 
-    public function formFields(): ?array
+    public function form(): ?Form
     {
-        return [
+        return Form::make()->fields([
             'title',
             'synopsis',
             'year',
@@ -50,7 +51,7 @@ class MovieResource extends PanelResource
             'studio_id',
             'tags',
             'cast',
-        ];
+        ]);
     }
 
     public function present(array $entities): array
@@ -70,7 +71,7 @@ class MovieResource extends PanelResource
         }, $entities);
     }
 
-    public function tableSchema(): TableSchema
+    public function table(): TableSchema
     {
         return TableSchema::make()
             ->bulkActions()

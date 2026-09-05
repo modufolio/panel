@@ -65,25 +65,26 @@ final class PanelResourceConfiguratorTest extends TestCase
         self::assertFalse($options->generates('teleport'));
     }
 
-    public function testAMenuEntryIsDeclaredWhereTheResourceIs(): void
+    /** Every concrete resource under the directory, alphabetically, and nothing that is not one. */
+    public function testDiscoverRegistersTheConcreteResourcesUnderADirectory(): void
     {
-        self::assertNull($this->options()->menuItem(), 'No menu() means no entry — the route still works.');
-        self::assertSame(
-            ['label' => 'Movies', 'icon' => 'film', 'group' => 'Library', 'order' => 10],
-            $this->options()->menu('Movies', icon: 'film', group: 'Library', order: 10)->menuItem(),
-        );
-        self::assertSame(
-            ['label' => 'Movies', 'icon' => null, 'group' => null, 'order' => 50],
-            $this->options()->menu('Movies')->menuItem(),
-            'Only the label is required.',
-        );
+        $configurator = new PanelResourceConfigurator();
+        $configurator->discover(__DIR__ . '/../Fixture', 'Modufolio\\Panel\\Tests\\Fixture');
+
+        $classes = array_keys($configurator->buildConfig());
+
+        self::assertContains(\Modufolio\Panel\Tests\Fixture\MovieResource::class, $classes);
+        self::assertContains(\Modufolio\Panel\Tests\Fixture\DerivedMovieResource::class, $classes);
+        self::assertNotContains(\Modufolio\Panel\Tests\Fixture\StubListQuery::class, $classes, 'Not a resource.');
+        self::assertNotContains(\Modufolio\Panel\Tests\Fixture\Entity\Movie::class, $classes, 'Subdirectories are walked, entities are not resources.');
+        self::assertSame($classes, (static function (array $c): array { sort($c); return $c; })($classes), 'Alphabetical, not filesystem order.');
     }
 
-    public function testAMenuEntryWithoutALabelIsRefused(): void
+    public function testDiscoverRefusesAPathThatIsNotADirectory(): void
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        $this->options()->menu('  ');
+        (new PanelResourceConfigurator())->discover(__DIR__ . '/nope', 'X');
     }
 
     public function testThePrefixFallsBackToTheCallersDefault(): void
