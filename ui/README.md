@@ -150,8 +150,6 @@ Works with any Inertia backend. A few small server-side conventions:
 - **Relation fields** — lookup search/create endpoints, repeater rows and
   row-addressed errors: [docs/relation-fields.md](docs/relation-fields.md)
 
-The reference implementation is appkit + appkit-portfolio.
-
 ## Tests
 
 ```bash

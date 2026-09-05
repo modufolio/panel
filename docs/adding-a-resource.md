@@ -9,9 +9,8 @@ This is the recipe. [panel-resources.md](panel-resources.md) explains *why* the
 design is shaped this way; this page is what to type, in order, and what fails
 silently if you skip a step.
 
-The worked example throughout is `App\Panel\EventResource` from
-appkit-portfolio — every event across every contact, read-only, reached from
-the sidebar. Every path in this recipe (`src/Entity/…`, `config/…`) is a path
+The worked example throughout is an `EventResource` — every event across
+every contact, read-only, reached from the sidebar. Every path in this recipe (`src/Entity/…`, `config/…`) is a path
 in the **consuming application**, not in this package: a resource is something
 an application declares, and the package is what turns the declaration into a
 listing.
@@ -360,9 +359,6 @@ they only checked that edit and delete were gone.
 
 - [graduating-a-resource.md](graduating-a-resource.md) — the ladder from a
   generated resource to a custom page, one rung at a time
-- `adding-a-custom-page.md` (in the reference application) — when the screen is not a listing
 - [panel-resources.md](panel-resources.md) — why resources are composed, not inherited
 - [table-schema.md](table-schema.md) — columns, filters, groups, constraints
 - [fields.md](fields.md) — what step 7's form can declare
-- `presenters.md` (in the reference application) — shaping rows
-- `testing.md` (in the reference application) — the test case helpers used above

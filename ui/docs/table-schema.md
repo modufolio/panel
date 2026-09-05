@@ -21,8 +21,8 @@ unaffected.
 />
 ```
 
-The reference backend implementation is appkit-portfolio's `App\Table\TableSchema`,
-but the contract below is plain JSON — any backend can produce it.
+The contract below is plain JSON — any backend can produce it; the PHP half of
+this package emits it from `Modufolio\Panel\Table\TableSchema`.
 
 ---
 

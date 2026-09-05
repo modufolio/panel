@@ -1,14 +1,9 @@
 # Graduating a resource
 
-A [resource](adding-a-resource.md) is scaffolding, not a destination. It gets a
-screen into production in an afternoon; the screen then grows requirements the
-schema was never meant to carry, and at some point it becomes a
-`adding-a-custom-page.md` (in the reference application).
-
-That transition is not a rewrite. It is a **ladder of four rungs**, and each
-rung gives up exactly one generated thing while keeping everything else.
-
-Five of the thirteen resources in this repo have already climbed to rung 3.
+A generated [resource](adding-a-resource.md) covers a listing, its drawer and
+its form. When a screen needs more than that, you do not rewrite it: you give
+up one generated piece at a time and keep the rest. There are four rungs, and
+each one trades exactly one thing.
 
 ---
 
@@ -21,9 +16,11 @@ Five of the thirteen resources in this repo have already climbed to rung 3.
 | **3. Your controller, resource kept** | route generation (partially) | schema, presenter, list query, drawer tabs |
 | **4. Fully custom** | the listing machinery | whatever still fits |
 
-The schema survives every rung. `ContactController` is entirely hand-written
-and still calls `ContactResource::tableSchema()` and `drawerTabs()` — it
-graduated the *controller* without giving up the *declaration*.
+The declaration survives every rung. A hand-written `UserController` can
+still take its listing through
+`#[Resource(UserResource::class)]` and builds its drawer from
+`UserResource::drawerTabs()` — it graduated the *controller* without giving up
+the *resource*.
 
 ---
 
@@ -76,11 +73,9 @@ only the markup that differs.
 `Resource/Index.vue` uses the same call — so the generic page is not a
 privileged thing you fork, it is the first consumer of the same composable.
 
-> **Register the page** in `assets/panel/js/Pages/{group}.js`, or the route
-> renders a component the client cannot resolve. See
-> `adding-a-custom-page.md` in the consuming application, under "Register the
-> page module" — page registration is the application's concern, so that recipe
-> lives with it.
+> **Register the page** in the application's page registry, or the route
+> renders a component the client cannot resolve. Page registration is the
+> application's concern, so its recipe lives with the application.
 
 ---
 
@@ -156,8 +151,7 @@ does.
 ## Worked examples
 
 Resources live in the consuming application, not in this package. The ones
-below are from **appkit-playground**, the harness this package is developed
-against:
+below are from the harness this package is developed against:
 
 | Resource | Rung | Why |
 |---|---|---|
@@ -191,5 +185,4 @@ the cheaper answer, and it is the untrodden one. Expect to be the first.
 ## See also
 
 - [adding-a-resource.md](adding-a-resource.md) — rung 1, from scratch
-- `adding-a-custom-page.md` (in the reference application) — the far end of the ladder
 - [panel-resources.md](panel-resources.md) — `ResourceListing`, `#[Resource]`, the props it emits

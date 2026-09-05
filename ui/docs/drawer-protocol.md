@@ -2,8 +2,7 @@
 
 The Drawer components render a stack of overlay panels driven by ordinary
 Inertia visits ("URL = state"). Any backend can drive them by honoring this
-contract; the reference implementation is appkit-portfolio's
-`src/Inertia/DrawerStack.php`.
+contract.
 
 ## Request side
 

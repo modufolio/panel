@@ -113,15 +113,14 @@ overridden, and which fields are readable, read-denied, write-denied or
 frozen — plus notes on divergences, such as a hook that reads a literal role
 while the route layer honours the hierarchy. The host wires it with its route
 collection, its resource factory, a `FormResolver`, the role hierarchy and a
-user factory; the reference application exposes it as `panel:permissions`
-and as a super-admin-only page.
+user factory, and can expose it as a console command, a page, or both.
 
 ### Registration
 
 A resource is a service, and the application's container builds it — for the
 `#[Resource]` resolver, for the generic controller, and for the route loader
-alike. Register every resource in the application's service definitions
-(`config/services.php` in appkit-playground), declaring whatever it needs
+alike. Register every resource in the application's service definitions,
+declaring whatever it needs
 through its constructor:
 
 ```php
@@ -271,8 +270,7 @@ role that reaches the listing can export every row it can see.
 That is deliberate: a download is a read, and a listing that renders 500 rows
 on screen has already disclosed them. If a resource needs a stricter rule, it
 needs a hand-written export route; `canView()` is the only hook the generated
-one consults. (The reference application's user export is hand-written for
-exactly this reason — it re-checks for an admin before exporting.)
+one consults.
 
 `scopeQuery()` still applies, so an export can never reach rows the listing
 itself could not.
@@ -438,5 +436,3 @@ a scalar column. Applying it in both places would double-filter.
 - [table-schema.md](table-schema.md) — columns, filters, groups, constraints
 - [fields.md](fields.md) — blueprint forms: field types, conditions, defaults,
   per-field access
-- `controllers.md` (in the reference application) — action parameter resolution
-- `presenters.md` (in the reference application) — shaping rows

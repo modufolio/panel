@@ -141,7 +141,3 @@ consuming application resolves the siblings its own way.
   defaults, per-field access, and the guards an application has to call
 - [docs/table-schema.md](docs/table-schema.md) — columns, filters, groups,
   constraints
-
-For a screen that is not a listing at all, the consuming application owns that
-recipe: see `docs/adding-a-custom-page.md` in appkit-portfolio, which covers
-controller conventions, the Inertia page registry and layouts.
