@@ -91,12 +91,10 @@ final class FieldTypeTest extends TestCase
     public function testEveryFieldTypeInThePackageIsCovered(): void
     {
         $onDisk = [];
-        foreach (glob(__DIR__ . '/../../src/Field/*.php') ?: [] as $file) {
-            $name = basename($file, '.php');
-            if (str_ends_with($name, 'Interface')) {
-                continue;
-            }
-            $onDisk[] = $name;
+        // `*Type.php`: the directory also holds the interfaces and
+        // FieldComponents, which are about types without being one.
+        foreach (glob(__DIR__ . '/../../src/Field/*Type.php') ?: [] as $file) {
+            $onDisk[] = basename($file, '.php');
         }
 
         $covered = array_keys(self::types());

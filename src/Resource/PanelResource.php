@@ -88,63 +88,41 @@ abstract class PanelResource
     }
 
     /**
-     * Field declarations for the resource's create/edit form, built with the
-     * same BlueprintBuilder the page blueprints use — one declaration carries
-     * the component, layout, options and validation rules for both sides.
+     * The resource's create/edit form: its entries, in display order.
+     *
+     * Most entries name a mapped field and state only what the mapping cannot
+     * know. FormFieldGuesser reads the type from the column, `max` from its
+     * length, `required` from its nullability and relations from the
+     * associations, then merges the entry's options on top — declared options
+     * always win.
+     *
+     *     return [
+     *         'title'       => ['width' => '1/2'],
+     *         'director_id' => ['width' => '1/2'],
+     *         Separator::Line,
+     *         'cast',
+     *         'notes'       => ['type' => TextareaType::class, 'help' => '…'],
+     *         'days_until'  => ['type' => ComputedType::class, 'accessor' => 'daysUntil'],
+     *     ];
+     *
+     * An entry with a `type` is declared outright: the type wins over the
+     * column and over a `#[FormType]` attribute, and the key need not be
+     * mapped at all — a set, an embed, a computed value, a hidden import
+     * reference. What the mapping does know still applies to a mapped key, so
+     * a `TextareaType` over a string column keeps the column's `max`.
+     * Per-field `access` callables are options like any other; they never
+     * reach the client (see {@see \Modufolio\Panel\Blueprint\FieldAccess}). A
+     * {@see \Modufolio\Panel\Blueprint\Separator} entry draws a rule, or
+     * leaves a gap, across the row.
      *
      * Returning non-null is also the opt-in for the *generated* write routes:
      * PanelResourceRouteLoader only emits create/edit/delete routes for a
      * resource that declares a form, since without one the generic
      * ResourceController would have nothing to render or validate against.
      *
-     * @return list<array<string, mixed>>|null
-     */
-    public function formFields(): ?array
-    {
-        return null;
-    }
-
-    /**
-     * Per-field access for a hand-written {@see formFields()}, keyed by field:
-     * `['secret' => ['read' => fn($user, $record) => …, 'write' => …]]`.
-     *
-     * The guesser path carries this on the blueprint builder and hands it back
-     * through {@see \Modufolio\Panel\Blueprint\FormDefinition}; a resource
-     * that builds its own fields has no builder to ask, so it declares the map
-     * here. Closures never travel to the client — a read-denied field is
-     * removed from the definitions, a write-denied one has its submitted value
-     * stripped. See {@see \Modufolio\Panel\Blueprint\FieldAccess}.
-     *
-     * @return array<string, array{read?: callable, write?: callable}>
-     */
-    public function formAccess(): array
-    {
-        return [];
-    }
-
-    /**
-     * The lighter alternative to formFields(): name only *which* fields the
-     * form edits (plus any overrides), and FormFieldGuesser derives the rest
-     * from Doctrine's metadata — types from column types, `max` from column
-     * length, `required` from nullability, relations from the association
-     * mappings. Declared overrides always win.
-     *
-     *     return [
-     *         'title'       => ['width' => '1/2'],
-     *         'director_id' => ['width' => '1/2'],
-     *         Separator::Line,
-     *         'cast'        => [],
-     *     ];
-     *
-     * A {@see \Modufolio\Panel\Blueprint\Separator} entry draws a rule (or
-     * leaves a gap) across the row, so a long form reads as runs of fields.
-     *
-     * Like formFields(), non-null opts the resource into the generated write
-     * routes. When both are implemented, formFields() wins outright.
-     *
      * @return array<int|string, string|\Modufolio\Panel\Blueprint\Separator|array<string, mixed>>|null
      */
-    public function formFieldKeys(): ?array
+    public function formFields(): ?array
     {
         return null;
     }
@@ -176,24 +154,6 @@ abstract class PanelResource
     public function views(): array
     {
         return [ResourceView::table()];
-    }
-
-    /**
-     * Whether this record may be dragged into that board column.
-     *
-     * Returns true to allow, or a message explaining the refusal — which the
-     * board shows and then puts the card back where it came from.
-     *
-     * The default allows every move, because most boards are a plain grouping
-     * and dragging is just editing that field. Override where the column is a
-     * workflow state and not every hop between them is legal: a board that
-     * lets a card be dragged from Backlog straight to Done, and only then
-     * discovers the transition does not exist, has already lied to the person
-     * dragging it.
-     */
-    public function canMoveTo(object $entity, string $column, ?object $user): bool|string
-    {
-        return true;
     }
 
     /**
@@ -263,39 +223,20 @@ abstract class PanelResource
     }
 
     // ── Permissions ──────────────────────────────────────────────────────────
-    //
-    // Four verbs, each answerable about the *type* (no record) or about one
-    // record. Route-level roles are the coarse gate and still run first; these
-    // are the finer one — "editors may edit only their own", "an admin sees a
-    // field an editor must not".
-    //
-    // The user is passed in rather than fetched, because a resource is a
-    // declaration object with no services: generated ones are built without a
-    // container, so anything they need has to arrive as an argument.
-    //
-    // Defaults are permissive, which keeps them additive: a resource that
-    // declares nothing behaves exactly as it did before these existed, gated
-    // by its routes alone.
 
-    /** May this user see the listing at all, or this record in particular? */
-    public function canView(?object $record = null, ?object $user = null): bool
+    /**
+     * Who may do what with this resource: roles, operations, rows, fields,
+     * board moves. See {@see Permissions} for the layers.
+     *
+     * A class the application writes, returned here so its dependencies flow
+     * through the resource's own constructor — the container builds the
+     * resource, the resource builds its permissions. The base class allows
+     * everything, so the default is a resource gated by nothing; a resource
+     * gated by roles alone returns `new Permissions(['ROLE_USER'])`.
+     */
+    public function permissions(): Permissions
     {
-        return true;
-    }
-
-    public function canCreate(?object $user = null): bool
-    {
-        return true;
-    }
-
-    public function canEdit(?object $record = null, ?object $user = null): bool
-    {
-        return true;
-    }
-
-    public function canDelete(?object $record = null, ?object $user = null): bool
-    {
-        return true;
+        return new Permissions();
     }
 
     /**
@@ -307,34 +248,6 @@ abstract class PanelResource
     public function singleton(): bool
     {
         return false;
-    }
-
-    /**
-     * Narrow what the listing can see at all.
-     *
-     * The counterpart to {@see canView()}: that one answers about a record
-     * already in hand, this one keeps records out of reach entirely — which is
-     * the only version that also fixes counts, pagination and search. A record
-     * excluded here is not merely hidden; {@see \App\Controller\Panel\ResourceController}
-     * cannot load it by URL either.
-     *
-     * @param object $query the resource's list query, to constrain in place
-     */
-    public function scopeQuery(object $query, ?object $user = null): void
-    {
-    }
-
-    /**
-     * Fields this user may see but not change.
-     *
-     * Enforced server-side by dropping them from the submission — the client
-     * disabling an input is convenience, not the control.
-     *
-     * @return list<string>
-     */
-    public function readonlyFields(?object $record = null, ?object $user = null): array
-    {
-        return [];
     }
 
     /**

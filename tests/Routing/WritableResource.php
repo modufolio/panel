@@ -15,5 +15,5 @@ final class WritableResource extends PanelResource
     public function listQueryClass(): string { return StubListQuery::class; }
     public function present(array $entities): array { return []; }
 
-    public function formFieldKeys(): array { return ['name' => []]; }
+    public function formFields(): array { return ['name' => []]; }
 }

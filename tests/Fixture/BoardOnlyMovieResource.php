@@ -10,7 +10,7 @@ use Modufolio\Panel\Table\TableSchema;
 use Modufolio\Panel\Tests\Fixture\Entity\Movie;
 
 /**
- * A resource with a board and deliberately no `formFieldKeys()`.
+ * A resource with a board and deliberately no `formFields()`.
  *
  * Grouped by `released`, which every Movie already has — the case a board
  * exists for, and the one where requiring a form would be nonsense.

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Modufolio\Panel\Form;
 
 use Doctrine\ORM\EntityManagerInterface;
-use Modufolio\Panel\Blueprint\FormDefinition;
 use Modufolio\Panel\Blueprint\FormFieldGuesser;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Table\RelationOptions;
@@ -13,15 +12,17 @@ use Modufolio\Panel\Table\RelationOptions;
 /**
  * Which form a resource has.
  *
- * A hand-written `formFields()` pairs with `formAccess()`; a resource that
- * only names its keys gets both halves guessed from Doctrine's metadata.
- * Memoised per class, because the guess walks metadata and one request reads
- * the same form several times — to render it, to validate against it, to
- * label a relation for the drawer.
+ * `formFields()` is a list of entries — guessed from Doctrine's metadata,
+ * pinned to a type, or declared outright — and FormFieldGuesser turns it
+ * into the definitions the client renders. Memoised per class, because the
+ * guess walks metadata and one request reads the same form several times —
+ * to render it, to validate against it, to label a relation for the drawer.
+ * Who may read or write each field is not part of the form: the resource's
+ * {@see \Modufolio\Panel\Resource\Permissions} answers that per request.
  */
 final class FormResolver
 {
-    /** @var array<class-string, FormDefinition> */
+    /** @var array<class-string, list<array<string, mixed>>> */
     private array $forms = [];
 
     /**
@@ -35,21 +36,10 @@ final class FormResolver
     ) {
     }
 
-    public function formFor(PanelResource $resource): FormDefinition
-    {
-        return $this->forms[$resource::class] ??= $this->build($resource);
-    }
-
     /** @return list<array<string, mixed>> */
     public function fieldsFor(PanelResource $resource): array
     {
-        return $this->formFor($resource)->fields;
-    }
-
-    /** @return array<string, array{read?: callable, write?: callable}> */
-    public function accessFor(PanelResource $resource): array
-    {
-        return $this->formFor($resource)->access;
+        return $this->forms[$resource::class] ??= $this->build($resource);
     }
 
     /**
@@ -126,15 +116,9 @@ final class FormResolver
         return $rows;
     }
 
-    private function build(PanelResource $resource): FormDefinition
+    /** @return list<array<string, mixed>> */
+    private function build(PanelResource $resource): array
     {
-        $declared = $resource->formFields();
-
-        if ($declared !== null) {
-            return new FormDefinition($declared, $resource->formAccess());
-        }
-
-        return (new FormFieldGuesser($this->entityManager, $this->mediaEntityClass))->guessForm($resource)
-            ?? new FormDefinition([]);
+        return (new FormFieldGuesser($this->entityManager, $this->mediaEntityClass))->guess($resource) ?? [];
     }
 }

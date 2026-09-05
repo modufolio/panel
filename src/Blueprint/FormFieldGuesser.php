@@ -12,6 +12,7 @@ use Modufolio\Panel\Field\BelongsToType;
 use Modufolio\Panel\Field\DateTimeType;
 use Modufolio\Panel\Field\DateType;
 use Modufolio\Panel\Field\DecimalType;
+use Modufolio\Panel\Field\FieldTypeInterface;
 use Modufolio\Panel\Field\HasManyType;
 use Modufolio\Panel\Field\ImageType;
 use Modufolio\Panel\Field\ManyToManyType;
@@ -29,9 +30,9 @@ use Doctrine\ORM\Mapping\ClassMetadata;
 /**
  * Derive a resource's form declaration from Doctrine's metadata.
  *
- * A resource that implements {@see PanelResource::formFieldKeys()} names only
- * *which* fields its form edits (plus any overrides); everything else is
- * inferred from what the ORM already knows — the same discipline the JSON:API
+ * A resource's {@see PanelResource::formFields()} names *which* fields its
+ * form edits (plus any options); everything else is inferred from what the
+ * ORM already knows — the same discipline the JSON:API
  * package follows, proven end to end by the bookstore experiment's OpenAPI
  * generator:
  *
@@ -44,10 +45,11 @@ use Doctrine\ORM\Mapping\ClassMetadata;
  *    multiselect, mapped-by OneToMany → repeater with the child's own scalar
  *    fields guessed the same way.
  *
- * Declared overrides always win, and everything is assembled through the same
- * BlueprintBuilder a hand-written formFields() uses, so the output shape — and
- * the option validation — is identical. A resource can still write formFields()
- * by hand; that takes precedence entirely.
+ * Declared options always win. An entry that names its `type` is declared
+ * outright — the type is taken as written and the key need not be mapped —
+ * so a form is one list whether its fields are guessed, pinned or invented.
+ * Everything goes through one BlueprintBuilder, so the output shape and the
+ * option validation are the same for every entry.
  */
 final class FormFieldGuesser
 {
@@ -78,20 +80,7 @@ final class FormFieldGuesser
      */
     public function guess(PanelResource $resource): ?array
     {
-        return $this->guessForm($resource)?->fields;
-    }
-
-    /**
-     * The same guess, with the per-field access callables kept.
-     *
-     * `guess()` returns only what can be serialised to the client, which is
-     * why a declared `access` used to end here: the builder collected it and
-     * the return value had nowhere to carry it. Callers that enforce access
-     * want both halves, so they ask for the definition rather than the fields.
-     */
-    public function guessForm(PanelResource $resource): ?FormDefinition
-    {
-        $keys = $resource->formFieldKeys();
+        $keys = $resource->formFields();
 
         if ($keys === null) {
             return null;
@@ -112,7 +101,7 @@ final class FormFieldGuesser
             $builder->add($key, $type, $options);
         }
 
-        return new FormDefinition($builder->fields(), $builder->access());
+        return $builder->fields();
     }
 
     /**
@@ -140,7 +129,7 @@ final class FormFieldGuesser
 
                 if (!is_string($value)) {
                     throw new \InvalidArgumentException(
-                        'formFieldKeys(): a plain entry must be a field name or a Separator; use `key => [overrides]` to pass options.',
+                        'formFields(): a plain entry must be a field name or a Separator; use `key => [options]` to pass options.',
                     );
                 }
 
@@ -161,21 +150,42 @@ final class FormFieldGuesser
      */
     private function guessField(ClassMetadata $meta, string $key, array $overrides): array
     {
+        // A declared type is the entry's own say, ahead of the column and of a
+        // #[FormType] attribute. Taken out of the options here: the builder
+        // takes the type as an argument, not an option.
+        $pinned = $overrides['type'] ?? null;
+        unset($overrides['type']);
+
+        if ($pinned !== null && (!is_string($pinned) || !is_a($pinned, FieldTypeInterface::class, true))) {
+            throw new \InvalidArgumentException(sprintf(
+                'formFields(): the `type` of "%s" must be a %s class name, got %s.',
+                $key,
+                FieldTypeInterface::class,
+                is_string($pinned) ? $pinned : get_debug_type($pinned),
+            ));
+        }
+
         $property = $this->resolveProperty($meta, $key);
 
         if ($property === null) {
+            if ($pinned !== null) {
+                // Nothing to guess from and nothing to guess: a set, an embed,
+                // a computed value. The builder still validates the options.
+                return [$pinned, $overrides];
+            }
+
             throw new \InvalidArgumentException(sprintf(
-                'formFieldKeys() names "%s", but %s maps no such field or association.',
+                'formFields() names "%s", but %s maps no such field or association. Give the entry a `type` to declare it outright.',
                 $key,
                 $meta->getName(),
             ));
         }
 
         if ($meta->hasAssociation($property)) {
-            return $this->guessAssociation($meta, $property, $overrides);
+            return $this->guessAssociation($meta, $property, $overrides, $pinned);
         }
 
-        return $this->guessScalar($meta, $property, $overrides);
+        return $this->guessScalar($meta, $property, $overrides, $pinned);
     }
 
     /**
@@ -222,10 +232,11 @@ final class FormFieldGuesser
     /**
      * @param ClassMetadata<object> $meta
      * @param array<string, mixed>  $overrides
+     * @param class-string|null     $pinned  the entry's own `type`, ahead of everything below
      *
      * @return array{class-string, array<string, mixed>}
      */
-    private function guessScalar(ClassMetadata $meta, string $field, array $overrides): array
+    private function guessScalar(ClassMetadata $meta, string $field, array $overrides, ?string $pinned = null): array
     {
         // The property's own say comes first: a `string` column is only ever
         // a text input to the mapping, so an email or a URL has to be declared
@@ -240,7 +251,7 @@ final class FormFieldGuesser
             $overrides['options'] ??= EnumOptions::for($enum);
         }
 
-        $type = $this->declaredType($meta, $field) ?? (isset($overrides['options']) ? SelectType::class : match ((string) $meta->getTypeOfField($field)) {
+        $type = $pinned ?? $this->declaredType($meta, $field) ?? (isset($overrides['options']) ? SelectType::class : match ((string) $meta->getTypeOfField($field)) {
             'text' => TextareaType::class,
             'integer', 'smallint', 'bigint' => NumberType::class,
             'decimal', 'float' => DecimalType::class,
@@ -252,8 +263,13 @@ final class FormFieldGuesser
 
         $options = $overrides;
 
-        $options['required'] ??= !$meta->isNullable($field)
-            || $this->isConstrainedRequired($meta->getName(), $field);
+        // A boolean column is never required: a toggle has no blank state, and
+        // NOT NULL is satisfied by false. Marking it required only made an
+        // unchecked box — or a client that left it out — a validation error.
+        if ((string) $meta->getTypeOfField($field) !== 'boolean') {
+            $options['required'] ??= !$meta->isNullable($field)
+                || $this->isConstrainedRequired($meta->getName(), $field);
+        }
 
         $mapping = $meta->getFieldMapping($field);
         $length  = $mapping['length'] ?? null;
@@ -294,10 +310,11 @@ final class FormFieldGuesser
     /**
      * @param ClassMetadata<object> $meta
      * @param array<string, mixed>  $overrides
+     * @param class-string|null     $pinned  the entry's own `type`, ahead of the mapping
      *
      * @return array{class-string, array<string, mixed>}
      */
-    private function guessAssociation(ClassMetadata $meta, string $property, array $overrides): array
+    private function guessAssociation(ClassMetadata $meta, string $property, array $overrides, ?string $pinned = null): array
     {
         $mapping = $meta->getAssociationMapping($property);
         $target  = $mapping['targetEntity'];
@@ -322,10 +339,10 @@ final class FormFieldGuesser
             // 'relation' option (uuid → the media entity) a BelongsTo would, so
             // the write path needs no special case for it.
             if ($this->mediaEntityClass !== null && $target === $this->mediaEntityClass) {
-                return [$this->declaredType($meta, $property) ?? ImageType::class, $options];
+                return [$pinned ?? $this->declaredType($meta, $property) ?? ImageType::class, $options];
             }
 
-            return [$this->declaredType($meta, $property) ?? BelongsToType::class, $options];
+            return [$pinned ?? $this->declaredType($meta, $property) ?? BelongsToType::class, $options];
         }
 
         // Owning ManyToMany → multiselect of existing records.
@@ -333,7 +350,7 @@ final class FormFieldGuesser
             $options = $overrides;
             $options['relation'] ??= new RelationOptions($target, $this->guessLabelField($target), 'uuid');
 
-            return [$this->declaredType($meta, $property) ?? ManyToManyType::class, $options];
+            return [$pinned ?? $this->declaredType($meta, $property) ?? ManyToManyType::class, $options];
         }
 
         // Mapped-by OneToMany → repeater over the child's own scalar fields.
@@ -361,7 +378,7 @@ final class FormFieldGuesser
             $options['fields'] = $guessed;
         }
 
-        return [$this->declaredType($meta, $property) ?? HasManyType::class, $options];
+        return [$pinned ?? $this->declaredType($meta, $property) ?? HasManyType::class, $options];
     }
 
     /**

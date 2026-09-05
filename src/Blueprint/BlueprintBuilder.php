@@ -34,9 +34,6 @@ final class BlueprintBuilder
     /** @var list<array<string, mixed>> */
     private array $fields = [];
 
-    /** @var array<string, array{read?: callable, write?: callable}> */
-    private array $access = [];
-
     /** Separators are keyed by count, since nobody names one. */
     private int $separators = 0;
 
@@ -97,10 +94,6 @@ final class BlueprintBuilder
             }
         }
 
-        if (isset($resolved['access'])) {
-            $this->access[$key] = $resolved['access'];
-        }
-
         $field = [
             'key'   => $key,
             'type'  => $type::component(),
@@ -154,18 +147,6 @@ final class BlueprintBuilder
             ),
             $this->fields,
         );
-    }
-
-    /**
-     * Per-field access callables, keyed by field. Kept out of fields() —
-     * closures cannot be serialized to the client, and resolving them needs
-     * the user and record only the request has. See {@see FieldAccess}.
-     *
-     * @return array<string, array{read?: callable, write?: callable}>
-     */
-    public function access(): array
-    {
-        return $this->access;
     }
 
     /**
@@ -233,10 +214,6 @@ final class BlueprintBuilder
             // A ComputedType's server-side source: the method on the record
             // (or presenter) whose return value the field displays.
             'accessor',
-            // Per-field access: array{read?: callable, write?: callable},
-            // resolved against (user, record) by FieldAccess — held apart
-            // from the serialized definition, closures don't travel.
-            'access',
             // A BelongsTo field's related entity, held as data (RelationOptions)
             // and resolved to a flat option list where the EntityManager lives.
             'relation',
@@ -263,7 +240,6 @@ final class BlueprintBuilder
         $resolver->setAllowedTypes('when', 'array');
         $resolver->setAllowedTypes('requiredWhen', 'array');
         $resolver->setAllowedTypes('accessor', 'string');
-        $resolver->setAllowedTypes('access', 'array');
         $resolver->setAllowedTypes('relation', \Modufolio\Panel\Table\RelationOptions::class);
         $resolver->setAllowedTypes('fields', 'array');
 

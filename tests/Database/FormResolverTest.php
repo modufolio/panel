@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Database;
 
-use Modufolio\Panel\Blueprint\BlueprintBuilder;
 use Modufolio\Panel\Field\TextType;
 use Modufolio\Panel\Form\FormResolver;
 use Modufolio\Panel\Resource\PanelResource;
@@ -32,80 +31,66 @@ final class FormResolverTest extends DoctrineTestCase
 
     // ── Fixtures ─────────────────────────────────────────────────────────────
 
-    /** A resource with a hand-written form: fields and access declared apart. */
+    /** A resource declaring its fields outright — types pinned. */
     private function handWrittenResource(): PanelResource
     {
         return new class extends MovieResource {
             public function formFields(): array
             {
-                return (new BlueprintBuilder())
-                    ->add('title', TextType::class, ['required' => true])
-                    ->add('secret', TextType::class)
-                    ->fields();
-            }
-
-            public function formAccess(): array
-            {
-                return ['secret' => ['read' => static fn (): bool => false]];
-            }
-        };
-    }
-
-    /** Keys only, one of them carrying an access declaration for the guesser to keep. */
-    private function keyedResource(): PanelResource
-    {
-        return new class extends MovieResource {
-            public function formFieldKeys(): array
-            {
                 return [
-                    'title',
-                    'year' => ['access' => ['write' => static fn (): bool => false]],
+                    'title'  => ['type' => TextType::class, 'required' => true],
+                    'secret' => ['type' => TextType::class],
                 ];
             }
         };
     }
 
-    /** Neither hand-written fields nor keys. */
+    /** Keys only, one with an override for the guesser to apply. */
+    private function keyedResource(): PanelResource
+    {
+        return new class extends MovieResource {
+            public function formFields(): array
+            {
+                return [
+                    'title',
+                    'year' => ['label' => 'Release year'],
+                ];
+            }
+        };
+    }
+
+    /** No form at all. */
     private function formlessResource(): PanelResource
     {
         return new class extends MovieResource {
-            public function formFieldKeys(): ?array
+            public function formFields(): ?array
             {
                 return null;
             }
         };
     }
 
-    // ── formFor() ────────────────────────────────────────────────────────────
+    // ── fieldsFor() ──────────────────────────────────────────────────────────
 
-    public function testAHandWrittenFormIsReturnedWithItsDeclaredAccess(): void
+    public function testAHandWrittenFormIsReturnedAsDeclared(): void
     {
-        $resource = $this->handWrittenResource();
+        $fields = $this->resolver()->fieldsFor($this->handWrittenResource());
 
-        $form = $this->resolver()->formFor($resource);
-
-        self::assertSame($resource->formFields(), $form->fields);
-        self::assertSame(['title', 'secret'], array_column($form->fields, 'key'));
-        self::assertSame(['secret'], array_keys($form->access));
-        self::assertArrayHasKey('read', $form->access['secret']);
+        self::assertSame(['title', 'secret'], array_column($fields, 'key'));
+        self::assertSame(['text', 'text'], array_column($fields, 'type'), 'Declared types are taken as written.');
     }
 
-    public function testAKeyedFormIsGuessedAndCarriesTheAccessFromItsOverrides(): void
+    public function testAKeyedFormIsGuessedWithItsOverridesApplied(): void
     {
-        $form = $this->resolver()->formFor($this->keyedResource());
+        $fields = $this->resolver()->fieldsFor($this->keyedResource());
 
-        self::assertNotSame([], $form->fields);
-        self::assertSame(['title', 'year'], array_column($form->fields, 'key'));
-        self::assertSame(['year'], array_keys($form->access), 'The access option survives the guess.');
-        self::assertArrayHasKey('write', $form->access['year']);
+        self::assertSame(['title', 'year'], array_column($fields, 'key'));
+        self::assertSame('Release year', $fields[1]['label'], 'The override survives the guess.');
     }
 
-    public function testAResourceWithoutAFormGetsAnEmptyDefinition(): void
+    public function testAResourceWithoutAFormGetsNoFields(): void
     {
-        $form = $this->resolver()->formFor($this->formlessResource());
-
-        self::assertSame([], $form->fields);
-        self::assertSame([], $form->access);
+        self::assertSame([], $this->resolver()->fieldsFor($this->formlessResource()));
     }
 
     /** One request reads the same form several times; the guess runs once. */
@@ -114,13 +99,11 @@ final class FormResolverTest extends DoctrineTestCase
         $resolver = $this->resolver();
         $resource = new MovieResource();
 
-        $first  = $resolver->formFor($resource);
-        $second = $resolver->formFor($resource);
+        $first  = $resolver->fieldsFor($resource);
+        $second = $resolver->fieldsFor($resource);
 
         self::assertSame($first, $second);
-        self::assertSame($first, $resolver->formFor(new MovieResource()), 'Keyed by class, not by instance.');
-        self::assertSame($first->fields, $resolver->fieldsFor($resource));
-        self::assertSame($first->access, $resolver->accessFor($resource));
+        self::assertSame($first, $resolver->fieldsFor(new MovieResource()), 'Keyed by class, not by instance.');
     }
 
     // ── field() ──────────────────────────────────────────────────────────────

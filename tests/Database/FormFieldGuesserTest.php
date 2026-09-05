@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Database;
 
-use Modufolio\Panel\Blueprint\FormDefinition;
 use Modufolio\Panel\Blueprint\FormFieldGuesser;
 use Modufolio\Panel\Blueprint\Separator;
+use Modufolio\Panel\Field\ComputedType;
+use Modufolio\Panel\Field\TextareaType;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Table\RelationOptions;
 use Modufolio\Panel\Tests\Case\DoctrineTestCase;
@@ -25,7 +26,7 @@ use Modufolio\Panel\Tests\Fixture\StubListQuery;
  * metadata: the Movie fixture carries one column of every kind it
  * distinguishes and one association of every shape.
  *
- * What is pinned here is the *contract* between a `formFieldKeys()` list and
+ * What is pinned here is the *contract* between a `formFields()` list and
  * the field definitions that reach the client — a change to any mapping rule
  * changes every generated form at once, which is why each rule gets its own
  * test rather than one comparison of the whole array.
@@ -72,7 +73,7 @@ final class FormFieldGuesserTest extends DoctrineTestCase
                 return StubListQuery::class;
             }
 
-            public function formFieldKeys(): ?array
+            public function formFields(): ?array
             {
                 return $this->keys;
             }
@@ -546,6 +547,51 @@ final class FormFieldGuesserTest extends DoctrineTestCase
 
     // ── Refusals ─────────────────────────────────────────────────────────────
 
+    /** NOT NULL on a boolean is satisfied by false; a toggle cannot be "left blank". */
+    public function testANonNullableBooleanIsNotRequired(): void
+    {
+        $fields = $this->guessMovie(['released']);
+
+        self::assertArrayNotHasKey('required', $fields['released']);
+        self::assertArrayNotHasKey('required', $this->section($fields['released'], 'rules'));
+    }
+
+    /**
+     * A `type` on the entry is the field's own say: it wins over the column,
+     * while what the column knows — its length, its nullability — still
+     * applies. One list, whether a field is guessed or pinned.
+     */
+    public function testADeclaredTypeWinsOverTheColumnAndKeepsWhatTheColumnKnows(): void
+    {
+        $fields = $this->guessMovie(['title' => ['type' => TextareaType::class]]);
+
+        self::assertSame(TextareaType::component(), $fields['title']['type']);
+        self::assertSame(160, $this->section($fields['title'], 'rules')['max'], 'The column length still applies.');
+        self::assertTrue($fields['title']['required'] ?? false, 'A non-nullable column is still required.');
+        self::assertArrayNotHasKey('type', $this->section($fields['title'], 'props'), 'The type is not passed on as an option.');
+    }
+
+    /** With a `type`, a key the entity does not map is declared outright — a computed value, a set, an embed. */
+    public function testAnEntryWithATypeNeedsNoMapping(): void
+    {
+        $fields = $this->guessMovie([
+            'title',
+            'days_until' => ['type' => ComputedType::class, 'accessor' => 'daysUntil', 'label' => 'Days until'],
+        ]);
+
+        self::assertSame(['title', 'days_until'], array_keys($fields));
+        self::assertSame(ComputedType::component(), $fields['days_until']['type']);
+        self::assertSame('Days until', $fields['days_until']['label']);
+    }
+
+    public function testATypeThatIsNotAFieldTypeIsRefused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('the `type` of "title" must be a Modufolio\\Panel\\Field\\FieldTypeInterface class name, got int');
+
+        $this->guessMovie(['title' => ['type' => 42]]);
+    }
+
     public function testNamingAKeyTheEntityDoesNotMapThrowsNamingBoth(): void
     {
         $this->expectException(\InvalidArgumentException::class);
@@ -562,7 +608,7 @@ final class FormFieldGuesserTest extends DoctrineTestCase
     public function testAPlainEntryThatIsNotAStringThrows(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('formFieldKeys()');
+        $this->expectExceptionMessage('formFields()');
 
         $this->guesser()->guess($this->resourceFor(Movie::class, [['label' => 'Title']]));
     }
@@ -577,32 +623,6 @@ final class FormFieldGuesserTest extends DoctrineTestCase
         $this->expectExceptionMessageMatches('/' . preg_quote(CastMember::class, '/') . '.*RelationOptions/');
 
         $this->guesser()->guess($this->resourceFor(Credit::class, ['cast_member_id']));
-    }
-
-    // ── guess() vs guessForm() ───────────────────────────────────────────────
-
-    /**
-     * `guess()` returns what can be serialised; the closures a declared
-     * `access` carries cannot, so they travel only on the FormDefinition.
-     */
-    public function testGuessFormKeepsTheAccessCallablesThatGuessCannotCarry(): void
-    {
-        $resource = $this->resourceFor(Movie::class, [
-            'title'    => ['access' => ['read' => static fn (): bool => true]],
-            'synopsis' => [],
-        ]);
-
-        $definition = $this->guesser()->guessForm($resource);
-
-        self::assertInstanceOf(FormDefinition::class, $definition);
-        self::assertSame(['title'], array_keys($definition->access), 'Only the field that declared access.');
-        self::assertIsCallable($definition->access['title']['read'] ?? null);
-
-        foreach ($definition->fields as $field) {
-            self::assertArrayNotHasKey('access', $field, 'Never in the serialisable half.');
-        }
-
-        self::assertSame($definition->fields, $this->guesser()->guess($resource));
     }
 
     public function testTheFixtureResourceGuessesInDeclarationOrder(): void
@@ -622,16 +642,11 @@ final class FormFieldGuesserTest extends DoctrineTestCase
         $resource = $this->resourceFor(Movie::class, null);
 
         self::assertNull($this->guesser()->guess($resource));
-        self::assertNull($this->guesser()->guessForm($resource));
     }
 
     /** An empty list is a declared form with nothing in it, not the absence of one. */
     public function testAnEmptyKeyListYieldsAnEmptyForm(): void
     {
-        $definition = $this->guesser()->guessForm($this->resourceFor(Movie::class, []));
-
-        self::assertInstanceOf(FormDefinition::class, $definition);
-        self::assertSame([], $definition->fields);
-        self::assertSame([], $definition->access);
+        self::assertSame([], $this->guesser()->guess($this->resourceFor(Movie::class, [])));
     }
 }

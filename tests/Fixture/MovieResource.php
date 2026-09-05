@@ -37,7 +37,7 @@ class MovieResource extends PanelResource
         return MovieListQuery::class;
     }
 
-    public function formFieldKeys(): ?array
+    public function formFields(): ?array
     {
         return [
             'title',
@@ -73,7 +73,6 @@ class MovieResource extends PanelResource
     public function tableSchema(): TableSchema
     {
         return TableSchema::make()
-            ->recordUrl('/panel/movies/{id}')
             ->bulkActions()
             ->columns([
                 Column::make('title')->linksToRecord()->summarize(Summary::count('Movies')),

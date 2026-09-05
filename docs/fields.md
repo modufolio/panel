@@ -5,43 +5,46 @@ that the package serialises to JSON and `@modufolio/panel` renders. The same
 declaration drives the control, its layout, its validation and — where the
 application wires them — its defaults and its per-field permissions.
 
-Two ways to write one:
+One list, in display order:
 
 ```php
-// Name the columns and let Doctrine's metadata fill in the rest.
-public function formFieldKeys(): array
+public function formFields(): array
 {
     return [
         'title'       => ['width' => '1/2'],
         'director_id' => ['width' => '1/2'],
-        'cast'        => [],
+        Separator::Line,
+        'cast',
+        'starts_on'   => ['default' => '@today'],
+        'days_until'  => ['type' => ComputedType::class, 'accessor' => 'daysUntil'],
     ];
-}
-
-// Or declare every field yourself.
-public function formFields(): array
-{
-    return (new BlueprintBuilder())
-        ->add('title', TextType::class, ['rules' => ['required' => true, 'max' => 160]])
-        ->add('starts_on', DateType::class, ['default' => '@today'])
-        ->fields();
 }
 ```
 
-Returning non-null from either is also the **opt-in for the generated write
-routes** — a resource that declares no form is index-and-show only. When both
-are implemented, `formFields()` wins.
+Returning non-null is also the **opt-in for the generated write routes** — a
+resource that declares no form is index-and-show only.
 
 ---
 
-## Which one to use
+## What an entry says
 
-`formFieldKeys()` is the right default. `FormFieldGuesser` reads the entity's
-mapping and derives what the schema already knows: the type from the column
-type, `max` from its length, `required` from its nullability, a BelongsTo
-select from a to-one association, a multiselect from a many-to-many, a repeater
-over a one-to-many's own fields. Overrides always win, so you state only what
-the schema cannot know — layout, choices, bounds.
+Most entries name a mapped field and state only what the mapping cannot know.
+`FormFieldGuesser` reads the entity's mapping and derives the rest: the type
+from the column type, `max` from its length, `required` from its nullability,
+a BelongsTo select from a to-one association, a multiselect from a
+many-to-many, a repeater over a one-to-many's own fields. Options always win,
+so you state only layout, choices, bounds — whatever the schema cannot know.
+
+An entry with a `type` is **declared outright**. The type is taken as written,
+ahead of the column and of a `#[FormType]` attribute on the property, and the
+key need not be mapped at all — a `SetType` over one stored object, an
+`EmbedType`, a `ComputedType` reading an accessor, a `HiddenType` import
+reference. What the mapping does know still applies to a mapped key: a
+`TextareaType` pinned over a string column keeps the column's `max`.
+
+Everything goes through one `BlueprintBuilder`, so option validation is the
+same whether a field was guessed, pinned or invented, and an option the type
+does not accept is refused where it is written.
 
 ### Separators
 
@@ -65,8 +68,7 @@ return [
 
 It is a plain list entry, not an option on a field, because a break is a thing
 in the sequence rather than a property of whichever field happens to follow it.
-A hand-written form gets the same from `BlueprintBuilder::separator()`. A
-separator is never validated and never written.
+A separator is never validated and never written.
 
 A column mapped with `enumType` is a choice among the enum's cases: the
 guesser makes it a select, labelled by the enum's own `getLabel()` where it
@@ -157,6 +159,13 @@ of sub-fields stored as one JSON object, an `embed` — has to come from
 | `DataType` | `data` | shown, never edited — the importer's parking spot |
 | `ComputedType` | `data` | server-computed; requires `accessor` |
 
+`image`, `builder` and `sections` are **host-provided** components: the
+client package does not ship them, and an application that emits those types
+registers a component at boot (`createPanel({ fields: { image: … } })`).
+`Field\FieldComponents::missing($fields, $registered)` reports any component a
+form needs that neither the package ships nor the host registered, so this can
+be a lint rather than a red block in a form.
+
 `SetType` is the single-row sibling of `StructureType`: same `fields` option,
 but the value is one object rather than a list of rows.
 
@@ -168,8 +177,9 @@ guess how to display a computed value.
 
 ## Field options
 
-Every option below is accepted by `BlueprintBuilder::add()` and by a
-`formFieldKeys()` override. Anything else is rejected where it is written.
+Every option below is accepted on a `formFields()` entry (and by
+`BlueprintBuilder::add()`, which the guesser calls for each). Anything else is
+rejected where it is written.
 
 ### Presentation
 
@@ -264,63 +274,58 @@ once per process — freezing the worker's boot time into every record it writes
 
 ## Per-field access
 
+Who may read or write a field is not part of the form: it is a rule on the
+resource's [`Permissions`](panel-resources.md#permissions) class, asked per
+field with the viewer and, where there is one, the record.
+
 ```php
-->add('published', ToggleType::class, [
-    'access' => ['write' => static fn (?object $user): bool => $user?->isSuperAdmin()],
-])
-->add('internal_notes', TextareaType::class, [
-    'access' => ['read' => static fn (?object $user): bool => $user?->isAdmin()],
-])
+final class ScreeningPermissions extends Permissions
+{
+    public function readable(string $field, ?object $user, ?object $record = null): bool
+    {
+        return $field !== 'internal_notes' || $user?->isAdmin() === true;
+    }
+
+    public function writable(string $field, ?object $user, ?object $record = null): bool
+    {
+        return match ($field) {
+            'published' => $user?->isSuperAdmin() === true,
+            'price'     => $record === null || !$record->isClosed(),
+            default     => true,
+        };
+    }
+}
 ```
 
 Two verbs, and hidden ≠ forbidden is enforced on both sides of the wire:
 
-- **read denied** — the field is removed from the serialised definitions
+- **not readable** — the field is removed from the serialised definitions
   entirely. Never shipped, not merely not rendered.
-- **write denied** — the field renders read-only *and* its submitted value is
-  stripped. Disabling the input is presentation; the strip is the guard.
+- **not writable** — the field renders disabled *and* leaves the submission:
+  its value is stripped and none of its rules run, so a required field frozen
+  on a closed record still lets the rest of the record save. Disabling the
+  input is presentation; the strip is the guard.
 
-**Scope: `access` governs the form.** Both verbs act where the form is built
+One method answers both questions the package used to ask apart — "frozen on
+*this* record" and "off limits to *this* role" — because a request answers
+neither by itself. Null record means the type, or a create form.
+
+**Scope: the rules govern the form.** Both verbs act where the form is built
 and where its submission is handled — the paths listed under [Wiring the
 guards](#wiring-the-guards). They are *not* an application-wide rule about a
 field's value, and no other read path consults them:
 
-| Path | Honours `access.read`? |
+| Path | Honours `readable()`? |
 |---|---|
 | Form definitions (`FieldAccess::resolve`) | Yes |
-| Form submission (`FieldAccess::stripDenied`) | Yes — the `write` half |
+| Form submission (`FieldAccess::stripDenied`) | Yes — and `writable()` |
 | Presenters (`present()` / `presentOne()`) | **No** |
 | Exports | **No** — see [panel-resources.md](panel-resources.md#exports) |
 | Your own JSON responses | **No** |
 
-So `access.read` keeps a field out of the *editor*; it does not keep the value
+So `readable()` keeps a field out of the *editor*; it does not keep the value
 out of every payload. If a value must not reach a role at all, it also has to
-be absent from what your presenter emits to that role — declaring `access` and
-assuming the rest is the same mistake as declaring it and never wiring it.
-
-Callables receive `($user, $record)`, either possibly null — a create form has
-no record yet. They never travel to the client, which is why they are held
-apart from the field definitions:
-
-| Path | Fields | Access |
-|---|---|---|
-| `formFields()` | the return value | `formAccess()` |
-| `formFieldKeys()` | `FormFieldGuesser::guess()` | `guessForm()->access` |
-
-`guessForm()` returns a `Blueprint\FormDefinition` carrying both halves, since
-`guess()` can only return what is serialisable. A hand-written form has no
-builder for the caller to ask, so it hands the map over through `formAccess()`
-— build both from the same builder and the two cannot disagree:
-
-```php
-public function formFields(): array  { return $this->blueprint()->fields(); }
-public function formAccess(): array  { return $this->blueprint()->access(); }
-```
-
-This is a different question from `readonlyFields($record, $user)`, which
-answers "which fields are frozen on *this* record" and drops them from the
-submission wholesale. Use that for row-dependent freezing, `access` for
-role-dependent visibility.
+be absent from what your presenter emits to that role.
 
 ---
 
@@ -335,13 +340,13 @@ helpers directly.
 
 The helpers stay public for a write path the package does not own: a bespoke
 controller that persists a form without `SubmissionHandler`. Such a path has
-to reproduce the order below, because declaring `when` or `access` in a
-blueprint and never applying them yields a form that *looks* guarded and is
-not. `SubmissionHandler` runs them in this order, because each step depends on
-the last:
+to reproduce the order below, because declaring `when` in a blueprint or a
+`writable()` rule on the permissions and never applying them yields a form
+that *looks* guarded and is not. `SubmissionHandler` runs them in this order,
+because each step depends on the last:
 
 ```php
-$values = FieldAccess::stripDenied($access, $values, $user, $entity);
+$values = FieldAccess::stripDenied($fields, $resource->permissions(), $values, $user, $entity);
 $values = Defaults::resolve($fields, $values);
 $values = FieldValidator::stripHidden($fields, $values);
 
@@ -353,7 +358,7 @@ $errors = FieldValidator::validate($fields, $values);
 3. **Then hidden** — after defaults, so a field a `when` hides cannot arrive by
    way of its own default either.
 
-On the way out, `FieldAccess::resolve($fields, $access, $user, $record)`
+On the way out, `FieldAccess::resolve($fields, $resource->permissions(), $user, $record)`
 decides which definitions are serialised at all, and a `ComputedType`'s
 `accessor` is invoked on the record to give the field its value.
 
