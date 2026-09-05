@@ -15,17 +15,17 @@ use PHPUnit\Framework\TestCase;
 /** A list query that allows sorting on `title` and nothing else. */
 final class SortableTitleOnlyQuery implements ListQueryInterface
 {
-    public static function sortableFields(): array
+    public function sortable(): array
     {
         return ['title'];
     }
 
-    public static function mapSortField(string $field): ?string
+    public function mapSort(string $field): ?string
     {
         return $field === 'title' ? 'title' : null;
     }
 
-    public static function defaultSort(): array
+    public function defaultOrder(): array
     {
         return ['title' => 'ASC'];
     }
@@ -54,7 +54,7 @@ final class TableSchemaTest extends TestCase
     {
         $schema = TableSchema::make()
             ->columns([Column::make('title'), Column::make('location')])
-            ->toArray(SortableTitleOnlyQuery::class);
+            ->toArray(new SortableTitleOnlyQuery());
 
         self::assertTrue($schema['columns'][0]['sortable'], 'title is in SORTABLE_FIELDS');
         self::assertFalse($schema['columns'][1]['sortable'], 'location is not, so it must not offer sorting');
@@ -64,7 +64,7 @@ final class TableSchemaTest extends TestCase
     {
         $schema = TableSchema::make()
             ->columns([Column::make('title')->notSortable()])
-            ->toArray(SortableTitleOnlyQuery::class);
+            ->toArray(new SortableTitleOnlyQuery());
 
         self::assertFalse($schema['columns'][0]['sortable']);
     }
@@ -73,7 +73,7 @@ final class TableSchemaTest extends TestCase
     {
         $schema = TableSchema::make()
             ->recordUrl('/panel/events/{id}')
-            ->toArray(SortableTitleOnlyQuery::class);
+            ->toArray(new SortableTitleOnlyQuery());
 
         self::assertSame('/panel/events/{id}', $schema['recordUrl']);
     }
@@ -81,7 +81,7 @@ final class TableSchemaTest extends TestCase
     /** Undeclared here means "derive it from the show route", which is the listing's job. */
     public function testRecordUrlIsNullWhenNotDeclared(): void
     {
-        self::assertNull(TableSchema::make()->toArray(SortableTitleOnlyQuery::class)['recordUrl']);
+        self::assertNull(TableSchema::make()->toArray(new SortableTitleOnlyQuery())['recordUrl']);
     }
 
     public function testWithRecordUrlLeavesTheDeclaredSchemaUntouched(): void
@@ -91,14 +91,14 @@ final class TableSchemaTest extends TestCase
 
         self::assertNull($declared->declaredRecordUrl(), 'The resource\'s own schema is not mutated behind its back.');
         self::assertSame('/panel/events/{id}', $resolved->declaredRecordUrl());
-        self::assertSame('/panel/events/{id}', $resolved->toArray(SortableTitleOnlyQuery::class)['recordUrl']);
+        self::assertSame('/panel/events/{id}', $resolved->toArray(new SortableTitleOnlyQuery())['recordUrl']);
     }
 
     public function testEmptyStateIsCarriedAsTitleAndDescription(): void
     {
         $schema = TableSchema::make()
             ->emptyState('No events yet', 'Events are added from a contact.')
-            ->toArray(SortableTitleOnlyQuery::class);
+            ->toArray(new SortableTitleOnlyQuery());
 
         self::assertSame('No events yet', $schema['emptyStateTitle']);
         self::assertSame('Events are added from a contact.', $schema['emptyStateDescription']);
@@ -108,21 +108,21 @@ final class TableSchemaTest extends TestCase
     {
         $schema = TableSchema::make()
             ->filters([Filter::select('type'), Filter::dateRange('when')])
-            ->toArray(SortableTitleOnlyQuery::class);
+            ->toArray(new SortableTitleOnlyQuery());
 
         self::assertSame(['type', 'when'], array_column($schema['filters'], 'key'));
     }
 
     public function testBulkActionsAreOffUntilAsked(): void
     {
-        self::assertFalse(TableSchema::make()->toArray(SortableTitleOnlyQuery::class)['bulkActions']);
-        self::assertTrue(TableSchema::make()->bulkActions()->toArray(SortableTitleOnlyQuery::class)['bulkActions']);
+        self::assertFalse(TableSchema::make()->toArray(new SortableTitleOnlyQuery())['bulkActions']);
+        self::assertTrue(TableSchema::make()->bulkActions()->toArray(new SortableTitleOnlyQuery())['bulkActions']);
     }
 
     /** Every key the client reads must be present, even when empty. */
     public function testTheShapeIsStableForAnEmptySchema(): void
     {
-        $schema = TableSchema::make()->toArray(SortableTitleOnlyQuery::class);
+        $schema = TableSchema::make()->toArray(new SortableTitleOnlyQuery());
 
         foreach ([
             'columns', 'filters', 'groups', 'constraints', 'recordUrl',
@@ -141,10 +141,10 @@ final class TableSchemaTest extends TestCase
                 ChildTable::relation('cast', 'Cast'),
                 ChildTable::relation('credits', 'Credits'),
             ])
-            ->toArray(SortableTitleOnlyQuery::class);
+            ->toArray(new SortableTitleOnlyQuery());
 
         self::assertSame(['cast', 'credits'], array_column($schema['children'], 'key'));
-        self::assertArrayHasKey('children', TableSchema::make()->toArray(SortableTitleOnlyQuery::class));
-        self::assertSame([], TableSchema::make()->toArray(SortableTitleOnlyQuery::class)['children']);
+        self::assertArrayHasKey('children', TableSchema::make()->toArray(new SortableTitleOnlyQuery()));
+        self::assertSame([], TableSchema::make()->toArray(new SortableTitleOnlyQuery())['children']);
     }
 }

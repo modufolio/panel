@@ -18,7 +18,7 @@ use Modufolio\Panel\Query\ListQueryInterface;
  *
  * So sortability is not something a column declares — it is **derived** from
  * the list query at serialisation time via
- * {@see ListQueryInterface::mapSortField()}. A column can only opt *out*
+ * {@see ListQueryInterface::mapSort()}. A column can only opt *out*
  * (`->notSortable()`). Drift is impossible by construction: if the query
  * cannot order by a field, its header is not clickable, and there is no
  * second list to forget to update.
@@ -64,6 +64,9 @@ final class TableSchema
     private bool $searchable = true;
     private bool $bulkActions = false;
     private bool $stickyHeader = true;
+
+    /** @var array<string, string>|null one `property => ASC|DESC` */
+    private ?array $defaultSort = null;
 
     public static function make(): self
     {
@@ -318,17 +321,44 @@ final class TableSchema
     }
 
     /**
-     * Serialise for the client, resolving each column's sortability against
-     * the resource's list query.
+     * The order the listing applies when the request names none.
      *
-     * @param class-string<ListQueryInterface> $listQueryClass
+     * Read by the derived list query; a resource naming its own list query
+     * class orders as that class's `defaultSort()` says. `$field` is the
+     * entity property, as the query interpolates it.
+     */
+    public function defaultSort(string $field, string $direction = 'ASC'): self
+    {
+        $direction = strtoupper($direction);
+
+        if (!in_array($direction, ['ASC', 'DESC'], true)) {
+            throw new \InvalidArgumentException(sprintf('defaultSort(): direction must be ASC or DESC, got "%s".', $direction));
+        }
+
+        $this->defaultSort = [$field => $direction];
+
+        return $this;
+    }
+
+    /** @return array<string, string>|null */
+    public function declaredDefaultSort(): ?array
+    {
+        return $this->defaultSort;
+    }
+
+    /**
+     * Serialise for the client, resolving each column's sortability against
+     * the query the listing applies — or, without one, as the columns declare
+     * it, for a caller that wants the shape and not the verdict (an export
+     * reading headers).
+     *
      * @return array<string, mixed>
      */
-    public function toArray(string $listQueryClass): array
+    public function toArray(?ListQueryInterface $query = null): array
     {
         $columns = array_map(
             fn(Column $column): array => $column->toArray(
-                $column->wantsSorting() && $listQueryClass::mapSortField($column->key()) !== null
+                $column->wantsSorting() && ($query === null || $query->mapSort($column->key()) !== null)
             ),
             $this->columns,
         );

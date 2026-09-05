@@ -24,6 +24,7 @@ final class Column
     private string $label;
     private string $type = 'text';
     private ?string $valueKey = null;
+    private ?string $template = null;
     private ?string $urlTemplate = null;
     private bool $showArrow = false;
     private ?string $descriptionKey = null;
@@ -65,6 +66,11 @@ final class Column
 
     private ?string $imageRounded = null;
 
+    /** Whether label() was called — a humanised key is a fallback, not a declaration. */
+    private bool $labelDeclared = false;
+
+    private bool $searchable = false;
+
     private function __construct(private readonly string $key)
     {
         $this->label = self::humanize($key);
@@ -77,9 +83,15 @@ final class Column
 
     public function label(string $label): self
     {
-        $this->label = $label;
+        $this->label         = $label;
+        $this->labelDeclared = true;
 
         return $this;
+    }
+
+    public function hasDeclaredLabel(): bool
+    {
+        return $this->labelDeclared;
     }
 
     /**
@@ -105,6 +117,24 @@ final class Column
         $this->valueKey = $path;
 
         return $this;
+    }
+
+    /**
+     * Render the cell from a template over the entity, resolved server-side:
+     * `{{ movie.title }} ({{ movie.year }})`. The roots are `record` and the
+     * resource's singular key. Only read by the default presenter — a
+     * resource with its own present() puts the value in the row itself.
+     */
+    public function text(string $template): self
+    {
+        $this->template = $template;
+
+        return $this;
+    }
+
+    public function template(): ?string
+    {
+        return $this->template;
     }
 
     /**
@@ -172,6 +202,26 @@ final class Column
      * There is no positive `sortable()` — a column cannot be made sortable
      * here, only suppressed. See {@see TableSchema::toArray()}.
      */
+    /**
+     * Include this column's field in the listing's search.
+     *
+     * Read by the derived list query: a case-insensitive LIKE across every
+     * searchable column, joining a to-one relation a `value('studio.name')`
+     * path crosses. A resource naming its own list query class searches as
+     * that class says; this flag is then only documentation.
+     */
+    public function searchable(bool $searchable = true): self
+    {
+        $this->searchable = $searchable;
+
+        return $this;
+    }
+
+    public function wantsSearch(): bool
+    {
+        return $this->searchable;
+    }
+
     public function notSortable(): self
     {
         $this->sortable = false;

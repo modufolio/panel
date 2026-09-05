@@ -13,17 +13,17 @@ use Modufolio\Panel\Query\ListQueryInterface;
  */
 final class StubListQuery implements ListQueryInterface
 {
-    public static function sortableFields(): array
+    public function sortable(): array
     {
         return [];
     }
 
-    public static function defaultSort(): array
+    public function defaultOrder(): array
     {
         return [];
     }
 
-    public static function mapSortField(string $field): ?string
+    public function mapSort(string $field): ?string
     {
         return null;
     }

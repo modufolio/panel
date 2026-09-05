@@ -7,55 +7,35 @@ namespace Modufolio\Panel\Query;
 use Doctrine\ORM\QueryBuilder;
 
 /**
- * Contract for a resource's list query.
+ * The query behind a listing: what narrows the rows, how they are ordered,
+ * and which orderings the request may ask for.
  *
- * Implementations are the single source of truth for *how a resource is
- * listed*: which fields may be sorted on, how virtual field names map onto
- * entity properties, and what the default ordering is.
- *
- * PanelResource and TableSchema read all of that from here, so a resource
- * never repeats its sortable-field allowlist.
- *
- * Implementations must accept the following constructor signature (named
- * arguments), which is how PanelResource::buildListQuery() builds them:
- *
- *     __construct(
- *         ?string $search = null,
- *         ?string $trashed = null,
- *         ?array  $sort = null,
- *         ?int    $limit = null,
- *         ?int    $offset = null,
- *     )
+ * Instance methods throughout, so a query can be derived per resource from
+ * its table rather than declared once per class in constants — and so the
+ * listing can ask the object it is about to apply, never a class name.
  */
 interface ListQueryInterface extends QueryInterface
 {
     /**
-     * Entity property names that may be sorted on.
+     * Entity properties the request may sort on.
      *
-     * Values are interpolated into DQL by the keyset navigation queries, so
-     * this must only ever contain hardcoded property names.
+     * Interpolated into DQL by the keyset navigation queries, so these must
+     * only ever be declared property names — never anything a request sent.
      *
      * @return list<string>
      */
-    public static function sortableFields(): array;
+    public function sortable(): array;
 
     /**
-     * Default ordering when the request carries no usable sort param.
+     * The order applied when the request names none: one `field => ASC|DESC`.
      *
-     * @return array<string, 'ASC'|'DESC'> single entry, e.g. ['lastName' => 'ASC']
+     * @return array<string, string>
      */
-    public static function defaultSort(): array;
+    public function defaultOrder(): array;
 
-    /**
-     * Translate a public/virtual sort field onto an entity property.
-     *
-     * Returns null when the field is not sortable, so callers can silently
-     * ignore it rather than leaking schema information.
-     */
-    public static function mapSortField(string $field): ?string;
+    /** The entity property a public sort key maps to, or null when it cannot be sorted on. */
+    public function mapSort(string $field): ?string;
 
-    /**
-     * Build the count query — same filters, no ordering or pagination.
-     */
+    /** The query's predicates without its order, limit or offset — what the count and the aggregates share. */
     public function forCount(QueryBuilder $qb): QueryBuilder;
 }

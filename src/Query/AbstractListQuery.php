@@ -60,6 +60,17 @@ abstract class AbstractListQuery extends AbstractQuery implements ListQueryInter
     ) {
     }
 
+    /**
+     * The order applied when the request names none: one `property => ASC|DESC`.
+     *
+     * Static, because it is a declaration of the class — the same for every
+     * request — and a subclass states it beside its constants.
+     *
+     * @return array<string, string>
+     */
+    abstract public static function defaultSort(): array;
+
+    /** @return list<string> */
     public static function sortableFields(): array
     {
         return static::SORTABLE_FIELDS;
@@ -70,6 +81,23 @@ abstract class AbstractListQuery extends AbstractQuery implements ListQueryInter
         $mapped = static::FIELD_MAPPING[$field] ?? $field;
 
         return in_array($mapped, static::SORTABLE_FIELDS, true) ? $mapped : null;
+    }
+
+    /** @return list<string> */
+    public function sortable(): array
+    {
+        return static::sortableFields();
+    }
+
+    /** @return array<string, string> */
+    public function defaultOrder(): array
+    {
+        return static::defaultSort();
+    }
+
+    public function mapSort(string $field): ?string
+    {
+        return static::mapSortField($field);
     }
 
     public function apply(QueryBuilder $qb): QueryBuilder
