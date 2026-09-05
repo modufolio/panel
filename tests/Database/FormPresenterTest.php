@@ -17,6 +17,7 @@ use Modufolio\Panel\Tests\Fixture\Entity\Studio;
 use Modufolio\Panel\Tests\Fixture\Entity\Tag;
 use Modufolio\Panel\Tests\Fixture\MovieResource;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Modufolio\Panel\Form\Form;
 
 /**
  * What a form page is sent.
@@ -48,13 +49,13 @@ final class FormPresenterTest extends DoctrineTestCase
     private function accessResource(): PanelResource
     {
         return new class extends MovieResource {
-            public function formFields(): array
+            public function form(): Form
             {
-                return [
+                return Form::make()->fields([
                     'title',
                     'secret' => ['type' => TextType::class],
                     'locked' => ['type' => TextType::class],
-                ];
+                ]);
             }
 
             public function permissions(): Permissions
@@ -82,12 +83,12 @@ final class FormPresenterTest extends DoctrineTestCase
             {
             }
 
-            public function formFields(): array
+            public function form(): Form
             {
-                return [
+                return Form::make()->fields([
                     'title',
                     'heading' => ['type' => ComputedType::class, 'accessor' => $this->accessor],
-                ];
+                ]);
             }
         };
     }
@@ -223,9 +224,9 @@ final class FormPresenterTest extends DoctrineTestCase
         // A form without relations: the narrow route set has no relation
         // options route either, and a lookup could not be built against it.
         $resource = new class extends MovieResource {
-            public function formFields(): array
+            public function form(): Form
             {
-                return ['title'];
+                return Form::make()->fields(['title']);
             }
         };
 

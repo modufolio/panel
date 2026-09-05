@@ -30,7 +30,7 @@ use Doctrine\ORM\Mapping\ClassMetadata;
 /**
  * Derive a resource's form declaration from Doctrine's metadata.
  *
- * A resource's {@see PanelResource::formFields()} names *which* fields its
+ * A resource's {@see PanelResource::form()} names *which* fields its
  * form edits (plus any options); everything else is inferred from what the
  * ORM already knows — the same discipline the JSON:API
  * package follows, proven end to end by the bookstore experiment's OpenAPI
@@ -80,23 +80,28 @@ final class FormFieldGuesser
      */
     public function guess(PanelResource $resource): ?array
     {
-        $keys = $resource->formFields();
+        $form = $resource->form();
 
-        if ($keys === null) {
+        if ($form === null) {
             return null;
         }
 
         $meta    = $this->em->getClassMetadata($resource->entityClass());
+        $shared  = $resource->fieldDefinitions();
         $builder = new BlueprintBuilder();
 
-        foreach ($this->normalizeKeys($keys) as [$key, $overrides]) {
+        foreach ($form->entries() as [$key, $overrides]) {
             if ($key instanceof Separator) {
                 $builder->separator($key);
 
                 continue;
             }
 
-            [$type, $options] = $this->guessField($meta, $key, $overrides);
+            // What fields() says about the key first, what the form entry says
+            // on top: two levels, the entry's own always winning.
+            $options = [...($shared[$key] ?? []), ...$overrides];
+
+            [$type, $options] = $this->guessField($meta, $key, $options);
 
             $builder->add($key, $type, $options);
         }
@@ -104,43 +109,6 @@ final class FormFieldGuesser
         return $builder->fields();
     }
 
-    /**
-     * Accept plain entries, key => overrides, and separators, in declaration
-     * order: `['title', 'genre' => ['options' => …], Separator::Line, 'year']`.
-     *
-     * A list rather than a map, because a separator has no key of its own
-     * and its place in the sequence is the whole point of it.
-     *
-     * @param array<int|string, string|Separator|array<string, mixed>> $keys
-     *
-     * @return list<array{0: string|Separator, 1: array<string, mixed>}>
-     */
-    private function normalizeKeys(array $keys): array
-    {
-        $normalized = [];
-
-        foreach ($keys as $key => $value) {
-            if (is_int($key)) {
-                if ($value instanceof Separator) {
-                    $normalized[] = [$value, []];
-
-                    continue;
-                }
-
-                if (!is_string($value)) {
-                    throw new \InvalidArgumentException(
-                        'formFields(): a plain entry must be a field name or a Separator; use `key => [options]` to pass options.',
-                    );
-                }
-
-                $normalized[] = [$value, []];
-            } else {
-                $normalized[] = [$key, is_array($value) ? $value : []];
-            }
-        }
-
-        return $normalized;
-    }
 
     /**
      * @param ClassMetadata<object> $meta
@@ -158,7 +126,7 @@ final class FormFieldGuesser
 
         if ($pinned !== null && (!is_string($pinned) || !is_a($pinned, FieldTypeInterface::class, true))) {
             throw new \InvalidArgumentException(sprintf(
-                'formFields(): the `type` of "%s" must be a %s class name, got %s.',
+                'form(): the `type` of "%s" must be a %s class name, got %s.',
                 $key,
                 FieldTypeInterface::class,
                 is_string($pinned) ? $pinned : get_debug_type($pinned),
@@ -175,7 +143,7 @@ final class FormFieldGuesser
             }
 
             throw new \InvalidArgumentException(sprintf(
-                'formFields() names "%s", but %s maps no such field or association. Give the entry a `type` to declare it outright.',
+                'form() names "%s", but %s maps no such field or association. Give the entry a `type` to declare it outright.',
                 $key,
                 $meta->getName(),
             ));

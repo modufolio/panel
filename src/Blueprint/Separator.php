@@ -7,7 +7,7 @@ namespace Modufolio\Panel\Blueprint;
 /**
  * A break between two runs of fields.
  *
- * Declared inline in `formFields()` as a plain entry between the keys it
+ * Declared inline in `form()` as a plain entry between the keys it
  * separates — a break is a thing in the list, not a property of the field
  * that happens to follow it:
  *

@@ -12,6 +12,7 @@ use Modufolio\Panel\Tests\Case\DoctrineTestCase;
 use Modufolio\Panel\Tests\Fixture\Entity\Actor;
 use Modufolio\Panel\Tests\Fixture\Entity\Studio;
 use Modufolio\Panel\Tests\Fixture\MovieResource;
+use Modufolio\Panel\Form\Form;
 
 /**
  * Which form a resource has, and what can be reached through it by name.
@@ -35,12 +36,12 @@ final class FormResolverTest extends DoctrineTestCase
     private function handWrittenResource(): PanelResource
     {
         return new class extends MovieResource {
-            public function formFields(): array
+            public function form(): Form
             {
-                return [
+                return Form::make()->fields([
                     'title'  => ['type' => TextType::class, 'required' => true],
                     'secret' => ['type' => TextType::class],
-                ];
+                ]);
             }
         };
     }
@@ -49,12 +50,12 @@ final class FormResolverTest extends DoctrineTestCase
     private function keyedResource(): PanelResource
     {
         return new class extends MovieResource {
-            public function formFields(): array
+            public function form(): Form
             {
-                return [
+                return Form::make()->fields([
                     'title',
                     'year' => ['label' => 'Release year'],
-                ];
+                ]);
             }
         };
     }
@@ -63,7 +64,7 @@ final class FormResolverTest extends DoctrineTestCase
     private function formlessResource(): PanelResource
     {
         return new class extends MovieResource {
-            public function formFields(): ?array
+            public function form(): ?Form
             {
                 return null;
             }

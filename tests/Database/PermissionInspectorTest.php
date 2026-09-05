@@ -16,6 +16,7 @@ use Modufolio\Panel\Tests\Fixture\MovieResource;
 use Modufolio\Panel\Tests\Fixture\UserMovieResource;
 use Modufolio\Panel\Tests\Routing\ReadOnlyResource;
 use Symfony\Component\Routing\RouteCollection;
+use Modufolio\Panel\Form\Form;
 
 /**
  * The four permission layers read back together, for a stand-in user per
@@ -287,14 +288,14 @@ final class PermissionInspectorTest extends DoctrineTestCase
                 return $this->permissions;
             }
 
-            public function formFields(): array
+            public function form(): Form
             {
-                return [
+                return Form::make()->fields([
                     'title'  => ['type' => TextType::class],
                     'rating' => ['type' => TextType::class],
                     'secret' => ['type' => TextType::class],
                     'year'   => ['type' => TextType::class],
-                ];
+                ]);
             }
         };
     }

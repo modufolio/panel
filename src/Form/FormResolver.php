@@ -12,7 +12,7 @@ use Modufolio\Panel\Table\RelationOptions;
 /**
  * Which form a resource has.
  *
- * `formFields()` is a list of entries — guessed from Doctrine's metadata,
+ * `form()` is a list of entries — guessed from Doctrine's metadata,
  * pinned to a type, or declared outright — and FormFieldGuesser turns it
  * into the definitions the client renders. Memoised per class, because the
  * guess walks metadata and one request reads the same form several times —

@@ -8,21 +8,24 @@ application wires them — its defaults and its per-field permissions.
 One list, in display order:
 
 ```php
-public function formFields(): array
+public function form(): Form
 {
-    return [
+    return Form::make()->fields([
         'title'       => ['width' => '1/2'],
-        'director_id' => ['width' => '1/2'],
+        Field::make('director_id')->width('1/2'),
         Separator::Line,
         'cast',
         'starts_on'   => ['default' => '@today'],
         'days_until'  => ['type' => ComputedType::class, 'accessor' => 'daysUntil'],
-    ];
+    ]);
 }
 ```
 
 Returning non-null is also the **opt-in for the generated write routes** — a
 resource that declares no form is index-and-show only.
+
+A bare key takes whatever the resource's `fields()` declares for it first —
+label, type, options — and the form entry adds what the form alone needs.
 
 ---
 
@@ -127,7 +130,7 @@ Its one hard limit: **every key must resolve to a mapped property.** A key that
 names nothing throws (naming the class and the key), and there is no way to
 force a type. So a field with no column behind it — a `computed` value, a `set`
 of sub-fields stored as one JSON object, an `embed` — has to come from
-`formFields()`. That is also the only path that can declare per-field access.
+`form()`.
 
 ---
 
@@ -177,7 +180,8 @@ guess how to display a computed value.
 
 ## Field options
 
-Every option below is accepted on a `formFields()` entry (and by
+Every option below is accepted on a `form()` entry — as a `key => [options]`
+array or a `Field` builder call of the same name — (and by
 `BlueprintBuilder::add()`, which the guesser calls for each). Anything else is
 rejected where it is written.
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Routing;
 
+use Modufolio\Panel\Form\Form;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\Permissions;
 use Modufolio\Panel\Tests\Fixture\StubListQuery;
@@ -16,7 +17,7 @@ final class GuardedWritableResource extends PanelResource
     public function listQueryClass(): string { return StubListQuery::class; }
     public function present(array $entities): array { return []; }
 
-    public function formFields(): array { return ['name' => []]; }
+    public function form(): Form { return Form::make()->fields(['name' => []]); }
 
     public function permissions(): Permissions
     {

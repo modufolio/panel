@@ -19,6 +19,7 @@ use Modufolio\Panel\Tests\Fixture\MovieResource;
 use Modufolio\Panel\Tests\Fixture\StubListQuery;
 use Ramsey\Uuid\Uuid;
 use Symfony\Component\Validator\Validation;
+use Modufolio\Panel\Form\Form;
 
 /**
  * A submission from the request body to the row, and back out again.
@@ -202,9 +203,9 @@ final class SubmissionHandlerTest extends DoctrineTestCase
             {
             }
 
-            public function formFields(): array
+            public function form(): Form
             {
-                return $this->fields;
+                return Form::make()->fields($this->fields);
             }
         };
     }
@@ -228,9 +229,9 @@ final class SubmissionHandlerTest extends DoctrineTestCase
                 return StubListQuery::class;
             }
 
-            public function formFields(): array
+            public function form(): Form
             {
-                return ['name', 'city'];
+                return Form::make()->fields(['name', 'city']);
             }
 
             public function present(array $entities): array
@@ -266,9 +267,9 @@ final class SubmissionHandlerTest extends DoctrineTestCase
                 return StubListQuery::class;
             }
 
-            public function formFields(): array
+            public function form(): Form
             {
-                return $this->keys;
+                return Form::make()->fields($this->keys);
             }
 
             public function present(array $entities): array
@@ -629,9 +630,9 @@ final class SubmissionHandlerTest extends DoctrineTestCase
     public function testAFieldTheUserMayNotWriteKeepsItsValue(): void
     {
         $resource = new class extends MovieResource {
-            public function formFields(): array
+            public function form(): Form
             {
-                return ['title' => ['required' => true], 'synopsis' => []];
+                return Form::make()->fields(['title' => ['required' => true], 'synopsis' => []]);
             }
 
             public function permissions(): Permissions

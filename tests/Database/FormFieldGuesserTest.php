@@ -20,13 +20,15 @@ use Modufolio\Panel\Tests\Fixture\Entity\Studio;
 use Modufolio\Panel\Tests\Fixture\Entity\Tag;
 use Modufolio\Panel\Tests\Fixture\MovieResource;
 use Modufolio\Panel\Tests\Fixture\StubListQuery;
+use Modufolio\Panel\Form\Field;
+use Modufolio\Panel\Form\Form;
 
 /**
  * The guesser reads a form off Doctrine's metadata, so its tests need real
  * metadata: the Movie fixture carries one column of every kind it
  * distinguishes and one association of every shape.
  *
- * What is pinned here is the *contract* between a `formFields()` list and
+ * What is pinned here is the *contract* between a `form()` declaration and
  * the field definitions that reach the client — a change to any mapping rule
  * changes every generated form at once, which is why each rule gets its own
  * test rather than one comparison of the whole array.
@@ -73,9 +75,9 @@ final class FormFieldGuesserTest extends DoctrineTestCase
                 return StubListQuery::class;
             }
 
-            public function formFields(): ?array
+            public function form(): ?Form
             {
-                return $this->keys;
+                return $this->keys === null ? null : Form::make()->fields($this->keys);
             }
 
             public function present(array $entities): array
@@ -608,7 +610,7 @@ final class FormFieldGuesserTest extends DoctrineTestCase
     public function testAPlainEntryThatIsNotAStringThrows(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('formFields()');
+        $this->expectExceptionMessage('Form: a plain entry must be a field name');
 
         $this->guesser()->guess($this->resourceFor(Movie::class, [['label' => 'Title']]));
     }
@@ -623,6 +625,35 @@ final class FormFieldGuesserTest extends DoctrineTestCase
         $this->expectExceptionMessageMatches('/' . preg_quote(CastMember::class, '/') . '.*RelationOptions/');
 
         $this->guesser()->guess($this->resourceFor(Credit::class, ['cast_member_id']));
+    }
+
+    /**
+     * fields() says what a key is; the form entry says what the form alone
+     * needs. Two levels: the entry wins where both speak, fields() fills the
+     * rest, and the mapping fills what neither says.
+     */
+    public function testAFormEntryTakesWhatFieldsDeclaresAndOverridesIt(): void
+    {
+        $resource = new class extends MovieResource {
+            public function fields(): array
+            {
+                return [Field::make('year')->label('Release year')->help('Four digits')];
+            }
+
+            public function form(): Form
+            {
+                return Form::make()->fields(['title', 'year' => ['help' => 'The premiere year']]);
+            }
+        };
+
+        $fields = $this->guesser()->guess($resource);
+
+        self::assertNotNull($fields);
+        self::assertSame('Release year', $fields[1]['label'], 'From fields().');
+        self::assertSame('The premiere year', $fields[1]['help'], 'The entry wins.');
+        $plain = $this->guesser()->guess(new MovieResource()) ?? [];
+        self::assertSame($plain[2]['type'], $fields[1]['type'], 'The mapping still says what neither did.');
+        self::assertSame($plain[2]['props'], $fields[1]['props']);
     }
 
     public function testTheFixtureResourceGuessesInDeclarationOrder(): void
