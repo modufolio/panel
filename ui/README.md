@@ -63,15 +63,12 @@ value in your own `@theme` block to re-brand.
 
 ```vue
 <script setup>
-import { Table, BlueprintForm, Drawer, useResource, defineColumn, panelUrl } from '@modufolio/panel'
+import { Table, BlueprintForm } from '@modufolio/panel'
 
-const resource = useResource({
-  endpoint: panelUrl('/api/users'),
-  columns: [
-    defineColumn({ name: 'name', label: 'Name', sortable: true }),
-    defineColumn({ name: 'email', label: 'Email' }),
-  ],
-})
+const columns = [
+  { key: 'name', label: 'Name', sortable: true },
+  { key: 'email', label: 'Email' },
+]
 
 const fields = [
   { type: 'text', key: 'name', label: 'Name', required: true, width: '1/2' },
@@ -81,10 +78,14 @@ const fields = [
 </script>
 
 <template>
-  <Table :columns="resource.columns" :records="resource.records" />
+  <Table :columns="columns" :records="users.data" />
   <BlueprintForm v-model="form" :fields="fields" label="Profile" />
 </template>
 ```
+
+In practice a page rarely writes either list by hand: the table's columns
+come from a server-authored schema (below), and the form's fields from the
+resource's blueprint.
 
 ## Server-driven tables
 
@@ -105,6 +106,35 @@ page:
 It wraps `Table`, so pages using `Table` directly are unaffected, and any
 `#cell-{key}` or `#filters` slot you pass overrides the generated one.
 See [docs/table-schema.md](docs/table-schema.md).
+
+## Generated resource pages
+
+A `PanelResource` served by the package's generated routes needs no page of
+its own. The host registers one component for every listing and hands the
+server's props straight through:
+
+```vue
+<script setup lang="ts">
+import { Head } from '@inertiajs/vue3'
+import { ResourcePage, humanize } from '@modufolio/panel'
+import Layout from '../Shared/Layout.vue'
+
+defineOptions({ layout: Layout, inheritAttrs: false })
+const props = defineProps<{ resource: { key: string } }>()
+</script>
+
+<template>
+  <Head :title="humanize(props.resource.key)" />
+  <ResourcePage v-bind="{ ...$attrs, ...props }" />
+</template>
+```
+
+`ResourcePage` renders the table or board, filters, column toggle, export,
+the create action, the drawer stack with each record's tabs, and the
+over-drawer form that adds one row to a list — all from what
+`ResourceListing` sent. `#cell-{key}` slots replace one cell; any other slot
+is a drawer tab body. `ResourceForm` is the create/edit half. A page that
+wants its own markup calls `useResourceListing()` and keeps only what differs.
 
 ## Async writes
 

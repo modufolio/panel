@@ -1,4 +1,5 @@
 import { computed, type ComputedRef } from 'vue'
+import type { FieldSpec } from '../Fields/fieldsFromSpec'
 import { visitDrawer, withDrawerParams } from './visitDrawer'
 
 /**
@@ -37,6 +38,10 @@ export interface StackItemTab {
   badge?: number | null
   addable?: boolean
   addLabel?: string
+  /** Addable lists only: the row form's fields, as PanelResource::formFields() declares them. */
+  addFields?: FieldSpec[]
+  /** Addable lists only: the form field the added row is written through. */
+  addTarget?: string | null
 }
 
 /**

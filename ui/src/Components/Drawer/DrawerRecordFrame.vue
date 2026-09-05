@@ -104,6 +104,7 @@
 
 <script setup lang="ts">
 import DrawerFieldGrid from './DrawerFieldGrid.vue'
+import type { FieldSpec } from '../Fields/fieldsFromSpec'
 import DrawerRelationList from './DrawerRelationList.vue'
 import DrawerTabs from './DrawerTabs.vue'
 import type { DrawerTab } from './drawerTabs'
@@ -149,6 +150,9 @@ interface RelationSection extends DrawerTab {
   addable?: boolean
   addLabel?: string | null
   addForm?: unknown
+  /** Addable lists only: the row form's fields as declared, and the field the row is written through. */
+  addFields?: FieldSpec[]
+  addTarget?: string | null
   fields?: Record<string, string | null> | null
   sections?: RelationSection[]
   recordUrl?: string | null

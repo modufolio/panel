@@ -158,6 +158,7 @@ export { default as StatCard } from './Components/Widgets/StatCard.vue'
 // Field Grid + Blueprint
 export { default as FieldGrid } from './Components/Fields/FieldGrid.vue'
 export { fieldsFromSpec, initialValues } from './Components/Fields/fieldsFromSpec'
+export { builtInFieldTypes, registeredFieldTypes, hasFieldType, missingFieldTypes, unknownFieldTypeMessage } from './Components/Fields/fieldRegistry'
 export { default as BlueprintForm } from './Components/Fields/BlueprintForm.vue'
 export { useFieldWidth, fieldWidthProp } from './Components/Fields/useFieldWidth'
 
@@ -245,6 +246,12 @@ export { useDrawerStack, type StackItem, type StackItemTab } from './Components/
 export { useFocusedStackRow } from './Components/Drawer/useFocusedStackRow'
 export { useIsDrawer, useDrawerStackContext } from './Components/Drawer/useIsDrawer'
 export { useDrawerPage } from './Components/Drawer/useDrawerPage'
+
+// Resource pages (a PanelResource's listing and form, from the server's props)
+export { default as ResourcePage } from './Components/Resource/ResourcePage.vue'
+export { default as ResourceForm } from './Components/Resource/ResourceForm.vue'
+export { useResourceListing, humanize, type ResourceMeta, type ResourceListingProps } from './Composables/useResourceListing'
+export { useListFilters, type BaseFilters, type ListFiltersOptions, type SortPayload } from './Composables/useListFilters'
 
 // Notification Components
 export { default as Toast } from './Components/Notifications/Toast.vue'
