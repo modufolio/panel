@@ -25,6 +25,7 @@ export type BuiltinFieldType =
   | 'belongs-to'
   | 'repeater'
   | 'toggle-buttons'
+  | 'separator'
 
 /**
  * Built-ins plus anything an application registers via registerFieldType()

@@ -132,13 +132,17 @@ abstract class PanelResource
      *     return [
      *         'title'       => ['width' => '1/2'],
      *         'director_id' => ['width' => '1/2'],
+     *         Separator::Line,
      *         'cast'        => [],
      *     ];
+     *
+     * A {@see \Modufolio\Panel\Blueprint\Separator} entry draws a rule (or
+     * leaves a gap) across the row, so a long form reads as runs of fields.
      *
      * Like formFields(), non-null opts the resource into the generated write
      * routes. When both are implemented, formFields() wins outright.
      *
-     * @return array<int|string, string|array<string, mixed>>|null
+     * @return array<int|string, string|\Modufolio\Panel\Blueprint\Separator|array<string, mixed>>|null
      */
     public function formFieldKeys(): ?array
     {

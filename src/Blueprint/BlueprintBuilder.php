@@ -5,6 +5,7 @@ declare(strict_types = 1);
 namespace Modufolio\Panel\Blueprint;
 
 use Modufolio\Panel\Field\FieldTypeInterface;
+use Modufolio\Panel\Field\SeparatorType;
 use Symfony\Component\OptionsResolver\Exception\ExceptionInterface as OptionsException;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
@@ -35,6 +36,22 @@ final class BlueprintBuilder
 
     /** @var array<string, array{read?: callable, write?: callable}> */
     private array $access = [];
+
+    /** Separators are keyed by count, since nobody names one. */
+    private int $separators = 0;
+
+    /**
+     * A break between the field before and the field after: a rule, or the
+     * same gap with nothing drawn in it. Takes the full row either way.
+     */
+    public function separator(Separator $separator = Separator::Line): self
+    {
+        return $this->add(
+            'separator_' . ++$this->separators,
+            SeparatorType::class,
+            ['label' => '', 'props' => ['separator' => $separator->value]],
+        );
+    }
 
     /**
      * @param string               $type    A {@see FieldTypeInterface} implementation. Checked at

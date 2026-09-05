@@ -34,6 +34,7 @@ const fieldRegistry: Record<string, FieldLoader> = {
   'toggle-buttons': () => import('./ToggleButtonsField.vue'),
   'hidden':         () => import('./HiddenField.vue'),
   'data':           () => import('./DataField.vue'),
+  'separator':      () => import('./SeparatorField.vue'),
   'embed':          () => import('./EmbedField.vue'),
   'set':            () => import('./SetField.vue'),
 }
