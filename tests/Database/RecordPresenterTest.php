@@ -73,7 +73,7 @@ final class RecordPresenterTest extends DoctrineTestCase
     /** The drawer's record adds the form's keys, so the drawer can show what the form edits. */
     public function testTheRecordAddsTheFormKeysToTheRow(): void
     {
-        $record = new DerivedMovieResource()->presentOne($this->heat());
+        $record = (new DerivedMovieResource())->presentOne($this->heat());
 
         self::assertSame('A thief and a cop.', $record['synopsis']);
         self::assertSame('1995-12-15T00:00:00+00:00', $record['released_on'], 'Dates travel as ISO 8601.');
