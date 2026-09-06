@@ -11,9 +11,9 @@
     "require": {
         "php": ">=8.3",
         "doctrine/orm": "^3.0",
-        "modufolio/appkit": "*",
-        "modufolio/http": "*",
-        "modufolio/json-api": "*",
+        "modufolio/appkit": "^0.16",
+        "modufolio/http": "^0.2",
+        "modufolio/json-api": "^0.9",
         "psr/container": "^2.0",
         "psr/http-message": "^2.0",
         "symfony/http-foundation": "^7.0",
@@ -42,29 +42,6 @@
             "Modufolio\\Panel\\Tests\\": "tests/"
         }
     },
-    "repositories": [
-        {
-            "type": "path",
-            "url": "../appkit",
-            "options": {
-                "symlink": true
-            }
-        },
-        {
-            "type": "path",
-            "url": "../psr7",
-            "options": {
-                "symlink": true
-            }
-        },
-        {
-            "type": "path",
-            "url": "../json-api",
-            "options": {
-                "symlink": true
-            }
-        }
-    ],
     "scripts": {
         "test": "phpunit",
         "test:db": "phpunit --testsuite Database",

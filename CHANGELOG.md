@@ -7,7 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-06
+
+A resource is one class with five parts, everything else is derived, and the
+package ships the controller. Every entry under *Changed* is breaking. The
+short version, for a resource written against 0.4.0:
+
+| 0.4.0 | 0.5.0 |
+|---|---|
+| `tableSchema()` | `table(): ?TableSchema` |
+| `formFields(): ?array` | `form(): ?Form` — `Form::make()->fields([...])`, same entries plus `Field`, `Tab`, `Fieldset` |
+| `drawerTabs(): array` | `drawer(): Drawer` — `Drawer::make()->tabs([...])` |
+| `views()` with `ResourceView::board()` | `board(): ?Board`; `views()` is final and derived |
+| `DrawerTab::details('Label', 'key')`, `group('Label', 'key')`, `relation('source', 'Label')`, `custom('key', 'Label', source:)` | one argument, the key: `record('details')`, `group('communication')`, `relation('addresses')`, `custom('files')`; `->label()` and `->source()` for the rest |
+| `canView()`, `canCreate()`, `canEdit()`, `canDelete()`, `scopeQuery()`, `readonlyFields()`, `canMoveTo()`, the field `access` option, `->roles()` at registration | `permissions(): Permissions` — one class, `roles()`, `view()`, `create()`, `edit()`, `delete()`, `export()`, `scope()`, `readable()`, `writable()`, `move()` |
+| `->menu(...)` at registration | `menu(): ?Menu` on the resource |
+| `present()` and `presentOne()` required | optional; rows are read off the entity through the columns |
+| `listQueryClass()` required | optional; the query is derived from the table, `queries()` chains extra `QueryInterface` objects |
+| `ListQueryInterface` statics `sortableFields()`, `defaultSort()`, `mapSortField()` | instance `sortable()`, `defaultOrder()`, `mapSort()`; `TableSchema::toArray()` takes the query instance |
+| `new PanelResourceRouteLoader($locator, $controllerClass, $resolver)` | `new PanelResourceRouteLoader($locator, $resolver)`; the package's `Http\ResourceController` is the default |
+| a host-written resource controller | delete it; alias `Contracts\ExportAdapterProviderInterface` to your adapter factory for downloads |
+| write-denied fields marked `props.readonly` | `props.disabled`, which every field component honours |
+| `Blueprint\FormDefinition`, `FormResolver::formFor()`, `accessFor()`, `FormFieldGuesser::guessForm()` | gone; `FieldAccess::resolve()` and `stripDenied()` take the fields and the permissions |
+| `config/panel_resources.php` with per-resource `roles` and `menu` | `$panel->resources([...])` or `$panel->discover($dir, $namespace)`; `only()`, `except()`, `prefix()` stay |
+| the reference application's `ResourcePage`, `ResourceForm`, `useResourceListing` | shipped by `@modufolio/panel`; `useListFilters()` takes `absolute: true` for a server-sent base URL |
+
 ### Added
+
+- **Forms have tabs and fieldsets.** `Form\Tab::make('General')->fields([…])`
+  hides what is not selected; `Form\Fieldset::make('Name', help: '…')->fields([…])`
+  draws a box with a heading. Both are containers among a form's entries and
+  both flatten: every field still lands in the one ordered list, carrying
+  its tab as `group` and its box as the new `fieldset` option, so guessing,
+  access, validation and the drawer following the form are unchanged.
+  `Form::tabs([...])` is `fields()` spelled for a form that is tabs from the
+  top; `Form::layout()` carries the containers, and `FormPresenter::props()`
+  sends them as `layout`. On the client, `BlueprintForm` takes a `layout`
+  prop, draws a `FormTabs` bar with an error count per tab, opens the first
+  tab that has an error when the open one is clean, drops a tab whose every
+  field a condition hides, and boxes fieldsets with a legend. Neither
+  container nests.
 
 - **A field type nothing renders is caught, and says how to fix itself.**
   `Field\FieldComponents::BUILT_IN` lists the components `@modufolio/panel`
@@ -42,6 +81,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   errored for skipping.
 
 ### Changed
+
+- **Sibling packages are required at their tagged versions**: `modufolio/appkit`
+  `^0.16` (the `Query\Segment` accessor fallback and the PHP 8.5 fixes),
+  `modufolio/http` `^0.2`, `modufolio/json-api` `^0.9`. The path repositories
+  that symlinked the neighbouring checkouts into `vendor/` are gone from
+  `composer.json`; a wildcard on all three let the panel run against
+  uncommitted sibling work without noticing.
+- **A drawer tab takes one argument, its key.** `DrawerTab::record('details')`
+  (was `details()`) is the tab that shows the record itself; `group('communication')`,
+  `relation('addresses')` and `custom('files')` take their key alone. The label
+  is humanised from the key until `->label('Connected contacts')` says
+  otherwise, and a relation reads its rows from its key until `->source('tag_list')`
+  says otherwise — the same convention as `Column::make()`, so nothing about a
+  tab is positional. The wire shape is unchanged.
 
 - **The menu entry is declared on the resource; registration is a list.**
   `PanelResource::menu(): ?Menu` — `Menu::make('Events', icon: 'calendar',
@@ -125,7 +178,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   form entry with no options all look their key up there, so the drawer shows
   a subset of what the form edits without repeating a label. Two levels of
   precedence, no more: what a part says wins over `fields()`, which wins over
-  Doctrine's mapping. `PanelResource::drawerTabsFor($record, $formFields)`
+  Doctrine's mapping. A details tab's key list takes the same three
+  spellings the form does — bare key, `key => label`,
+  `Field::make('note')->width('full')` — and a width there is the drawer's
+  own, independent of the form's: `full` spans the two-column grid, anything
+  else takes one column; a Field option the drawer cannot use is refused by
+  name. `PanelResource::drawerTabsFor($record, $formFields)`
   collects the drawer for a record with those labels applied;
   `DrawerTab::collect()` takes the labels as a fourth argument.
   `Column::hasDeclaredLabel()` tells a humanised fallback from a declaration.
@@ -255,7 +313,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **The details grid reads the way the form does.** A `DrawerTab::details()`
+- **The details grid reads the way the form does.** A `DrawerTab::record()`
   without a field list shows the form's fields, in its order, with its
   separators and full-width rows, relations by their presented key — and
   nothing the form does not name. One layout, declared once. A tab wanting
