@@ -3,6 +3,7 @@
     :model-value="formData"
     :fields="clientFields"
     :errors="form.errors"
+    :layout="layout"
     :label="cardLabel"
     @update:model-value="(val) => Object.assign(formData, val)"
   >
@@ -43,7 +44,7 @@ import Action from '../Actions/Action.vue'
 import BlueprintForm from '../Fields/BlueprintForm.vue'
 import { fieldsFromSpec, initialValues } from '../Fields/fieldsFromSpec'
 import { useUnsavedChangesWarning } from '../../Composables/useUnsavedChangesWarning'
-import type { FieldDef } from '../Fields/useBlueprint'
+import type { FieldDef, FormLayout } from '../Fields/useBlueprint'
 import type { FieldSpec } from '../Fields/fieldsFromSpec'
 
 /** Self-description from FormPresenter::props() — see its `resource` key. */
@@ -72,6 +73,8 @@ const props = defineProps({
   fields: { type: Array as PropType<FieldSpec[]>, required: true },
   /** Present in edit mode: presentOne()'s view of the record. */
   record: { type: Object as PropType<Record<string, unknown> | null>, default: null },
+  /** The form's tabs and fieldsets, as FormPresenter::props() sends them. */
+  layout: { type: Object as PropType<FormLayout>, default: () => ({}) },
 })
 
 const cardLabel = computed(() => `${props.resource.label} Details`)

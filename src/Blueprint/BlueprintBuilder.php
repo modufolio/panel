@@ -40,13 +40,17 @@ final class BlueprintBuilder
     /**
      * A break between the field before and the field after: a rule, or the
      * same gap with nothing drawn in it. Takes the full row either way.
+     *
+     * @param array<string, mixed> $placement the `group` and `fieldset` the
+     *                                        break sits in, so it renders
+     *                                        beside the fields it separates
      */
-    public function separator(Separator $separator = Separator::Line): self
+    public function separator(Separator $separator = Separator::Line, array $placement = []): self
     {
         return $this->add(
             'separator_' . ++$this->separators,
             SeparatorType::class,
-            ['label' => '', 'props' => ['separator' => $separator->value]],
+            [...$placement, 'label' => '', 'props' => ['separator' => $separator->value]],
         );
     }
 
@@ -109,7 +113,7 @@ final class BlueprintBuilder
             'rules' => array_merge($defaults['rules'] ?? [], $resolved['rules'] ?? []),
         ];
 
-        foreach (['help', 'width', 'group', 'options', 'when', 'requiredWhen', 'accessor', 'default', 'relation', 'fields'] as $option) {
+        foreach (['help', 'width', 'group', 'fieldset', 'options', 'when', 'requiredWhen', 'accessor', 'default', 'relation', 'fields'] as $option) {
             $value = $resolved[$option] ?? $defaults[$option] ?? null;
 
             if ($value !== null) {
@@ -199,9 +203,9 @@ final class BlueprintBuilder
         $resolver->setDefined([
             // Presentation
             'label', 'help', 'width', 'placeholder',
-            // Inline affordances around the control (units, URL stems) and
-            // the editor tab this field renders under.
-            'prefix', 'postfix', 'group',
+            // Inline affordances around the control (units, URL stems), the
+            // tab this field renders under, and the fieldset that boxes it.
+            'prefix', 'postfix', 'group', 'fieldset',
             // Behaviour
             'required', 'disabled', 'readonly', 'autofocus', 'default',
             // Data
@@ -230,6 +234,7 @@ final class BlueprintBuilder
         $resolver->setAllowedTypes('prefix', 'string');
         $resolver->setAllowedTypes('postfix', 'string');
         $resolver->setAllowedTypes('group', 'string');
+        $resolver->setAllowedTypes('fieldset', 'string');
         $resolver->setAllowedTypes('required', 'bool');
         $resolver->setAllowedTypes('disabled', 'bool');
         $resolver->setAllowedTypes('readonly', 'bool');

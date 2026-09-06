@@ -12,8 +12,8 @@ final class DrawerTest extends TestCase
 {
     public function testADrawerHoldsItsTabsInOrder(): void
     {
-        $details   = DrawerTab::details();
-        $attendees = DrawerTab::relation('attendees', 'Attendees');
+        $details   = DrawerTab::record('details');
+        $attendees = DrawerTab::relation('attendees');
 
         $drawer = Drawer::make()->tabs([$details, $attendees]);
 
@@ -24,7 +24,7 @@ final class DrawerTest extends TestCase
     /** A listed key with no label of its own takes the resource's; one with a label keeps it. */
     public function testCollectLabelsListedKeysFromTheSharedFields(): void
     {
-        $tabs = [DrawerTab::details()->fields(['title', 'starts_at', 'contact' => 'Who'])];
+        $tabs = [DrawerTab::record('details')->fields(['title', 'starts_at', 'contact' => 'Who'])];
 
         $collected = DrawerTab::collect($tabs, ['title' => 'Gala'], [], ['starts_at' => 'When', 'contact' => 'Contact']);
 

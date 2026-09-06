@@ -9,8 +9,8 @@ namespace Modufolio\Panel\Resource;
  * list of related rows.
  *
  *     Drawer::make()->tabs([
- *         DrawerTab::details()->fields(['title', 'starts_at', 'contact']),
- *         DrawerTab::relation('attendees', 'Attendees')->addable(),
+ *         DrawerTab::record('details')->fields(['title', 'starts_at', 'contact']),
+ *         DrawerTab::relation('attendees')->addable(),
  *     ]);
  *
  * The details tab is a *list of keys*: labels and formatting come from the

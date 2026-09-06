@@ -73,6 +73,40 @@ It is a plain list entry, not an option on a field, because a break is a thing
 in the sequence rather than a property of whichever field happens to follow it.
 A separator is never validated and never written.
 
+### Tabs and fieldsets
+
+A long form is split rather than scrolled. A `Tab` hides what is not
+selected; a `Fieldset` draws a box with a heading. Both are containers among
+the entries, and both flatten: every field still lands in the one ordered
+list, carrying its tab as `group` and its box as `fieldset`, so guessing,
+access, validation and the drawer following the form see the same flat list
+they always did.
+
+```php
+use Modufolio\Panel\Form\Fieldset;
+use Modufolio\Panel\Form\Tab;
+
+return Form::make()->tabs([
+    Tab::make('General')->fields([
+        Fieldset::make('Name')->fields([
+            'first_name' => ['width' => '1/2'],
+            'last_name'  => ['width' => '1/2'],
+        ]),
+        'email',
+        'phone',
+    ]),
+    Tab::make('Details', icon: 'pencil')->fields(['status', 'industry', 'note']),
+]);
+```
+
+`tabs()` is `fields()` with only tabs in the list, spelled for reading; a
+tab can sit among plain entries, and fields outside every tab render above
+the bar. A key is derived from the label (`Billing address` →
+`billing-address`) unless one is given. Neither container nests: a tab in a
+tab, or a fieldset in a fieldset, is refused. The client drops a tab whose
+every field a condition has hidden, and when a submit leaves errors on a tab
+that is not showing, it opens the first tab that has one.
+
 A column mapped with `enumType` is a choice among the enum's cases: the
 guesser makes it a select, labelled by the enum's own `getLabel()` where it
 declares one, and the write path hands the setter the case rather than its
@@ -194,7 +228,8 @@ rejected where it is written.
 | `width` | `1/4`, `1/3`, `1/2`, `2/3`, `3/4`, `full` — a twelve-column grid |
 | `placeholder` | |
 | `prefix` / `postfix` | Inline affordances around the control (a unit, a URL stem) |
-| `group` | The editor tab this field renders under |
+| `group` | The tab this field renders under — what a `Tab` container sets |
+| `fieldset` | The box this field renders in — what a `Fieldset` container sets |
 
 ### Behaviour
 

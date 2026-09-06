@@ -92,7 +92,7 @@ final class FormFieldGuesser
 
         foreach ($form->entries() as [$key, $overrides]) {
             if ($key instanceof Separator) {
-                $builder->separator($key);
+                $builder->separator($key, $overrides);
 
                 continue;
             }

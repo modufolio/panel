@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modufolio\Panel\Tests\Resource;
 
 use Modufolio\Panel\Blueprint\Separator;
+use Modufolio\Panel\Form\Field;
 use Modufolio\Panel\Resource\DrawerTab;
 use PHPUnit\Framework\TestCase;
 
@@ -21,7 +22,7 @@ final class DrawerTabTest extends TestCase
 {
     public function testADetailsTabShowsEverythingWhenItNamesNoFields(): void
     {
-        $tab = DrawerTab::details()->toArray(['title' => 'Kick-off', 'contact_id' => 'abc']);
+        $tab = DrawerTab::record('details')->toArray(['title' => 'Kick-off', 'contact_id' => 'abc']);
 
         self::assertSame('details', $tab['type']);
         self::assertArrayNotHasKey('fields', $tab, 'No `fields` key means the grid prints the record.');
@@ -57,7 +58,7 @@ final class DrawerTabTest extends TestCase
             ['key' => 'note', 'type' => 'textarea', 'label' => 'Note', 'width' => 'full'],
         ];
 
-        [$tab] = DrawerTab::collect([DrawerTab::details()], $record, $form);
+        [$tab] = DrawerTab::collect([DrawerTab::record('details')], $record, $form);
 
         self::assertSame([
             'first_name'   => 'First name',
@@ -79,14 +80,14 @@ final class DrawerTabTest extends TestCase
             ['key' => 'gone', 'type' => 'text', 'label' => 'Gone'],
         ];
 
-        [$tab] = DrawerTab::collect([DrawerTab::details()], ['title' => 't'], $form);
+        [$tab] = DrawerTab::collect([DrawerTab::record('details')], ['title' => 't'], $form);
 
         self::assertSame(['title' => 'Title'], $tab['fields'], 'Leading, trailing and orphaned separators are dropped.');
     }
 
     public function testAnExplicitFieldListMayCarrySeparators(): void
     {
-        $tab = DrawerTab::details()->fields(['title', Separator::Line, 'year' => 'Released'])->toArray([]);
+        $tab = DrawerTab::record('details')->fields(['title', Separator::Line, 'year' => 'Released'])->toArray([]);
 
         self::assertSame([
             'title'       => null,
@@ -101,7 +102,7 @@ final class DrawerTabTest extends TestCase
         $form = [['key' => 'title', 'type' => 'text', 'label' => 'Title']];
 
         [$tab] = DrawerTab::collect(
-            [DrawerTab::group('Communication', 'communication')->sections(DrawerTab::relation('meetings', 'Meetings'))],
+            [DrawerTab::group('communication')->sections(DrawerTab::relation('meetings'))],
             ['title' => 't', 'meetings' => [['id' => 1]]],
             $form,
         );
@@ -115,7 +116,7 @@ final class DrawerTabTest extends TestCase
 
     public function testNamedFieldsAreCarriedInOrder(): void
     {
-        $tab = DrawerTab::details()
+        $tab = DrawerTab::record('details')
             ->fields(['when' => 'When', 'contact' => 'Contact'])
             ->toArray([]);
 
@@ -123,16 +124,76 @@ final class DrawerTabTest extends TestCase
     }
 
     /** A bare list means "these keys, humanised by the client". */
+    /** A Field in the list carries the drawer's own label and width, independent of the form's. */
+    public function testAFieldEntryCarriesItsLabelAndWidth(): void
+    {
+        $tab = DrawerTab::record('details')->fields([
+            'first_name',
+            'email' => 'E-mail',
+            Field::make('phone')->label('Phone'),
+            Field::make('note')->width('full'),
+            'organization' => ['width' => 'full', 'label' => 'Company'],
+            Field::make('city')->width('1/2'),
+        ]);
+
+        self::assertSame([
+            'first_name'   => null,
+            'email'        => 'E-mail',
+            'phone'        => 'Phone',
+            'note'         => ['label' => null, 'wide' => true],
+            'organization' => ['label' => 'Company', 'wide' => true],
+            'city'         => null,
+        ], $tab->toArray([])['fields'], 'Only `full` spans the row; a half is the grid\'s own column.');
+    }
+
+    public function testAFieldOptionTheDrawerCannotUseIsRefused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Drawer field "note": only `label` and `width` mean something in a drawer, not `help`.');
+
+        DrawerTab::record('details')->fields([Field::make('note')->help('Internal')]);
+    }
+
+    /** A wide entry with no label of its own is labelled from the shared fields like a bare key. */
+    public function testCollectLabelsAWideEntryFromTheSharedFields(): void
+    {
+        $tabs = [DrawerTab::record('details')->fields([Field::make('note')->width('full'), 'phone'])];
+
+        $collected = DrawerTab::collect($tabs, [], [], ['note' => 'Notes', 'phone' => 'Phone']);
+
+        self::assertSame(['note' => ['label' => 'Notes', 'wide' => true], 'phone' => 'Phone'], $collected[0]['fields']);
+    }
+
+    /** One argument, the key: the label is humanised from it and a relation reads from it, until told otherwise. */
+    public function testATabIsNamedByItsKeyUntilToldOtherwise(): void
+    {
+        self::assertSame('Connected contacts', DrawerTab::relation('connected_contacts')->toArray([])['label']);
+        self::assertSame('Who', DrawerTab::relation('connected_contacts')->label('Who')->toArray([])['label']);
+        self::assertSame('connected_contacts', DrawerTab::relation('connected_contacts')->toArray([])['source']);
+        self::assertSame('tag_list', DrawerTab::relation('tags')->source('tag_list')->toArray([])['source']);
+        self::assertSame('Details', DrawerTab::record('details')->toArray([])['label']);
+        self::assertSame('Communication', DrawerTab::group('communication')->toArray([])['label']);
+    }
+
+    /** A custom tab's badge counts what source() names; without one it counts nothing. */
+    public function testACustomTabCountsItsSource(): void
+    {
+        $record = ['documents' => [['id' => 1], ['id' => 2]]];
+
+        self::assertSame(2, DrawerTab::custom('files')->source('documents')->toArray($record)['badge']);
+        self::assertNull(DrawerTab::custom('files')->toArray($record)['badge']);
+    }
+
     public function testAListOfKeysNormalisesToNullLabels(): void
     {
-        $tab = DrawerTab::details()->fields(['when', 'contact'])->toArray([]);
+        $tab = DrawerTab::record('details')->fields(['when', 'contact'])->toArray([]);
 
         self::assertSame(['when' => null, 'contact' => null], $tab['fields']);
     }
 
     public function testARelationTabReadsItsRowsFromTheRecord(): void
     {
-        $tab = DrawerTab::relation('events', 'Events')
+        $tab = DrawerTab::relation('events')
             ->primary('title')
             ->secondary('when_label')
             ->empty('No events yet.')
@@ -152,7 +213,7 @@ final class DrawerTabTest extends TestCase
      */
     public function testAnEmptyRelationTabShowsNoBadge(): void
     {
-        $tab = DrawerTab::relation('events', 'Events')->toArray([]);
+        $tab = DrawerTab::relation('events')->toArray([]);
 
         self::assertNull($tab['badge']);
         self::assertSame('events', $tab['source']);
@@ -160,7 +221,7 @@ final class DrawerTabTest extends TestCase
 
     public function testAddableAndDeletableAreOffByDefault(): void
     {
-        $plain = DrawerTab::relation('events', 'Events')->toArray([]);
+        $plain = DrawerTab::relation('events')->toArray([]);
 
         self::assertFalse($plain['addable']);
         self::assertFalse($plain['deletable']);
@@ -168,7 +229,7 @@ final class DrawerTabTest extends TestCase
 
     public function testAddableCarriesItsOwnLabel(): void
     {
-        $tab = DrawerTab::relation('events', 'Events')->addable('+ Add Event')->toArray([]);
+        $tab = DrawerTab::relation('events')->addable('+ Add Event')->toArray([]);
 
         self::assertTrue($tab['addable']);
         self::assertSame('+ Add Event', $tab['addLabel']);
@@ -178,8 +239,8 @@ final class DrawerTabTest extends TestCase
     {
         $tabs = DrawerTab::collect(
             [
-                DrawerTab::details()->fields(['title' => 'Title']),
-                DrawerTab::relation('events', 'Events')->primary('title'),
+                DrawerTab::record('details')->fields(['title' => 'Title']),
+                DrawerTab::relation('events')->primary('title'),
             ],
             ['title' => 'Arrival', 'events' => [['title' => 'Wedding']]],
         );

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modufolio\Panel\Resource;
 
 use Modufolio\Panel\Blueprint\Separator;
+use Modufolio\Panel\Form\Field;
 
 /**
  * A section of a resource's drawer.
@@ -54,18 +55,34 @@ final class DrawerTab
 
     private string $variant = 'list';
 
+    private string $label;
+
+    private ?string $source;
+
+    /**
+     * One argument everywhere: the key. The label is humanised from it until
+     * {@see label()} says otherwise, and a relation reads its rows from it
+     * until {@see source()} does — the same convention as {@see \Modufolio\Panel\Table\Column},
+     * so nothing about a tab is positional.
+     */
     private function __construct(
         private readonly string $key,
-        private readonly string $label,
         private readonly string $type,
-        private readonly ?string $source = null,
     ) {
+        $this->label  = self::humanize($key);
+        $this->source = null;
     }
 
-    /** The record's own values, rendered as the definition grid. */
-    public static function details(string $label = 'Details', string $key = 'details'): self
+    /**
+     * The record itself: its own values, as a grid of the fields listed with
+     * {@see fields()} — or, listing none, the form's fields. The one tab that
+     * shows the record rather than something related to it.
+     *
+     *     DrawerTab::record('details')->fields(['first_name', 'last_name'])
+     */
+    public static function record(string $key): self
     {
-        return new self($key, $label, 'details');
+        return new self($key, 'details');
     }
 
     /**
@@ -76,24 +93,30 @@ final class DrawerTab
      * A details tab with no fields would draw the form's grid; this one draws
      * none and never derives one.
      */
-    public static function group(string $label, string $key): self
+    public static function group(string $key): self
     {
-        $tab = new self($key, $label, 'details');
+        $tab = new self($key, 'details');
         $tab->grid = false;
 
         return $tab;
     }
 
     /**
-     * A list of related rows read from `$source` in the presented record.
+     * A list of related rows, read from the presented record under the key —
+     * or under what {@see source()} names, when the two differ.
      *
-     * The source is a key the resource's `presentOne()` already returns — the
-     * tab adds no query of its own, which is what keeps the drawer a single
-     * round trip.
+     * The rows are something the resource's `presentOne()` already returns:
+     * the tab adds no query of its own, which is what keeps the drawer a
+     * single round trip.
+     *
+     *     DrawerTab::relation('addresses')->primary('address_line1')->addable()
      */
-    public static function relation(string $source, string $label, ?string $key = null): self
+    public static function relation(string $key): self
     {
-        return new self($key ?? $source, $label, 'relation', $source);
+        $tab = new self($key, 'relation');
+        $tab->source = $key;
+
+        return $tab;
     }
 
     /**
@@ -104,9 +127,37 @@ final class DrawerTab
      * fills a slot named after the key. `$source` is optional and only feeds
      * the badge.
      */
-    public static function custom(string $key, string $label, ?string $source = null): self
+    public static function custom(string $key): self
     {
-        return new self($key, $label, 'custom', $source);
+        return new self($key, 'custom');
+    }
+
+    /** The heading on the tab, when the humanised key is not the wording. */
+    public function label(string $label): self
+    {
+        $clone = clone $this;
+        $clone->label = $label;
+
+        return $clone;
+    }
+
+    /**
+     * Where the rows are read from in the presented record, when that is not
+     * the tab's own key: a tab keyed `tags` reading a `tag_list` display copy,
+     * a custom `files` tab whose badge counts `documents`.
+     */
+    public function source(string $source): self
+    {
+        $clone = clone $this;
+        $clone->source = $source;
+
+        return $clone;
+    }
+
+    /** 'first_name' → 'First name': the label a key gets until one is declared. */
+    private static function humanize(string $key): string
+    {
+        return ucfirst(str_replace(['_', '-'], ' ', $key));
     }
 
     /**
@@ -117,27 +168,47 @@ final class DrawerTab
      * lets a record be *split* across grids — a user's identity in one tab and
      * their access in another — instead of one tab showing all of it.
      *
-     * Accepts a list of keys, or `key => label` where the humanised key is
-     * not the wording the drawer used ('created_at' → 'Created'), and
-     * {@see Separator} entries between them — the same breaks a form declares.
+     * The same three spellings a form takes, and the list is the subset: a
+     * drawer is narrower than a form and often shows less of the record.
+     *
+     *     ->fields([
+     *         'first_name',                              // label from fields(), the form, or the key
+     *         'email' => 'E-mail',                       // key => label
+     *         Field::make('note')->width('full'),        // a Field, with the drawer's own width
+     *         Separator::Line,
+     *     ])
+     *
+     * A width here is the drawer's, independent of the form's: the grid is
+     * two columns, so `full` spans the row and anything else takes one. Only
+     * `label` and `width` mean something in a drawer; any other Field option
+     * is refused rather than ignored.
      *
      * Without a list, the grid follows the resource's form: its fields, in
      * its order, with its separators and widths — and nothing the form does
      * not name. A record key worth showing that the form does not edit is
      * listed here.
      *
-     * @param array<int|string, string|Separator> $fields
+     * @param array<int|string, string|Separator|Field|array<string, mixed>> $fields
      */
     public function fields(array $fields): self
     {
+        /** @var array<string, string|null|array{separator: string}|array{label: ?string, wide: bool}> $normalized */
         $normalized = [];
         $separators = 0;
 
         foreach ($fields as $key => $value) {
             if ($value instanceof Separator) {
                 $normalized['separator_' . ++$separators] = ['separator' => $value->value];
+            } elseif ($value instanceof Field) {
+                $normalized[$value->key()] = self::entry($value->key(), $value->toArray());
             } elseif (is_int($key)) {
+                if (!is_string($value)) {
+                    throw new \InvalidArgumentException('A drawer field is a key, a `key => label`, a Field or a Separator.');
+                }
+
                 $normalized[$value] = null;
+            } elseif (is_array($value)) {
+                $normalized[$key] = self::entry($key, $value);
             } else {
                 $normalized[$key] = $value;
             }
@@ -147,6 +218,34 @@ final class DrawerTab
         $clone->fields = $normalized;
 
         return $clone;
+    }
+
+    /**
+     * A field's drawer options as the grid reads them: a bare label, or a
+     * label with the row claimed.
+     *
+     * @param  array<string, mixed> $options
+     * @return string|null|array{label: ?string, wide: bool}
+     */
+    private static function entry(string $key, array $options): string|null|array
+    {
+        $unknown = array_diff(array_keys($options), ['label', 'width']);
+
+        if ($unknown !== []) {
+            throw new \InvalidArgumentException(sprintf(
+                'Drawer field "%s": only `label` and `width` mean something in a drawer, not `%s`.',
+                $key,
+                implode('`, `', $unknown),
+            ));
+        }
+
+        $label = is_string($options['label'] ?? null) && $options['label'] !== '' ? $options['label'] : null;
+
+        if (($options['width'] ?? null) === 'full') {
+            return ['label' => $label, 'wide' => true];
+        }
+
+        return $label;
     }
 
     /**
@@ -427,9 +526,11 @@ final class DrawerTab
             return $declaration;
         }
 
-        foreach ($declaration['fields'] as $key => $label) {
-            if ($label === null && isset($labels[$key])) {
+        foreach ($declaration['fields'] as $key => $entry) {
+            if ($entry === null && isset($labels[$key])) {
                 $declaration['fields'][$key] = $labels[$key];
+            } elseif (is_array($entry) && array_key_exists('wide', $entry) && $entry['label'] === null && isset($labels[$key])) {
+                $declaration['fields'][$key]['label'] = $labels[$key];
             }
         }
 

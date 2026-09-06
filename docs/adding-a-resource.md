@@ -239,14 +239,31 @@ column, rather than shipped as a row that looks clickable and does nothing.
     public function drawer(): Drawer
     {
         return Drawer::make()->tabs([
-            DrawerTab::details()->fields(['when', 'contact', 'location']),
+            DrawerTab::record('details')->fields(['when', 'contact', 'location']),
         ]);
     }
 ```
 
 The details tab is a **list of keys**, labelled from the resource's `fields()`
 and its form — so the drawer shows a subset of what the form edits without
-saying anything twice. Without a key list the grid follows the form; without a
+saying anything twice. It takes the same three spellings the form does, and a
+width given here is the drawer's own, since a drawer is narrower than a form:
+
+```php
+DrawerTab::record('details')->fields([
+    'first_name',
+    'last_name',
+    'email' => 'E-mail',
+    Separator::Line,
+    Field::make('organization')->width('full'),
+    Field::make('note')->width('full'),
+    // status, industry, birthday: edited in the form, not shown here
+]),
+```
+
+The grid is two columns: `full` spans the row, anything else takes one. Only
+`label` and `width` mean something in a drawer; another Field option is
+refused by name. Without a key list the grid follows the form; without a
 form, it prints **every key the presenter returned**, including the ones that
 exist to make the row render — a `contact_id` that addresses a link target, a
 `has_passed` that dims a past row. Name the fields.

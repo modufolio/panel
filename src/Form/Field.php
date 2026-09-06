@@ -149,6 +149,7 @@ final class Field
     public function prefix(string $prefix): self { return $this->with('prefix', $prefix); }
     public function postfix(string $postfix): self { return $this->with('postfix', $postfix); }
     public function group(string $group): self { return $this->with('group', $group); }
+    public function fieldset(string $fieldset): self { return $this->with('fieldset', $fieldset); }
 
     /** One of '1/4', '1/3', '1/2', '2/3', '3/4', 'full' — the twelve-column grid. */
     public function width(string $width): self { return $this->with('width', $width); }

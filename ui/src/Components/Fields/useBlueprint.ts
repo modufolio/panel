@@ -67,6 +67,21 @@ export interface FieldDef {
   rules?: ValidationRule[]
   /** Sub-field declarations, for container types such as `repeater` */
   fields?: FieldDef[]
+  /** The tab this field renders under; see FormLayout. Absent: above the tabs. */
+  group?: string
+  /** The fieldset that boxes this field; see FormLayout. */
+  fieldset?: string
+}
+
+/**
+ * The containers a form draws, as the server declared them: tabs in order,
+ * fieldsets in order. A field names its tab as `group` and its box as
+ * `fieldset`; a key the layout does not list still renders, labelled from
+ * the key, so a form declared without a layout is not broken by one field.
+ */
+export interface FormLayout {
+  tabs?: Array<{ key: string; label: string; icon?: string | null }>
+  fieldsets?: Array<{ key: string; label: string; help?: string | null }>
 }
 
 // ── Conditions ────────────────────────────────────────────────────────────────

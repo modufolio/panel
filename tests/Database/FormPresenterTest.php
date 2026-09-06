@@ -193,7 +193,8 @@ final class FormPresenterTest extends DoctrineTestCase
     {
         $props = $this->presenter()->props(new MovieResource());
 
-        self::assertSame(['resource', 'fields'], array_keys($props));
+        self::assertSame(['resource', 'fields', 'layout'], array_keys($props));
+        self::assertSame(['tabs' => [], 'fieldsets' => []], $props['layout'], 'A flat form draws no containers.');
 
         $resource = $this->resourceBlock($props);
         self::assertSame('movies', $resource['key']);

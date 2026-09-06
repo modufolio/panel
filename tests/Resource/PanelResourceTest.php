@@ -67,7 +67,7 @@ final class PanelResourceTest extends TestCase
 
             public function drawer(): Drawer
             {
-                return Drawer::make()->tabs([DrawerTab::details()->fields(['title', 'starts_at'])]);
+                return Drawer::make()->tabs([DrawerTab::record('details')->fields(['title', 'starts_at'])]);
             }
         };
 

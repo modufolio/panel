@@ -50,6 +50,8 @@ final class FormPresenter
                 'canDelete'  => $this->routeExists($resource->key() . '_destroy'),
             ],
             'fields' => $this->fields($resource, $record, $user),
+            // The tabs and fieldsets the client draws; empty for a flat form.
+            'layout' => $resource->form()?->layout() ?? ['tabs' => [], 'fieldsets' => []],
         ];
     }
 

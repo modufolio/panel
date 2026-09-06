@@ -15,13 +15,82 @@
       role="alert"
     >{{ unknownTypeMessage }}</pre>
 
-    <template v-for="field in visibleFields" :key="field.key">
-      <component
-        :is="fieldComponent(field.type)"
-        :model-value="(modelValue as Record<string, unknown>)[field.key]"
-        v-bind="blueprint.fieldProps(field, shownErrors)"
-        @update:model-value="(val: unknown) => onFieldInput(field.key, val)"
-      />
+    <!--
+      Fields above the tabs render first, always. Then the tab bar, then the
+      active tab's fields. A fieldset is a boxed run of fields inside either.
+    -->
+    <template v-for="run in runs(ungroupedFields)" :key="run.key">
+      <fieldset
+        v-if="run.fieldset"
+        class="ui-fieldset col-span-12 rounded-md border border-gray-200 p-4 dark:border-gray-700"
+      >
+        <legend class="px-1 text-sm font-medium text-gray-900 dark:text-gray-100">{{ run.fieldset.label }}</legend>
+        <p v-if="run.fieldset.help" class="mb-3 -mt-1 text-xs text-gray-500 dark:text-gray-400">{{ run.fieldset.help }}</p>
+        <FieldGrid>
+          <component
+            :is="fieldComponent(field.type)"
+            v-for="field in run.fields"
+            :key="field.key"
+            :model-value="(modelValue as Record<string, unknown>)[field.key]"
+            v-bind="blueprint.fieldProps(field, shownErrors)"
+            @update:model-value="(val: unknown) => onFieldInput(field.key, val)"
+          />
+        </FieldGrid>
+      </fieldset>
+      <template v-else>
+        <component
+          :is="fieldComponent(field.type)"
+          v-for="field in run.fields"
+          :key="field.key"
+          :model-value="(modelValue as Record<string, unknown>)[field.key]"
+          v-bind="blueprint.fieldProps(field, shownErrors)"
+          @update:model-value="(val: unknown) => onFieldInput(field.key, val)"
+        />
+      </template>
+    </template>
+
+    <template v-if="tabs.length">
+      <FormTabs v-model="activeTab" :tabs="tabs" :errors="tabErrors" />
+      <div
+        v-for="tab in tabs"
+        v-show="tab.key === activeTab"
+        :key="tab.key"
+        class="ui-form-tab-panel col-span-12"
+        role="tabpanel"
+        :data-tab-panel="tab.key"
+      >
+        <FieldGrid>
+          <template v-for="run in runs(groupedFields[tab.key] ?? [])" :key="run.key">
+            <fieldset
+              v-if="run.fieldset"
+              class="ui-fieldset col-span-12 rounded-md border border-gray-200 p-4 dark:border-gray-700"
+            >
+              <legend class="px-1 text-sm font-medium text-gray-900 dark:text-gray-100">{{ run.fieldset.label }}</legend>
+              <p v-if="run.fieldset.help" class="mb-3 -mt-1 text-xs text-gray-500 dark:text-gray-400">{{ run.fieldset.help }}</p>
+              <FieldGrid>
+                <component
+                  :is="fieldComponent(field.type)"
+                  v-for="field in run.fields"
+                  :key="field.key"
+                  :model-value="(modelValue as Record<string, unknown>)[field.key]"
+                  v-bind="blueprint.fieldProps(field, shownErrors)"
+                  @update:model-value="(val: unknown) => onFieldInput(field.key, val)"
+                />
+              </FieldGrid>
+            </fieldset>
+            <template v-else>
+              <component
+                :is="fieldComponent(field.type)"
+                v-for="field in run.fields"
+                :key="field.key"
+                :model-value="(modelValue as Record<string, unknown>)[field.key]"
+                v-bind="blueprint.fieldProps(field, shownErrors)"
+                @update:model-value="(val: unknown) => onFieldInput(field.key, val)"
+              />
+            </template>
+          </template>
+        </FieldGrid>
+      </div>
     </template>
 
     <template v-if="$slots.footer" #footer>
@@ -31,9 +100,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, watch, type Component } from 'vue'
+import { computed, defineAsyncComponent, ref, watch, type Component, type PropType } from 'vue'
 import FieldsSection from '../Sections/FieldsSection.vue'
-import { useBlueprint, resolveFieldComponent, type FieldDef, type FieldType } from './useBlueprint'
+import FieldGrid from './FieldGrid.vue'
+import FormTabs from './FormTabs.vue'
+import { useBlueprint, resolveFieldComponent, type FieldDef, type FieldType, type FormLayout } from './useBlueprint'
 import { missingFieldTypes, unknownFieldTypeMessage } from './fieldRegistry'
 
 const props = defineProps({
@@ -65,6 +136,11 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  /** The tabs and fieldsets the server declared; a flat form passes none. */
+  layout: {
+    type: Object as PropType<FormLayout>,
+    default: () => ({}),
+  },
 })
 
 const emit = defineEmits<{
@@ -86,6 +162,80 @@ const visibleFields = computed(() => renderableFields.value.filter((field) => !u
 watch(unknownTypes, (types) => {
   if (types.length) console.error(unknownFieldTypeMessage(types))
 }, { immediate: true })
+
+// ── Tabs and fieldsets ───────────────────────────────────────────────────────
+//
+// The server flattened its containers into `group` and `fieldset` on each
+// field and sent the containers as `layout`. Rebuilding the structure here,
+// from the *visible* fields, is what lets a tab disappear when every field
+// in it is hidden by a condition — a bar with an empty tab is a bug the user
+// sees before the developer does.
+
+function humanize(key: string): string {
+  return key.charAt(0).toUpperCase() + key.slice(1).replace(/[-_]+/g, ' ')
+}
+
+const groupedFields = computed<Record<string, FieldDef[]>>(() => {
+  const groups: Record<string, FieldDef[]> = {}
+  for (const field of visibleFields.value) {
+    if (field.group) (groups[field.group] ??= []).push(field)
+  }
+  return groups
+})
+
+const ungroupedFields = computed(() => visibleFields.value.filter((field) => !field.group))
+
+/** Declared tabs first, in their order; a group no layout named still gets a tab. Empty tabs are dropped. */
+const tabs = computed(() => {
+  const declared = props.layout.tabs ?? []
+  const keys = [...declared.map((tab) => tab.key), ...Object.keys(groupedFields.value)]
+  const seen = new Set<string>()
+  const result: Array<{ key: string; label: string; icon?: string | null }> = []
+
+  for (const key of keys) {
+    if (seen.has(key) || !(groupedFields.value[key]?.length)) continue
+    seen.add(key)
+    result.push(declared.find((tab) => tab.key === key) ?? { key, label: humanize(key) })
+  }
+
+  return result
+})
+
+const chosenTab = ref<string | null>(null)
+
+const activeTab = computed<string>({
+  get: () => {
+    const wanted = chosenTab.value
+    return wanted !== null && tabs.value.some((tab) => tab.key === wanted) ? wanted : (tabs.value[0]?.key ?? '')
+  },
+  set: (key) => { chosenTab.value = key },
+})
+
+interface Run {
+  key: string
+  fieldset: { key: string; label: string; help?: string | null } | null
+  fields: FieldDef[]
+}
+
+/** Contiguous fields with the same fieldset form one boxed run; the rest render bare. */
+function runs(fields: FieldDef[]): Run[] {
+  const result: Run[] = []
+
+  for (const field of fields) {
+    const last = result[result.length - 1]
+    const key = field.fieldset ?? null
+
+    if (last && (last.fieldset?.key ?? null) === key) {
+      last.fields.push(field)
+      continue
+    }
+
+    const declared = key === null ? null : (props.layout.fieldsets ?? []).find((set) => set.key === key) ?? { key, label: humanize(key) }
+    result.push({ key: `${key ?? 'bare'}:${field.key}`, fieldset: declared, fields: [field] })
+  }
+
+  return result
+}
 
 // A field that has been edited, or the whole form once a submit was attempted.
 // Rules are evaluated from the start, but showing "required" on a field nobody
@@ -150,6 +300,27 @@ const shownErrors = computed(() => {
   }
 
   return shown
+})
+
+/** Fields with a shown error, counted per tab — the badge on the bar. */
+const tabErrors = computed<Record<string, number>>(() => {
+  const counts: Record<string, number> = {}
+  for (const field of visibleFields.value) {
+    if (field.group && shownErrors.value[field.key] !== undefined) {
+      counts[field.group] = (counts[field.group] ?? 0) + 1
+    }
+  }
+  return counts
+})
+
+// An error on a tab that is not showing is an error nobody can see. When the
+// active tab is clean and another is not, switch — after a submit or a server
+// verdict, which is when errors appear all at once.
+watch(tabErrors, (counts) => {
+  if (!counts[activeTab.value]) {
+    const first = tabs.value.find((tab) => counts[tab.key])
+    if (first) chosenTab.value = first.key
+  }
 })
 
 defineExpose({
