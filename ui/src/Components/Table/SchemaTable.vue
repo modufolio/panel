@@ -291,6 +291,15 @@ const props = defineProps({
     type: Object as PropType<Record<string, Array<{ type: string; label: string; value: number | null }>>>,
     default: () => ({}),
   },
+  /**
+   * What the viewer may do with each record, keyed by id, from the
+   * collection's `meta.can`. A row with a verdict hides the actions it is
+   * refused; a row without one offers what the schema declares.
+   */
+  can: {
+    type: Object as PropType<Record<string, { edit: boolean; delete: boolean }>>,
+    default: () => ({}),
+  },
 })
 
 const emit = defineEmits(['update:search', 'sort', 'rowClick', 'update:filter', 'resetFilters'])
@@ -383,6 +392,7 @@ const {
   confirmBulk,
 } = useSchemaActions({
   schema: () => props.schema,
+  can: () => props.can,
   queryParams: () => props.queryParams,
   recordLabel: () => props.drawerType,
   rowActionHandlers: () => props.rowActionHandlers,

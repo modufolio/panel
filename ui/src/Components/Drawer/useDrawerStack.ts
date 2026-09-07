@@ -70,6 +70,10 @@ export interface StackItem {
    * rendering exactly as it did.
    */
   presentation?: 'drawer' | 'dialog'
+  /** What the viewer may do with this record, from the server's Permissions. */
+  can?: { edit: boolean; delete: boolean }
+  /** The record's own edit and destroy URLs, from the router. */
+  urls?: { edit?: string | null; destroy?: string | null }
 }
 
 /**

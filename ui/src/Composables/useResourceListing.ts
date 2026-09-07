@@ -5,10 +5,48 @@ import type { BoardPayload, ResourceViewOption } from '../Components/Board/board
 import { useDrawerStack, type StackItem } from '../Components/Drawer/useDrawerStack'
 import { useListFilters } from './useListFilters'
 
+/**
+ * The generated routes of a resource, by operation, as ResourceListing's
+ * `resource.urls` sends them: a URL, an `{id}` template for the operations
+ * that take a record, or null where the resource opted out.
+ */
+export interface ResourceUrls {
+  index?: string | null
+  create?: string | null
+  store?: string | null
+  show?: string | null
+  edit?: string | null
+  update?: string | null
+  destroy?: string | null
+  deletePreview?: string | null
+  bulkDestroy?: string | null
+  export?: string | null
+  boardMove?: string | null
+}
+
+/** What the viewer may do with one record, from the server's Permissions. */
+export interface RowVerdicts {
+  edit: boolean
+  delete: boolean
+}
+
+/** Fill an `{id}` template from a record id. */
+export function fillId(template: string | null | undefined, id: unknown): string | null {
+  if (!template) return null
+
+  return template.replace('{id}', encodeURIComponent(String(id)))
+}
+
 /** Self-description from ResourceListing — see its `resource` prop. */
 export interface ResourceMeta {
   key: string
   baseUrl: string
+  /**
+   * Every URL the client would otherwise assemble from `baseUrl`. Optional
+   * only so a hand-written page that predates it keeps working; the
+   * generated pages fall back to `baseUrl` when it is absent.
+   */
+  urls?: ResourceUrls
   drawerType: string
   canCreate?: boolean
   canEdit?: boolean
@@ -45,6 +83,8 @@ export interface ResourceRecords {
     to: number
     /** Column aggregates over the filtered set, keyed by column key. */
     summaries?: Record<string, Array<{ type: string; label: string; value: number | null }>>
+    /** Per-record verdicts keyed by id — beside the rows, never inside them. */
+    can?: Record<string, RowVerdicts>
   }
 }
 

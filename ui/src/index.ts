@@ -16,6 +16,7 @@ export * from './Utils/reconcile'
 export * from './Utils/tagsChanged'
 export { escapeHtml, sanitizeUrl, normalizeUrl, panelUrl, setPanelBaseUrl, getPanelBaseUrl } from './Utils/url'
 export { getCsrfToken, setCsrfToken } from './Utils/csrf'
+export { showToast, showToastsIn, type PageToast } from './Components/Notifications/pageToasts'
 export * from './Utils/dates'
 
 // Overlay + keyboard primitives
@@ -251,7 +252,7 @@ export { useDrawerPage } from './Components/Drawer/useDrawerPage'
 // Resource pages (a PanelResource's listing and form, from the server's props)
 export { default as ResourcePage } from './Components/Resource/ResourcePage.vue'
 export { default as ResourceForm } from './Components/Resource/ResourceForm.vue'
-export { useResourceListing, humanize, type ResourceMeta, type ResourceListingProps } from './Composables/useResourceListing'
+export { useResourceListing, humanize, fillId, type ResourceMeta, type ResourceListingProps, type ResourceUrls, type RowVerdicts, type ResourceRecords } from './Composables/useResourceListing'
 export { useListFilters, type BaseFilters, type ListFiltersOptions, type SortPayload } from './Composables/useListFilters'
 
 // Notification Components

@@ -349,14 +349,40 @@ export type BulkActionHandler = {
   bivarianceHack(records: TableRecord[], action: SchemaBulkAction): unknown
 }['bivarianceHack']
 
-/** The actions this row offers, after its own visibility fields are read. */
+/**
+ * The verdict an action needs, by the same names the server gates on:
+ * `edit` rides the edit verdict; `delete` and `restore` share the delete one,
+ * since both govern the trash lifecycle. Anything else is not a verdict's
+ * business.
+ */
+function verdictFor(action: SchemaRowAction): 'edit' | 'delete' | null {
+  switch (action.name) {
+    case 'edit':
+      return 'edit'
+    case 'delete':
+    case 'restore':
+      return 'delete'
+    default:
+      return null
+  }
+}
+
+/**
+ * The actions this row offers, after its own visibility fields are read and,
+ * when the server sent a verdict for this record, after that too — so a
+ * record this viewer may not delete shows no Delete instead of a refusal.
+ */
 export function visibleRowActions(
   actions: SchemaRowAction[] | undefined,
   record: TableRecord,
+  can?: { edit: boolean; delete: boolean },
 ): SchemaRowAction[] {
   return (actions ?? []).filter((action) => {
     if (action.hiddenWhen && getPath(record, action.hiddenWhen)) return false
     if (action.visibleWhen && !getPath(record, action.visibleWhen)) return false
+
+    const verdict = verdictFor(action)
+    if (can && verdict && !can[verdict]) return false
 
     return true
   })

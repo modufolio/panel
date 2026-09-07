@@ -17,6 +17,8 @@ type Row = TableRecord
 
 interface ActionOptions {
   schema: () => TableSchema
+  /** Per-record verdicts keyed by id, from the collection's `meta.can`. */
+  can?: () => Record<string, { edit: boolean; delete: boolean }> | undefined
   /** Appended to record links so a drawer preserves the current list state. */
   queryParams: () => Record<string, unknown>
   /** The resource's own word for one record ('movie'), for the delete dialog. */
@@ -41,7 +43,7 @@ export function useSchemaActions(options: ActionOptions) {
   const deleteLabel = computed(() => options.recordLabel() || 'record')
 
   function rowActionsFor(record: Row): SchemaRowAction[] {
-    return visibleRowActions(options.schema().actions, record)
+    return visibleRowActions(options.schema().actions, record, options.can?.()?.[String(recordId(record))])
   }
 
   function submitDelete(record: Row): void {

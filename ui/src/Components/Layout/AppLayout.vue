@@ -98,13 +98,14 @@
 <script setup lang="ts">
 import type { MenuItem } from '../../types/menu'
 import { ref, onMounted, onUnmounted, provide, watch, type PropType } from 'vue'
-import { usePage } from '@inertiajs/vue3'
+import { router, usePage } from '@inertiajs/vue3'
 import { SidebarCollapsedKey } from '../../injectionKeys'
 import Sidebar from './Sidebar.vue'
 import type { SidebarEntry } from './Sidebar.vue'
 import TopNavigation from './TopNavigation.vue'
 import Toast from '../../Components/Notifications/Toast.vue'
 import { useToast } from '../../Components/Notifications/useToast'
+import { showToast, type PageToast } from '../../Components/Notifications/pageToasts'
 
 const props = defineProps({
   // Navigation Items
@@ -196,8 +197,35 @@ interface FlashProps {
   success?: string | null
   error?: string | null
 }
+
 const page = usePage()
 const toast = useToast()
+
+/**
+ * Server messages, the way the host sends them.
+ *
+ * A host on the current contract carries them on the page's own `flash`
+ * key, the Inertia 3 way: `flash.toasts` is a list of {type, message} the
+ * server flashed for this response. Each is shown once and then cleared
+ * through the router, so a partial reload that merges flash cannot replay
+ * it; the client drops the whole key on the next visit anyway.
+ *
+ * A host still sharing only a `flash` prop (one success, one error) keeps
+ * the old path below: show a message when it changes, and forget it after a
+ * moment so the same text can be flashed again later.
+ */
+watch(
+  () => (page.flash as { toasts?: PageToast[] } | undefined)?.toasts,
+  (toasts) => {
+    if (!Array.isArray(toasts) || toasts.length === 0) return
+
+    for (const entry of toasts) showToast(entry)
+
+    router.flash('toasts', [])
+  },
+  { immediate: true }
+)
+
 let lastFlashSuccess: string | null = null
 let lastFlashError: string | null = null
 let clearLastFlashTimer: ReturnType<typeof setTimeout> | null = null
@@ -213,6 +241,9 @@ function scheduleClearLastFlash() {
 watch(
   () => page.props.flash as FlashProps | undefined,
   (flash) => {
+    // A host on the page-level flash carries the same messages there.
+    if (Array.isArray((page.flash as { toasts?: unknown } | undefined)?.toasts)) return
+
     if (flash?.success && flash.success !== lastFlashSuccess) {
       toast.success(flash.success)
     }

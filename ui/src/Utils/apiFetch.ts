@@ -13,6 +13,7 @@
  */
 
 import { getCsrfToken } from './csrf'
+import { showToastsIn } from '../Components/Notifications/pageToasts'
 
 export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   /** Plain objects are JSON-encoded; strings/FormData/Blob are sent as-is. */
@@ -100,6 +101,10 @@ export async function apiFetch<T = unknown>(url: string, options: ApiFetchOption
   })
 
   const payload = await parseBody(response)
+
+  // Whatever the server flashed for this call is shown here, since a JSON
+  // caller never loads the page that would otherwise carry it.
+  showToastsIn(payload)
 
   if (!response.ok) {
     const message =

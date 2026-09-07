@@ -20,7 +20,7 @@
           :label="`New ${singularLabel}`"
           color="primary"
           icon="plus"
-          @click="router.visit(`${resource.baseUrl}/create`)"
+          @click="router.visit(createUrl)"
         />
       </template>
     </PageHeader>
@@ -50,7 +50,7 @@
       :can-move="resource.canMove === true"
       :can-create="resource.canCreate === true"
       @open="openCard"
-      @add="router.visit(`${resource.baseUrl}/create`)"
+      @add="router.visit(createUrl)"
       @move="moveCard"
     />
 
@@ -59,6 +59,7 @@
       :schema="table"
       :records="records.data"
       :summaries="records.meta?.summaries ?? {}"
+      :can="records.meta?.can ?? {}"
       :search="form.search ?? undefined"
       :sort-column="computedSortColumn ?? undefined"
       :sort-direction="computedSortDirection"
@@ -158,11 +159,11 @@
 
 
       <template v-if="resource.canEdit" #[`footer-${resource.drawerType}`]="{ item }">
-        <div class="flex justify-end gap-3">
+        <div v-if="item.can?.edit ?? true" class="flex justify-end gap-3">
           <Action
             :label="`Edit ${singularLabel}`"
             color="primary"
-            @click="router.visit(`${resource.baseUrl}/${item.data.id}/edit`)"
+            @click="router.visit(editUrl(item))"
           />
         </div>
       </template>
@@ -240,7 +241,7 @@ import { router } from '@inertiajs/vue3'
 import { getCsrfToken } from '../../Utils/csrf'
 import { fieldsFromSpec, initialValues } from '../Fields/fieldsFromSpec'
 import { useDismissableLayer } from '../../Primitives/useDismissableLayer'
-import { useResourceListing, type ResourceMeta } from '../../Composables/useResourceListing'
+import { useResourceListing, fillId, type ResourceMeta } from '../../Composables/useResourceListing'
 import type { TableSchema } from '../Table/tableSchema'
 import type { BoardCard, BoardPayload } from '../Board/boardTypes'
 import type { StackItem } from '../Drawer/useDrawerStack'
@@ -303,6 +304,20 @@ const frameSlots = computed(() => Object.keys(slots).filter((name) => !name.star
 const moveError = ref<string | null>(null)
 
 /**
+ * Where things are, as the server says. `resource.urls` names every generated
+ * route; the `baseUrl` arithmetic remains only for a listing rendered by a
+ * host that predates it.
+ */
+const indexUrl = computed(() => props.resource.urls?.index ?? props.resource.baseUrl)
+const createUrl = computed(() => props.resource.urls?.create ?? `${props.resource.baseUrl}/create`)
+
+function editUrl(item: StackItem): string {
+  return item.urls?.edit
+    ?? fillId(props.resource.urls?.edit, item.data.id)
+    ?? `${props.resource.baseUrl}/${String(item.data.id)}/edit`
+}
+
+/**
  * Switch view. The key travels as `?view=`, keeping the current filters and
  * search — changing how you look at a set should not change which set.
  *
@@ -318,7 +333,7 @@ function selectView(key: string): void {
   const isDefault = key === (props.resource.views?.[0]?.key ?? 'table')
   const params: Record<string, string> = isDefault ? { ...current } : { ...current, view: key }
 
-  router.visit(`${props.resource.baseUrl}?${new URLSearchParams(params)}`, {
+  router.visit(`${indexUrl.value}?${new URLSearchParams(params)}`, {
     preserveScroll: true,
   })
 }
@@ -373,7 +388,7 @@ async function moveCard(payload: {
     }
 
     const body = await response.json().catch(() => null)
-    moveError.value = body?.error ?? 'That move could not be saved.'
+    moveError.value = body?.message ?? 'That move could not be saved.'
   } catch (error) {
     console.error(error)
     moveError.value = 'That move could not be saved.'
@@ -432,7 +447,7 @@ const addSaving = ref(false)
 function openAddForm(item: StackItem, tab: AddableTab): void {
   // Nothing to render a form from — fall back to the place that can edit it.
   if (!tab.addFields?.length) {
-    router.visit(`${props.resource.baseUrl}/${String(item.data.id)}/edit`)
+    router.visit(editUrl(item))
     return
   }
 

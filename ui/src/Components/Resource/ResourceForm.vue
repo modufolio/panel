@@ -21,7 +21,7 @@
             label="Cancel"
             color="gray"
             variant="outlined"
-            @click="router.visit(resource.baseUrl)"
+            @click="router.visit(resource.urls?.index ?? resource.baseUrl)"
           />
           <Action
             :label="mode === 'create' ? `Create ${resource.label}` : `Update ${resource.label}`"
@@ -51,6 +51,8 @@ import type { FieldSpec } from '../Fields/fieldsFromSpec'
 interface ResourceFormMeta {
   key: string
   baseUrl: string
+  /** Where this form submits and deletes, from the router; see FormPresenter. */
+  urls?: { index?: string | null; store?: string | null; update?: string | null; destroy?: string | null }
   drawerType: string
   label: string
   canDelete?: boolean
@@ -118,9 +120,9 @@ function submit() {
   allowNextNavigation()
 
   if (props.mode === 'create') {
-    form.post(props.resource.baseUrl)
+    form.post(props.resource.urls?.store ?? props.resource.baseUrl)
   } else {
-    form.put(`${props.resource.baseUrl}/${props.record?.id}`)
+    form.put(props.resource.urls?.update ?? `${props.resource.baseUrl}/${props.record?.id}`)
   }
 }
 
@@ -129,7 +131,7 @@ function destroy() {
     // The user has just confirmed destroying the record; asking again about
     // the edits they are destroying with it would be nagging.
     allowNextNavigation()
-    router.delete(`${props.resource.baseUrl}/${props.record?.id}`)
+    router.delete(props.resource.urls?.destroy ?? `${props.resource.baseUrl}/${props.record?.id}`)
   }
 }
 </script>
