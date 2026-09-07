@@ -7,6 +7,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Pages are appkit's Inertia pages.** `ResourceController` and
+  `ResourceListing` return `Modufolio\Appkit\Inertia\Inertia` values and the
+  kernel finishes them; the package no longer merges shared props or renders
+  anything itself. `Contracts\PageRendererInterface` and
+  `Contracts\SharedPropsInterface` are gone, and so are the two constructor
+  parameters that carried them: a host wires appkit's `InertiaModule` with
+  its root view and shared props, and declares nothing for the panel.
+  Requires modufolio/appkit 0.17.
+
+### Added
+
+- **The server names every URL and every verdict.** A listing's `resource`
+  prop carries `urls` — index, create, store, show, edit, update, destroy,
+  deletePreview, bulkDestroy, export, boardMove — asked of the router, with
+  `{id}` where a record goes and null where the resource opted out; a form
+  page's `resource.urls` holds index, store and the record's own update and
+  destroy; a drawer frame carries the record's `urls` and `can`. The client
+  assembles nothing from `baseUrl` any more (it remains, for hand-written
+  pages that predate this). Beside the rows, `meta.can` answers per record
+  what `Permissions::edit()` and `delete()` say *with the record in hand*,
+  keyed by id — a board column carries the same `can` beside its cards — so
+  a record this viewer may not delete shows no Delete instead of a refusal.
+  Row actions gate on it by name (`edit`; `delete` and `restore` together),
+  the drawer footer on the frame's verdict, and `FormPresenter`'s
+  `canDelete` now asks the permission with the record, not only the route.
+- **Messages travel as toasts.** A page carries them on Inertia 3's own
+  `flash` key, as `flash.toasts: [{type, message}]` — the host's flash store
+  drains the flash bag into it (appkit's `FlashStoreInterface`) — and the UI's layout
+  shows each once and clears it through the router; no duplicate-window
+  heuristic. A host still sharing only a `flash` prop keeps the old path. A
+  JSON reply from `ResourceController` carries the same list as `_toasts`,
+  drained, so a caller that never navigates still hears it; `apiFetch` shows
+  them.
+
+### Changed
+
+- **One JSON envelope.** Every error reply is `{message}`, with `errors` by
+  field on validation; the `error` key is gone (board move, relation
+  endpoints, delete preview, deny). `apiFetch` already read `message`.
+- **303 after PUT, PATCH and DELETE.** A redirect that follows one of those
+  is a 303, as Inertia requires, so the browser re-requests the listing with
+  GET instead of replaying the method against it. POST keeps 302.
+- **`ResourceController` takes its collaborators through the constructor
+  and holds no application.** The `AppAwareInterface` hand-over is gone:
+  entity manager, URL generator, validator, token storage, flash bag,
+  `SharedPropsInterface`, `PageRendererInterface`, a
+  `Contracts\ResourceLocatorInterface`, and optionally a `FormResolver` and an
+  `ExportAdapterProviderInterface` are constructor parameters. Resources come
+  from the locator — `Resource\ContainerResourceLocator` adapts any PSR-11
+  container — so the controller never asks a container for anything.
+  `PanelResourceRouteLoader` accepts a `ResourceLocatorInterface` as well as
+  the closure it took before.
+- **The panel is an appkit module.** List `Modufolio\Panel\PanelModule` in
+  `config/modules.php` (with `['media_entity' => Media::class]` when there
+  is a media library): its controller map wires `ResourceController` by name,
+  and its services are the defaults a host declared by hand until now —
+  the resource locator over the host's container, the `FormResolver` for the
+  configured media entity, and `Export\NoExportAdapters`, an export provider
+  that offers no formats (the export route answers 422 as before). Module
+  definitions sit under the application's `config/services.php`, so a host
+  overrides any of them by declaring the same id. Hosts drop their
+  `FormResolver` line; the `ExportAdapterProviderInterface` alias stays where
+  formats are offered.
+
+  Upgrade: add the module to `config/modules.php`; remove the `FormResolver`
+  entry from `config/services.php` (or keep it — the application's wins).
+  Anything that constructed `ResourceController` by hand passes the
+  collaborators.
+
 ## [0.5.0] - 2026-09-06
 
 A resource is one class with five parts, everything else is derived, and the

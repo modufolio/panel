@@ -311,7 +311,17 @@ on a closed record — and returns `new EventPermissions()` instead. See
 
 ## 8. Register the resource
 
-Twice, for two different questions.
+Once per application, before any resource: the package is an appkit module,
+so `config/modules.php` lists it — that wires the shipped controller and the
+defaults it needs, with the media entity named when there is one:
+
+```php
+return [
+    \Modufolio\Panel\PanelModule::class => ['media_entity' => \App\Entity\Media::class],
+];
+```
+
+Then twice per resource, for two different questions.
 
 `config/services.php` says how the class becomes an instance. A resource is
 an ordinary service — the container is the only thing that constructs one, so

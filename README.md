@@ -43,12 +43,10 @@ what its columns cannot say.
 
 ## What the host must provide
 
-Two interfaces, bound in the application's container:
-
-| Interface | Answers |
-|---|---|
-| `Contracts\SharedPropsInterface` | the props every page carries — auth, flash, navigation, CSRF |
-| `Contracts\PageRendererInterface` | how a component name and props become a response |
+Pages are Inertia pages appkit finishes: the host lists appkit's
+`InertiaModule` in `config/modules.php` and declares its root view and shared
+props there. The panel names components and props; how they reach the
+browser is appkit's and the host's answer.
 
 The package never names Inertia, a template engine or a session. That is what
 lets one panel serve several applications that answer those questions
@@ -56,12 +54,12 @@ differently.
 
 Every generated route dispatches to `Http\ResourceController`, which the
 package ships: index, show, create, store, edit, update, destroy, bulk delete,
-delete preview, export, relation lookups and board moves. It is an appkit
-`AppAwareInterface` controller, so there is nothing to wire: the kernel hands
-it the application and it pulls what it needs. It reads the two interfaces
-above from the container, and, when registered, a
-`Contracts\ExportAdapterProviderInterface` for downloads and a `FormResolver`
-naming the media entity. There is no controller to write.
+delete preview, export, relation lookups and board moves. The package is an
+appkit module — list `Modufolio\Panel\PanelModule` in `config/modules.php`
+and the controller is wired from the container, with a resource locator, a
+`FormResolver` for the configured media entity and a no-formats export
+provider as defaults the host may override. The two interfaces above stay the
+host's to declare. There is no controller to write.
 
 ## Authorization
 

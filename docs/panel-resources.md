@@ -526,3 +526,25 @@ a scalar column. Applying it in both places would double-filter.
 - [table-schema.md](table-schema.md) — columns, filters, groups, constraints
 - [fields.md](fields.md) — blueprint forms: field types, conditions, defaults,
   per-field access
+
+## What the client is told, and never derives
+
+The server owns three things the client used to work out for itself:
+
+- **URLs.** `resource.urls` on a listing names every generated route; a form
+  page's `resource.urls` names index, store and the record's update and
+  destroy; a drawer frame's `urls` names the record's edit and destroy. All
+  come from the router, so a `->prefix('/admin')` resource or a renamed route
+  never leaves a stale path in the client. `{id}` marks where a record goes.
+- **Verdicts.** `meta.can` beside the rows (and `can` beside a board
+  column's cards) answers, per record, what `Permissions::edit()` and
+  `delete()` say with the record in hand. The generated row actions hide on
+  a refusal — `edit` on the edit verdict, `delete` and `restore` on the
+  delete one — and a drawer frame's `can` gates its footer. The
+  resource-level `canCreate`, `canEdit`, `canDelete` and `canMove` still say
+  whether the operation exists for this viewer at all.
+- **Messages.** A page carries `_toasts`, a list of `{type, message}` the
+  server flashed for it, shown once by the layout; a JSON reply carries the
+  same list when the flash bag had anything, drained. Error replies are one
+  envelope, `{message}` plus `errors` by field on validation.
+
