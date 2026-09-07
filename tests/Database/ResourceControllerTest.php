@@ -4,20 +4,18 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Database;
 
-use Modufolio\Appkit\Core\AppInterface;
+use Modufolio\Appkit\Inertia\Inertia;
 use Modufolio\Appkit\Security\Token\TokenStorageInterface;
 use Modufolio\Panel\Http\ResourceController;
+use Modufolio\Panel\Resource\ContainerResourceLocator;
+use Psr\Container\ContainerInterface;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\Permissions;
 use Modufolio\Panel\Tests\Case\DoctrineTestCase;
-use Modufolio\Panel\Tests\Fixture\CapturingRenderer;
 use Modufolio\Panel\Tests\Fixture\DerivedMovieResource;
 use Modufolio\Panel\Tests\Fixture\Entity\Movie;
 use Modufolio\Panel\Tests\Fixture\Entity\Studio;
-use Modufolio\Panel\Tests\Fixture\StaticSharedProps;
 use Modufolio\Psr7\Http\ServerRequest;
-use Modufolio\Panel\Contracts\PageRendererInterface;
-use Modufolio\Panel\Contracts\SharedPropsInterface;
 use Psr\Http\Message\ResponseInterface;
 use Symfony\Component\HttpFoundation\Session\Flash\FlashBag;
 use Symfony\Component\HttpFoundation\Session\FlashBagAwareSessionInterface;
@@ -30,7 +28,6 @@ use Symfony\Component\Validator\Validation;
 final class ResourceControllerTest extends DoctrineTestCase
 {
     private FlashBag $flash;
-    private CapturingRenderer $pages;
 
     private function seed(): Movie
     {
@@ -46,33 +43,40 @@ final class ResourceControllerTest extends DoctrineTestCase
         return $heat;
     }
 
+    /** A finished response: a redirect, a JSON reply, a refusal. */
+    private function response(mixed $result): ResponseInterface
+    {
+        self::assertInstanceOf(ResponseInterface::class, $result, 'The operation answers with a response, not a page.');
+
+        return $result;
+    }
+
+    /** The page the controller handed back for the kernel to finish. */
+    private function page(mixed $result): Inertia
+    {
+        self::assertInstanceOf(Inertia::class, $result, 'The operation answers with a page, not a response.');
+
+        return $result;
+    }
+
     private function controller(PanelResource $resource): ResourceController
     {
         $this->flash = new FlashBag();
-        $this->pages = new CapturingRenderer($this->createStub(ResponseInterface::class));
 
-        // The kernel hands the application over after construction; here a
-        // stub answers with the package's own test doubles.
-        $services = [
-            SharedPropsInterface::class  => new StaticSharedProps(),
-            PageRendererInterface::class => $this->pages,
-            DerivedMovieResource::class  => $resource,
-        ];
+        // The module wires these from the container; here they are handed
+        // over directly, with the package's own test doubles.
+        $container = $this->createStub(ContainerInterface::class);
+        $container->method('has')->willReturnCallback(static fn (string $id): bool => $id === DerivedMovieResource::class);
+        $container->method('get')->willReturn($resource);
 
-        $session = $this->createStub(FlashBagAwareSessionInterface::class);
-        $session->method('getFlashBag')->willReturn($this->flash);
-
-        $app = $this->createStub(AppInterface::class);
-        $app->method('entityManager')->willReturn(self::em());
-        $app->method('urlGenerator')->willReturn($this->urlGenerator(DerivedMovieResource::class));
-        $app->method('validator')->willReturn(Validation::createValidator());
-        $app->method('tokenStorage')->willReturn($this->createStub(TokenStorageInterface::class));
-        $app->method('session')->willReturn($session);
-        $app->method('has')->willReturnCallback(static fn (string $id): bool => isset($services[$id]));
-        $app->method('get')->willReturnCallback(static fn (string $id): object => $services[$id]);
-
-        $controller = new ResourceController();
-        $controller->setSubscribedServices($app);
+        $controller = new ResourceController(
+            entityManager: self::em(),
+            urlGenerator: $this->urlGenerator(DerivedMovieResource::class),
+            validator: Validation::createValidator(),
+            tokenStorage: $this->createStub(TokenStorageInterface::class),
+            flashBag: $this->flash,
+            resources: new ContainerResourceLocator($container),
+        );
 
         return $controller;
     }
@@ -108,24 +112,24 @@ final class ResourceControllerTest extends DoctrineTestCase
     {
         $this->seed();
 
-        $this->controller(new DerivedMovieResource())->handle($this->http('GET', '/panel/movies'), DerivedMovieResource::class, 'index');
+        $page = $this->page($this->controller(new DerivedMovieResource())->handle($this->http('GET', '/panel/movies'), DerivedMovieResource::class, 'index'));
 
-        self::assertSame('Resource/Index', $this->pages->component);
-        self::assertSame(['Heat', 'Jaws'], array_column($this->pages->props['movies']['data'], 'title'));
+        self::assertSame('Resource/Index', $page->component());
+        self::assertSame(['Heat', 'Jaws'], array_column($page->props()['movies']['data'], 'title'));
     }
 
     public function testShowStacksTheRecordsDrawerOnTheListing(): void
     {
         $heat = $this->seed();
 
-        $this->controller(new DerivedMovieResource())->handle(
+        $page = $this->page($this->controller(new DerivedMovieResource())->handle(
             $this->http('GET', '/panel/movies/' . $heat->getUuid()->toString()),
             DerivedMovieResource::class,
             'show',
             $heat->getUuid()->toString(),
-        );
+        ));
 
-        $frame = $this->pages->props['stack'][0];
+        $frame = $page->props()['stack'][0];
         self::assertSame('movie', $frame['type']);
         self::assertSame('Heat', $frame['title']);
         self::assertSame('Heat', $frame['data']['title']);
@@ -137,7 +141,7 @@ final class ResourceControllerTest extends DoctrineTestCase
     {
         $this->seed();
 
-        $response = $this->controller($this->refusing('view'))->handle($this->http('GET', '/panel/movies'), DerivedMovieResource::class, 'index');
+        $response = $this->response($this->controller($this->refusing('view'))->handle($this->http('GET', '/panel/movies'), DerivedMovieResource::class, 'index'));
 
         self::assertSame(302, $response->getStatusCode());
         self::assertSame('/panel/movies', $response->getHeaderLine('Location'));
@@ -148,24 +152,32 @@ final class ResourceControllerTest extends DoctrineTestCase
     {
         $this->seed();
 
-        $response = $this->controller($this->refusing('create'))->handle(
+        $response = $this->response($this->controller($this->refusing('create'))->handle(
             $this->http('GET', '/panel/movies/create', headers: ['Accept' => 'application/json']),
             DerivedMovieResource::class,
             'create',
-        );
+        ));
 
         self::assertSame(403, $response->getStatusCode());
+
+        // One envelope for every JSON reply: `message` for the human, and the
+        // flash the refusal wrote rides along as `_toasts` instead of waiting
+        // for a page that a JSON caller never loads.
+        $body = json_decode((string) $response->getBody(), true);
+        self::assertSame('Forbidden.', $body['message']);
+        self::assertSame([['type' => 'error', 'message' => 'You do not have permission to do that.']], $body['_toasts']);
+        self::assertSame([], $this->flash->get('error'), 'Drained: the same message does not surface again on the next page.');
     }
 
     public function testStoreCreatesTheRecordAndRedirectsWithASuccessFlash(): void
     {
         $this->seed();
 
-        $response = $this->controller(new DerivedMovieResource())->handle(
+        $response = $this->response($this->controller(new DerivedMovieResource())->handle(
             $this->http('POST', '/panel/movies', ['title' => 'Collateral', 'synopsis' => 'A cab ride.']),
             DerivedMovieResource::class,
             'store',
-        );
+        ));
 
         self::assertSame(302, $response->getStatusCode());
         self::assertSame('/panel/movies', $response->getHeaderLine('Location'));
@@ -177,14 +189,14 @@ final class ResourceControllerTest extends DoctrineTestCase
     {
         $this->seed();
 
-        $this->controller(new DerivedMovieResource())->handle(
+        $page = $this->page($this->controller(new DerivedMovieResource())->handle(
             $this->http('POST', '/panel/movies', ['title' => '']),
             DerivedMovieResource::class,
             'store',
-        );
+        ));
 
-        self::assertSame('Resource/Create', $this->pages->component);
-        self::assertArrayHasKey('title', (array) $this->pages->props['errors']);
+        self::assertSame('Resource/Create', $page->component());
+        self::assertArrayHasKey('title', (array) $page->props()['errors']);
         self::assertNull(self::em()->getRepository(Movie::class)->findOneBy(['title' => '']));
     }
 
@@ -193,14 +205,14 @@ final class ResourceControllerTest extends DoctrineTestCase
         $heat = $this->seed();
         $uuid = $heat->getUuid()->toString();
 
-        $response = $this->controller(new DerivedMovieResource())->handle(
+        $response = $this->response($this->controller(new DerivedMovieResource())->handle(
             $this->http('PUT', '/panel/movies/' . $uuid, ['title' => 'Heat (1995)', 'synopsis' => null, 'released_on' => null]),
             DerivedMovieResource::class,
             'update',
             $uuid,
-        );
+        ));
 
-        self::assertSame(302, $response->getStatusCode());
+        self::assertSame(303, $response->getStatusCode());
         self::assertSame('/panel/movies/' . $uuid . '/edit', $response->getHeaderLine('Location'));
         $this->clear();
         self::assertSame('Heat (1995)', self::em()->getRepository(Movie::class)->findOneBy(['uuid' => $uuid])?->getTitle());
@@ -215,7 +227,7 @@ final class ResourceControllerTest extends DoctrineTestCase
         $heat = $this->seed();
         $uuid = $heat->getUuid()->toString();
 
-        $preview = $this->controller(new DerivedMovieResource())->handle($this->http('GET', '/x'), DerivedMovieResource::class, 'deletePreview', $uuid);
+        $preview = $this->response($this->controller(new DerivedMovieResource())->handle($this->http('GET', '/x'), DerivedMovieResource::class, 'deletePreview', $uuid));
         $plan    = json_decode((string) $preview->getBody(), true);
 
         self::assertSame(200, $preview->getStatusCode());
@@ -223,8 +235,8 @@ final class ResourceControllerTest extends DoctrineTestCase
         self::assertArrayNotHasKey('soft', $plan, 'No softDelete() on the entity: a real removal, with a blast radius.');
         self::assertSame('Movie: Heat', $plan['nested'][0]['label']);
 
-        $response = $this->controller(new DerivedMovieResource())->handle($this->http('DELETE', '/x'), DerivedMovieResource::class, 'destroy', $uuid);
-        self::assertSame(302, $response->getStatusCode());
+        $response = $this->response($this->controller(new DerivedMovieResource())->handle($this->http('DELETE', '/x'), DerivedMovieResource::class, 'destroy', $uuid));
+        self::assertSame(303, $response->getStatusCode());
         self::assertSame(['Movie deleted.'], $this->flash->get('success'));
 
         $this->clear();
@@ -236,10 +248,10 @@ final class ResourceControllerTest extends DoctrineTestCase
         $heat = $this->seed();
         $uuid = $heat->getUuid()->toString();
 
-        self::assertSame(403, $this->controller($this->refusing('delete'))->handle($this->http('GET', '/x'), DerivedMovieResource::class, 'deletePreview', $uuid)->getStatusCode());
+        self::assertSame(403, $this->response($this->controller($this->refusing('delete'))->handle($this->http('GET', '/x'), DerivedMovieResource::class, 'deletePreview', $uuid))->getStatusCode());
 
-        $response = $this->controller($this->refusing('delete'))->handle($this->http('DELETE', '/x'), DerivedMovieResource::class, 'destroy', $uuid);
-        self::assertSame(302, $response->getStatusCode());
+        $response = $this->response($this->controller($this->refusing('delete'))->handle($this->http('DELETE', '/x'), DerivedMovieResource::class, 'destroy', $uuid));
+        self::assertSame(303, $response->getStatusCode());
         self::assertSame(['You do not have permission to do that.'], $this->flash->get('error'));
     }
 
@@ -247,7 +259,7 @@ final class ResourceControllerTest extends DoctrineTestCase
     {
         $this->seed();
 
-        $response = $this->controller(new DerivedMovieResource())->handle($this->http('GET', '/x'), DerivedMovieResource::class, 'show', '00000000-0000-4000-8000-000000000000');
+        $response = $this->response($this->controller(new DerivedMovieResource())->handle($this->http('GET', '/x'), DerivedMovieResource::class, 'show', '00000000-0000-4000-8000-000000000000'));
 
         self::assertSame(302, $response->getStatusCode());
         self::assertSame('/panel/movies', $response->getHeaderLine('Location'));
@@ -257,7 +269,7 @@ final class ResourceControllerTest extends DoctrineTestCase
     {
         $this->seed();
 
-        $response = $this->controller(new DerivedMovieResource())->handle($this->http('GET', '/x'), DerivedMovieResource::class, 'relationOptions', null, 'title');
+        $response = $this->response($this->controller(new DerivedMovieResource())->handle($this->http('GET', '/x'), DerivedMovieResource::class, 'relationOptions', null, 'title'));
 
         self::assertSame(404, $response->getStatusCode());
     }
@@ -266,7 +278,7 @@ final class ResourceControllerTest extends DoctrineTestCase
     {
         $this->seed();
 
-        $response = $this->controller(new DerivedMovieResource())->handle($this->http('POST', '/x', ['format' => 'csv']), DerivedMovieResource::class, 'export');
+        $response = $this->response($this->controller(new DerivedMovieResource())->handle($this->http('POST', '/x', ['format' => 'csv']), DerivedMovieResource::class, 'export'));
 
         self::assertSame(422, $response->getStatusCode());
         self::assertStringContainsString('not configured', (string) $response->getBody());
@@ -276,12 +288,12 @@ final class ResourceControllerTest extends DoctrineTestCase
     {
         $heat = $this->seed();
 
-        $response = $this->controller(new DerivedMovieResource())->handle(
+        $response = $this->response($this->controller(new DerivedMovieResource())->handle(
             $this->http('POST', '/x', ['column' => 'done', 'view' => 'board']),
             DerivedMovieResource::class,
             'boardMove',
             $heat->getUuid()->toString(),
-        );
+        ));
 
         self::assertSame(404, $response->getStatusCode());
     }

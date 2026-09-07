@@ -4,9 +4,8 @@ declare(strict_types = 1);
 
 namespace Modufolio\Panel\Resource;
 
+use Modufolio\Appkit\Inertia\Inertia;
 use Modufolio\Panel\Http\JsonApiPaginationTrait;
-use Modufolio\Panel\Contracts\PageRendererInterface;
-use Modufolio\Panel\Contracts\SharedPropsInterface;
 use Modufolio\Panel\Query\ChainedListQuery;
 use Modufolio\Panel\Query\DerivedListQuery;
 use Modufolio\Panel\Query\ListQueryInterface;
@@ -26,7 +25,6 @@ use Modufolio\Appkit\Security\User\UserInterface;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\QueryBuilder;
-use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -62,8 +60,6 @@ final class ResourceListing
         private readonly ServerRequestInterface $request,
         private readonly EntityManagerInterface $entityManager,
         private readonly UrlGeneratorInterface $urlGenerator,
-        private readonly SharedPropsInterface $sharedProps,
-        private readonly PageRendererInterface $renderer,
         /** Who is asking — the resource's Permissions decide what that means. Null when nobody is signed in. */
         private readonly ?UserInterface $user = null,
     ) {
@@ -98,7 +94,7 @@ final class ResourceListing
         return $clone;
     }
 
-    public function render(): ResponseInterface
+    public function render(): Inertia
     {
         $queryParams = $this->request->getQueryParams();
         $params      = $this->resource->parseListParams($queryParams);
@@ -164,7 +160,7 @@ final class ResourceListing
             $schema = $this->resolveActions($schema, $key);
         }
 
-        return $this->renderer->render(
+        return Inertia::render(
             $this->resource->indexComponent(),
             [
                 'filters' => [
@@ -177,14 +173,19 @@ final class ResourceListing
                     ...$this->resource->filterProps($params),
                 ],
                 $key    => $this->wrapWithJsonApiPagination(
-                    $this->resource->present($entities),
+                    $rows = $this->resource->present($entities),
                     $totalCount,
                     $pagination['page'],
                     $pagination['perPage'],
                     $key,
                     // Summaries belong with the data, not the schema: they
                     // change with every filter, whereas the schema does not.
-                    ['summaries' => $this->summaries($query, $alias, $params)],
+                    // The verdicts sit beside the rows, keyed by id, so a row
+                    // stays exactly what present() returned.
+                    [
+                        'summaries' => $this->summaries($query, $alias, $params),
+                        'can'       => $this->verdicts($entities, $rows),
+                    ],
                 ),
                 'stack' => $this->stack,
                 // Lets the generic Resource/Index page configure itself:
@@ -199,6 +200,10 @@ final class ResourceListing
                     // lives under /admin, and every write URL the client
                     // builds hangs off this path.
                     'baseUrl'    => ResourceBaseUrl::resolve($this->urlGenerator, $key),
+                    // Every URL the client would otherwise assemble from
+                    // baseUrl, asked of the router instead: null where the
+                    // route was not generated. Templates carry `{id}`.
+                    'urls'       => $this->resourceUrls($key),
                     'drawerType' => $this->resource->drawerType(),
                     // Both must hold: the route has to exist *and* this user
                     // has to be allowed. Route existence alone told the client
@@ -234,9 +239,7 @@ final class ResourceListing
                 ...($board !== null ? ['board' => $board] : []),
                 ...($schema !== null ? ['table' => $this->serialise($schema, $query)] : []),
                 ...$this->extraProps,
-                ...$this->sharedProps->create(),
             ],
-            $this->request,
         );
     }
 
@@ -365,6 +368,9 @@ final class ResourceListing
                 // inside them, so `cards` stays exactly what present()
                 // returned and no reserved key has to be carved out of it.
                 'moves' => $this->quickMoves($view, $column['value'], $cards, $presented),
+                // Same shape as a table page's meta.can: what this viewer may
+                // do with each card, keyed by id, beside the cards.
+                'can'   => $this->verdicts($cards, $presented),
             ];
         }
 
@@ -732,6 +738,69 @@ final class ResourceListing
         }
 
         return $actions;
+    }
+
+    /**
+     * The generated routes of this resource, by operation: a plain URL for
+     * the ones without a record, an `{id}` template for the ones with. Null
+     * where the resource opted out of the operation, so the client can hide
+     * what it cannot reach without knowing the route names.
+     *
+     * @return array<string, string|null>
+     */
+    private function resourceUrls(string $key): array
+    {
+        return [
+            'index'         => $this->routeUrl($key),
+            'create'        => $this->routeUrl($key . '_create'),
+            'store'         => $this->routeUrl($key . '_store'),
+            'show'          => $this->routeTemplate($key . '_show'),
+            'edit'          => $this->routeTemplate($key . '_edit'),
+            'update'        => $this->routeTemplate($key . '_update'),
+            'destroy'       => $this->routeTemplate($key . '_destroy'),
+            'deletePreview' => $this->routeTemplate($key . '_delete_preview'),
+            'bulkDestroy'   => $this->routeUrl($key . '_bulk_destroy'),
+            'export'        => $this->routeUrl($key . '_export'),
+            'boardMove'     => $this->routeTemplate($key . '_board_move'),
+        ];
+    }
+
+    /**
+     * What this viewer may do with each record on the page, keyed by the
+     * presented id: the same {@see Permissions} questions the write endpoints
+     * ask, asked here with the record in hand so a rule about *this* record
+     * (an undeletable super admin, a locked invoice) hides the action instead
+     * of refusing the click. Rows and entities pair by position — present()
+     * keeps the order — and a presenter that returns a different count gets
+     * no verdicts rather than wrong ones.
+     *
+     * @param  array<int, object>                                  $entities
+     * @param  array<int, array<string, mixed>>                    $rows
+     * @return array<string, array{edit: bool, delete: bool}>
+     */
+    private function verdicts(array $entities, array $rows): array
+    {
+        if ($entities === [] || count($entities) !== count($rows)) {
+            return [];
+        }
+
+        $permissions = $this->resource->permissions();
+        $verdicts    = [];
+
+        foreach (array_values($entities) as $index => $entity) {
+            $id = (string) ($rows[$index]['id'] ?? '');
+
+            if ($id === '') {
+                continue;
+            }
+
+            $verdicts[$id] = [
+                'edit'   => $permissions->edit($entity, $this->user),
+                'delete' => $permissions->delete($entity, $this->user),
+            ];
+        }
+
+        return $verdicts;
     }
 
     /**

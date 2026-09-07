@@ -19,11 +19,8 @@ use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\PanelResourceConfigurator;
 use Modufolio\Panel\Resource\ResourceListing;
 use Modufolio\Panel\Routing\PanelResourceRouteLoader;
-use Modufolio\Panel\Tests\Fixture\CapturingRenderer;
-use Modufolio\Panel\Tests\Fixture\StaticSharedProps;
 use Modufolio\Panel\Tests\Routing\FixtureController;
 use PHPUnit\Framework\TestCase;
-use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Ramsey\Uuid\Doctrine\UuidType;
 use Symfony\Component\Config\FileLocator;
@@ -49,9 +46,6 @@ use Symfony\Component\Routing\RouteCollection;
 abstract class DoctrineTestCase extends TestCase
 {
     private static ?EntityManager $entityManager = null;
-
-    /** The renderer behind the last {@see listing()} built. */
-    protected ?CapturingRenderer $renderer = null;
 
     /** @var list<string> */
     private array $tempFiles = [];
@@ -302,32 +296,22 @@ abstract class DoctrineTestCase extends TestCase
         ?UserInterface $user = null,
         ?UrlGeneratorInterface $urls = null,
     ): ResourceListing {
-        $this->renderer = new CapturingRenderer($this->createStub(ResponseInterface::class));
-
         return new ResourceListing(
             $resource,
             $this->request($query),
             self::em(),
             $urls ?? $this->urlGenerator($resource::class),
-            new StaticSharedProps(),
-            $this->renderer,
             $user,
         );
     }
 
     /**
-     * Render, and hand back the props the host's renderer received.
+     * Render, and hand back the props of the page the listing built.
      *
      * @return array<string, mixed>
      */
     protected function renderProps(ResourceListing $listing): array
     {
-        $listing->render();
-
-        if ($this->renderer === null) {
-            self::fail('renderProps() needs a listing built through listing().');
-        }
-
-        return $this->renderer->props;
+        return $listing->render()->props();
     }
 }

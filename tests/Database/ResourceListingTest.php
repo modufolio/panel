@@ -21,7 +21,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
  * The listing end to end: a resource, a request, real rows, and the props
- * the host's renderer receives.
+ * of the page it hands the kernel.
  *
  * Everything the generic Resource/Index page relies on is derived here — the
  * rows and their total, the echoed filters, the row actions from the routes,
@@ -286,12 +286,13 @@ final class ResourceListingTest extends DoctrineTestCase
     {
         $this->seed();
 
-        $props = $this->renderProps($this->listing(new MovieResource()));
+        $page = $this->listing(new MovieResource())->render();
+        $props = $page->props();
 
-        self::assertSame('Resource/Index', $this->renderer?->component);
+        self::assertSame('Resource/Index', $page->component());
 
         self::assertSame(
-            ['filters', 'movies', 'stack', 'resource', 'table', 'auth', 'flash'],
+            ['filters', 'movies', 'stack', 'resource', 'table'],
             array_keys($props),
         );
 
@@ -321,6 +322,13 @@ final class ResourceListingTest extends DoctrineTestCase
         self::assertArrayHasKey('summaries', $meta);
         self::assertArrayNotHasKey('links', $props['movies'], 'No base URL is given, so no pagination links.');
 
+        // The verdicts sit beside the rows, keyed by id, one pair per record:
+        // the same questions the write endpoints ask, answered up front.
+        self::assertCount(5, $meta['can']);
+        foreach ($props['movies']['data'] as $row) {
+            self::assertSame(['edit' => true, 'delete' => true], $meta['can'][(string) $row['id']]);
+        }
+
         $first = $props['movies']['data'][0];
         self::assertSame(['id', 'uuid', 'title', 'year', 'rating', 'released', 'studio'], array_keys($first));
         self::assertSame($this->movie('Collateral')->getUuid()->toString(), $first['uuid']);
@@ -331,6 +339,21 @@ final class ResourceListingTest extends DoctrineTestCase
         self::assertSame([
             'key'        => 'movies',
             'baseUrl'    => '/panel/movies',
+            // Every generated route, asked of the router — the client builds
+            // no write URL of its own any more.
+            'urls'       => [
+                'index'         => '/panel/movies',
+                'create'        => '/panel/movies/create',
+                'store'         => '/panel/movies',
+                'show'          => '/panel/movies/{id}',
+                'edit'          => '/panel/movies/{id}/edit',
+                'update'        => '/panel/movies/{id}',
+                'destroy'       => '/panel/movies/{id}',
+                'deletePreview' => '/panel/movies/{id}/delete-preview',
+                'bulkDestroy'   => '/panel/movies/bulk-delete',
+                'export'        => '/panel/movies/export',
+                'boardMove'     => null,
+            ],
             'drawerType' => 'movie',
             'canCreate'  => true,
             'canEdit'    => true,
@@ -359,9 +382,6 @@ final class ResourceListingTest extends DoctrineTestCase
             'Sortability comes from the list query; studio opted out.',
         );
         self::assertSame('/panel/movies/{id}', $props['table']['recordUrl']);
-
-        self::assertSame(['user' => null], $props['auth']);
-        self::assertSame([], $props['flash']);
     }
 
     /**
@@ -473,9 +493,7 @@ final class ResourceListingTest extends DoctrineTestCase
             }
         };
 
-        $this->renderProps($this->listing($resource, urls: $this->movieRoutes()));
-
-        self::assertSame('Movies/Index', $this->renderer?->component);
+        self::assertSame('Movies/Index', $this->listing($resource, urls: $this->movieRoutes())->render()->component());
     }
 
     // ── Pagination and search ────────────────────────────────────────────────

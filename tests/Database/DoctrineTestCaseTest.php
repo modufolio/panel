@@ -48,11 +48,12 @@ final class DoctrineTestCaseTest extends DoctrineTestCase
         );
         $this->clear();
 
-        $props = $this->renderProps($this->listing(new MovieResource()));
+        $page = $this->listing(new MovieResource())->render();
+        $props = $page->props();
 
-        self::assertSame('Resource/Index', $this->renderer?->component);
+        self::assertSame('Resource/Index', $page->component());
         self::assertSame(2, $props['movies']['meta']['total']);
         self::assertSame(['Collateral', 'Heat'], array_column($props['movies']['data'], 'title'));
-        self::assertArrayHasKey('auth', $props, 'Shared props ride along with every page.');
+        self::assertArrayNotHasKey('auth', $props, 'Shared props are the kernel\'s to merge, not the listing\'s.');
     }
 }

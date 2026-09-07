@@ -128,7 +128,7 @@ final class ChildTablesTest extends DoctrineTestCase
 
         $props = $this->renderProps($this->listing($this->resourceWithCast(), urls: $this->movieRoutes()));
 
-        self::assertSame(['filters', 'movies', 'stack', 'resource', 'table', 'auth', 'flash'], array_keys($props));
+        self::assertSame(['filters', 'movies', 'stack', 'resource', 'table'], array_keys($props));
     }
 
     public function testASchemaWithoutChildrenSerialisesAnEmptyList(): void

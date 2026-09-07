@@ -45,9 +45,17 @@ final class FormPresenter
             'resource' => [
                 'key'        => $resource->key(),
                 'baseUrl'    => ResourceBaseUrl::resolve($this->urlGenerator, $resource->key()),
+                // Where the form goes next, asked of the router: the record's
+                // own update and destroy URLs when there is a record, null
+                // for a route the resource did not generate.
+                'urls'       => $this->urls($resource, $record),
                 'drawerType' => $resource->drawerType(),
                 'label'      => self::label($resource),
-                'canDelete'  => $this->routeExists($resource->key() . '_destroy'),
+                // The route must exist *and* this viewer must be allowed to
+                // delete this record — the same question the destroy endpoint
+                // asks, so the button and the refusal cannot disagree.
+                'canDelete'  => $this->routeExists($resource->key() . '_destroy')
+                    && $resource->permissions()->delete($record, $user),
             ],
             'fields' => $this->fields($resource, $record, $user),
             // The tabs and fieldsets the client draws; empty for a flat form.
@@ -204,6 +212,34 @@ final class FormPresenter
     }
 
     /** Route existence, asked by trying to build a URL for it. */
+    /**
+     * @return array<string, string|null>
+     */
+    private function urls(PanelResource $resource, ?object $record): array
+    {
+        $key    = $resource->key();
+        $params = $record !== null ? $resource->recordRouteParams($record) : null;
+
+        return [
+            'index'   => $this->url($key),
+            'store'   => $this->url($key . '_store'),
+            'update'  => $params !== null ? $this->url($key . '_update', $params) : null,
+            'destroy' => $params !== null ? $this->url($key . '_destroy', $params) : null,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     */
+    private function url(string $name, array $params = []): ?string
+    {
+        try {
+            return $this->urlGenerator->generate($name, $params);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
     private function routeExists(string $name): bool
     {
         try {

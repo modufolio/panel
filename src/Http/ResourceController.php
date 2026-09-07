@@ -5,13 +5,11 @@ declare(strict_types=1);
 namespace Modufolio\Panel\Http;
 
 use Doctrine\ORM\EntityManagerInterface;
-use Modufolio\Appkit\Core\AppAwareInterface;
-use Modufolio\Appkit\Core\AppInterface;
+use Modufolio\Appkit\Inertia\Inertia;
 use Modufolio\Appkit\Security\Token\TokenStorageInterface;
 use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Contracts\ExportAdapterProviderInterface;
-use Modufolio\Panel\Contracts\PageRendererInterface;
-use Modufolio\Panel\Contracts\SharedPropsInterface;
+use Modufolio\Panel\Contracts\ResourceLocatorInterface;
 use Modufolio\Panel\Delete\Collector;
 use Modufolio\Panel\Delete\PlanExecutor;
 use Modufolio\Panel\Form\FormPresenter;
@@ -45,68 +43,38 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  * already, in {@see FormPresenter}, {@see SubmissionHandler} and
  * {@see PlanExecutor}.
  *
- * An {@see AppAwareInterface} controller, the appkit way: the kernel hands the
- * application over right after construction and the controller pulls exactly
- * the services it needs, so a host registers nothing to use it. What only the
- * host knows — how a page is rendered, which props every page carries, which
- * download formats it offers, which entity is its media library — it answers
- * through the container: {@see PageRendererInterface} and
- * {@see SharedPropsInterface} are required, {@see ExportAdapterProviderInterface}
- * and a {@see FormResolver} are read when registered.
+ * Everything it needs arrives through the constructor; it holds no
+ * application and asks no container. {@see \Modufolio\Panel\PanelModule}
+ * wires it — list the module in config/modules.php and the kernel builds the
+ * controller from the container like any other. What only the host knows —
+ * how a page is rendered, which props every page carries — it declares as
+ * the kernel's Inertia renderer; download
+ * formats ({@see ExportAdapterProviderInterface}) and a {@see FormResolver}
+ * naming the media entity have module defaults a host may override.
+ * Resources come from the {@see ResourceLocatorInterface}: the one place a
+ * resource class becomes an instance.
  */
-final class ResourceController implements AppAwareInterface
+final class ResourceController
 {
-    private ?AppInterface $app = null;
-    private EntityManagerInterface $entityManager;
-    private UrlGeneratorInterface $urlGenerator;
-    private SharedPropsInterface $sharedProps;
-    private PageRendererInterface $renderer;
-    private ValidatorInterface $validator;
-    private TokenStorageInterface $tokenStorage;
-    private FlashBagInterface $flashBag;
-    private ?ExportAdapterProviderInterface $exports = null;
-    private ?FormResolver $forms = null;
     private ?FormPresenter $presenter = null;
     private ?SubmissionHandler $submissions = null;
     private ?PlanExecutor $executor = null;
     private ?RecordLocator $locator = null;
     private ?RelationOptionResolver $relations = null;
+    private readonly FormResolver $forms;
 
-    public function setSubscribedServices(AppInterface $app): void
-    {
-        $this->app           = $app;
-        $this->entityManager = $app->entityManager();
-        $this->urlGenerator  = $app->urlGenerator();
-        $this->validator     = $app->validator();
-        $this->tokenStorage  = $app->tokenStorage();
-        $this->flashBag      = $app->session()->getFlashBag();
-        $this->sharedProps   = self::service($app, SharedPropsInterface::class);
-        $this->renderer      = self::service($app, PageRendererInterface::class);
-
-        // Optional: a host without download formats gets a 422 from the export
-        // route; one without a media library gets a plain form resolver.
-        $this->exports = $app->has(ExportAdapterProviderInterface::class)
-            ? self::service($app, ExportAdapterProviderInterface::class)
-            : null;
-        $this->forms = $app->has(FormResolver::class)
-            ? self::service($app, FormResolver::class)
-            : null;
-    }
-
-    /**
-     * @template T of object
-     * @param  class-string<T> $id
-     * @return T
-     */
-    private static function service(AppInterface $app, string $id): object
-    {
-        $service = $app->get($id);
-
-        if (!$service instanceof $id) {
-            throw new \LogicException(sprintf('Service "%s" is registered as %s.', $id, get_debug_type($service)));
-        }
-
-        return $service;
+    public function __construct(
+        private readonly EntityManagerInterface $entityManager,
+        private readonly UrlGeneratorInterface $urlGenerator,
+        private readonly ValidatorInterface $validator,
+        private readonly TokenStorageInterface $tokenStorage,
+        private readonly FlashBagInterface $flashBag,
+        private readonly ResourceLocatorInterface $resources,
+        ?FormResolver $forms = null,
+        private readonly ?ExportAdapterProviderInterface $exports = null,
+    ) {
+        // A host without a media library gets the plain resolver.
+        $this->forms = $forms ?? new FormResolver($entityManager);
     }
 
     /** @param class-string<PanelResource> $resourceClass */
@@ -116,7 +84,7 @@ final class ResourceController implements AppAwareInterface
         string $operation,
         ?string $uuid = null,
         ?string $field = null,
-    ): ResponseInterface {
+    ): ResponseInterface|Inertia {
         $resource = $this->resource($resourceClass);
 
         return match ($operation) {
@@ -127,7 +95,7 @@ final class ResourceController implements AppAwareInterface
             'store'           => $this->store($request, $resource),
             'edit'            => $this->edit($request, $resource, $uuid),
             'update'          => $this->update($request, $resource, $uuid),
-            'destroy'         => $this->destroy($resource, $uuid),
+            'destroy'         => $this->destroy($request, $resource, $uuid),
             'bulkDestroy'     => $this->bulkDestroy($request, $resource),
             'deletePreview'   => $this->deletePreview($resource, $uuid),
             'relationOptions' => $this->relationOptions($request, $resource, $field),
@@ -140,7 +108,7 @@ final class ResourceController implements AppAwareInterface
 
     // ── Reading ──────────────────────────────────────────────────────────────
 
-    private function index(ServerRequestInterface $request, PanelResource $resource): ResponseInterface
+    private function index(ServerRequestInterface $request, PanelResource $resource): ResponseInterface|Inertia
     {
         if (!$resource->permissions()->view(null, $this->user())) {
             return $this->deny($request, $resource);
@@ -153,7 +121,7 @@ final class ResourceController implements AppAwareInterface
             $record = $this->entityManager->getRepository($resource->entityClass())->findOneBy([]);
 
             if ($record !== null) {
-                return Response::redirect($this->recordUrl($resource, $record));
+                return $this->redirect($request, $this->recordUrl($resource, $record));
             }
         }
 
@@ -165,12 +133,12 @@ final class ResourceController implements AppAwareInterface
      * title and payload come from the resource, the tabs from its drawer,
      * and next/previous from the listing's own order.
      */
-    private function show(ServerRequestInterface $request, PanelResource $resource, ?string $uuid): ResponseInterface
+    private function show(ServerRequestInterface $request, PanelResource $resource, ?string $uuid): ResponseInterface|Inertia
     {
         $entity = $this->find($resource, $uuid);
 
         if ($entity === null) {
-            return Response::redirect($this->indexUrl($resource));
+            return $this->redirect($request, $this->indexUrl($resource));
         }
 
         if (!$resource->permissions()->view($entity, $this->user())) {
@@ -190,6 +158,16 @@ final class ResourceController implements AppAwareInterface
             'href'              => $this->recordUrl($resource, $entity),
             'nextRecordUrl'     => $navigation['next'],
             'previousRecordUrl' => $navigation['previous'],
+            // What the viewer may do with this record and where, so the
+            // frame's footer offers exactly what the endpoints would accept.
+            'can'               => [
+                'edit'   => $resource->permissions()->edit($entity, $this->user()),
+                'delete' => $resource->permissions()->delete($entity, $this->user()),
+            ],
+            'urls'              => [
+                'edit'    => $this->routeUrl($resource->key() . '_edit', $resource->recordRouteParams($entity)),
+                'destroy' => $this->routeUrl($resource->key() . '_destroy', $resource->recordRouteParams($entity)),
+            ],
             // Badges count the rows the record already carries, so declaring
             // a tab costs no query. The resolved form comes along so an
             // addable list can carry the form its add action opens.
@@ -215,7 +193,7 @@ final class ResourceController implements AppAwareInterface
         }
 
         if ($this->exports === null) {
-            return Response::json(['message' => 'Export is not configured for this application.'], 422);
+            return $this->json(['message' => 'Export is not configured for this application.'], 422);
         }
 
         $body = $this->body($request);
@@ -223,13 +201,13 @@ final class ResourceController implements AppAwareInterface
         try {
             $adapter = $this->exports->get((string) ($body['format'] ?? 'csv'));
         } catch (\InvalidArgumentException $e) {
-            return Response::json(['message' => $e->getMessage()], 422);
+            return $this->json(['message' => $e->getMessage()], 422);
         }
 
         $columns = $this->exportColumns($resource, $body['columns'] ?? null);
 
         if ($columns === []) {
-            return Response::json(['message' => 'This resource declares no exportable columns.'], 422);
+            return $this->json(['message' => 'This resource declares no exportable columns.'], 422);
         }
 
         // An empty selection means "everything I am looking at", not
@@ -277,16 +255,16 @@ final class ResourceController implements AppAwareInterface
 
     // ── Writing ──────────────────────────────────────────────────────────────
 
-    private function create(ServerRequestInterface $request, PanelResource $resource): ResponseInterface
+    private function create(ServerRequestInterface $request, PanelResource $resource): ResponseInterface|Inertia
     {
         if (!$resource->permissions()->create($this->user())) {
             return $this->deny($request, $resource);
         }
 
-        return $this->page('Resource/Create', $request, $this->presenter()->props($resource, null, $this->user()));
+        return $this->page('Resource/Create', $this->presenter()->props($resource, null, $this->user()));
     }
 
-    private function store(ServerRequestInterface $request, PanelResource $resource): ResponseInterface
+    private function store(ServerRequestInterface $request, PanelResource $resource): ResponseInterface|Inertia
     {
         if (!$resource->permissions()->create($this->user())) {
             return $this->deny($request, $resource);
@@ -300,36 +278,36 @@ final class ResourceController implements AppAwareInterface
         if ($errors === []) {
             $this->flashBag->add('success', $this->label($resource) . ' created.');
 
-            return Response::redirect($this->indexUrl($resource));
+            return $this->redirect($request, $this->indexUrl($resource));
         }
 
-        return $this->page('Resource/Create', $request, [
+        return $this->page('Resource/Create', [
             ...$this->presenter()->props($resource, null, $this->user()),
             'errors' => new \ArrayObject($errors),
         ]);
     }
 
-    private function edit(ServerRequestInterface $request, PanelResource $resource, ?string $uuid): ResponseInterface
+    private function edit(ServerRequestInterface $request, PanelResource $resource, ?string $uuid): ResponseInterface|Inertia
     {
         $entity = $this->find($resource, $uuid);
 
         if ($entity === null) {
-            return Response::redirect($this->indexUrl($resource));
+            return $this->redirect($request, $this->indexUrl($resource));
         }
 
         if (!$resource->permissions()->edit($entity, $this->user())) {
             return $this->deny($request, $resource);
         }
 
-        return $this->page('Resource/Edit', $request, $this->editProps($resource, $entity));
+        return $this->page('Resource/Edit', $this->editProps($resource, $entity));
     }
 
-    private function update(ServerRequestInterface $request, PanelResource $resource, ?string $uuid): ResponseInterface
+    private function update(ServerRequestInterface $request, PanelResource $resource, ?string $uuid): ResponseInterface|Inertia
     {
         $entity = $this->find($resource, $uuid);
 
         if ($entity === null) {
-            return Response::redirect($this->indexUrl($resource));
+            return $this->redirect($request, $this->indexUrl($resource));
         }
 
         if (!$resource->permissions()->edit($entity, $this->user())) {
@@ -341,10 +319,10 @@ final class ResourceController implements AppAwareInterface
         if ($errors === []) {
             $this->flashBag->add('success', $this->label($resource) . ' updated.');
 
-            return Response::redirect($this->urlGenerator->generate($resource->key() . '_edit', $resource->recordRouteParams($entity)));
+            return $this->redirect($request, $this->urlGenerator->generate($resource->key() . '_edit', $resource->recordRouteParams($entity)));
         }
 
-        return $this->page('Resource/Edit', $request, [
+        return $this->page('Resource/Edit', [
             ...$this->editProps($resource, $entity),
             'errors' => new \ArrayObject($errors),
         ]);
@@ -364,18 +342,18 @@ final class ResourceController implements AppAwareInterface
         ];
     }
 
-    private function destroy(PanelResource $resource, ?string $uuid): ResponseInterface
+    private function destroy(ServerRequestInterface $request, PanelResource $resource, ?string $uuid): ResponseInterface
     {
         $entity = $this->find($resource, $uuid);
 
         if ($entity === null) {
-            return Response::redirect($this->indexUrl($resource));
+            return $this->redirect($request, $this->indexUrl($resource));
         }
 
         if (!$resource->permissions()->delete($entity, $this->user())) {
             $this->flashBag->add('error', 'You do not have permission to do that.');
 
-            return Response::redirect($this->indexUrl($resource));
+            return $this->redirect($request, $this->indexUrl($resource));
         }
 
         // An entity carrying the soft-delete trait keeps its restorable trash
@@ -386,7 +364,7 @@ final class ResourceController implements AppAwareInterface
             $this->entityManager->flush();
             $this->flashBag->add('success', $this->label($resource) . ' deleted.');
 
-            return Response::redirect($this->indexUrl($resource));
+            return $this->redirect($request, $this->indexUrl($resource));
         }
 
         $plan = (new Collector($this->entityManager))->collect($entity);
@@ -395,7 +373,7 @@ final class ResourceController implements AppAwareInterface
         // confirming, so arriving here blocked means the data changed in
         // between — answer with the same list either way.
         if ($plan->isBlocked()) {
-            return Response::json([
+            return $this->json([
                 'error' => sprintf(
                     'Cannot delete this %s: it is referenced by %d protected record(s).',
                     strtolower($this->label($resource)),
@@ -408,7 +386,7 @@ final class ResourceController implements AppAwareInterface
         $this->executor()->apply($plan);
         $this->flashBag->add('success', $this->label($resource) . ' deleted.');
 
-        return Response::redirect($this->indexUrl($resource));
+        return $this->redirect($request, $this->indexUrl($resource));
     }
 
     /**
@@ -473,7 +451,7 @@ final class ResourceController implements AppAwareInterface
             $this->flashBag->add('error', sprintf('%d %s(s) were skipped: not allowed, or referenced by protected records.', $skipped, $label));
         }
 
-        return Response::redirect($this->indexUrl($resource));
+        return $this->redirect($request, $this->indexUrl($resource));
     }
 
     /**
@@ -486,19 +464,19 @@ final class ResourceController implements AppAwareInterface
         $entity = $this->find($resource, $uuid);
 
         if ($entity === null) {
-            return Response::json(['error' => 'Not found.'], 404);
+            return $this->json(['message' => 'Not found.'], 404);
         }
 
         if (!$resource->permissions()->delete($entity, $this->user())) {
-            return Response::json(['error' => 'Forbidden.'], 403);
+            return $this->json(['message' => 'Forbidden.'], 403);
         }
 
         if (method_exists($entity, 'softDelete')) {
             // Reversible, so nothing is at stake and there is no blast radius.
-            return Response::json(['blocked' => false, 'soft' => true, 'protected' => [], 'nested' => [], 'counts' => [], 'linkCounts' => []]);
+            return $this->json(['blocked' => false, 'soft' => true, 'protected' => [], 'nested' => [], 'counts' => [], 'linkCounts' => []]);
         }
 
-        return Response::json((new Collector($this->entityManager))->collect($entity)->toArray());
+        return $this->json((new Collector($this->entityManager))->collect($entity)->toArray());
     }
 
     // ── Relations ────────────────────────────────────────────────────────────
@@ -514,13 +492,13 @@ final class ResourceController implements AppAwareInterface
         // The endpoint exists to feed a form, so it is reachable exactly when
         // that form is — otherwise it becomes a way to read a table sideways.
         if (!$this->mayUseForm($resource)) {
-            return Response::json(['error' => 'Forbidden.'], 403);
+            return $this->json(['message' => 'Forbidden.'], 403);
         }
 
         $relation = $this->forms()->relationFor($resource, (string) $field);
 
         if ($relation === null) {
-            return Response::json(['error' => sprintf('"%s" is not a relation field of this resource.', (string) $field)], 404);
+            return $this->json(['message' => sprintf('"%s" is not a relation field of this resource.', (string) $field)], 404);
         }
 
         $query    = $request->getQueryParams();
@@ -529,13 +507,13 @@ final class ResourceController implements AppAwareInterface
         if (isset($query['values'])) {
             $values = is_array($query['values']) ? $query['values'] : explode(',', (string) $query['values']);
 
-            return Response::json([
+            return $this->json([
                 'data' => $resolver->byValues($relation, array_values(array_map('strval', $values))),
                 'meta' => ['total' => 0, 'limit' => 0, 'truncated' => false],
             ]);
         }
 
-        return Response::json($resolver->search($relation, trim((string) ($query['q'] ?? ''))));
+        return $this->json($resolver->search($relation, trim((string) ($query['q'] ?? ''))));
     }
 
     /**
@@ -547,31 +525,31 @@ final class ResourceController implements AppAwareInterface
     private function relationCreate(ServerRequestInterface $request, PanelResource $resource, ?string $field): ResponseInterface
     {
         if (!$this->mayUseForm($resource)) {
-            return Response::json(['error' => 'Forbidden.'], 403);
+            return $this->json(['message' => 'Forbidden.'], 403);
         }
 
         $relation = $this->forms()->relationFor($resource, (string) $field);
 
         if ($relation === null) {
-            return Response::json(['error' => sprintf('"%s" is not a relation field of this resource.', (string) $field)], 404);
+            return $this->json(['message' => sprintf('"%s" is not a relation field of this resource.', (string) $field)], 404);
         }
 
         $resolver = $this->relations();
 
         if (!$resolver->creatableFromLabel($relation)) {
-            return Response::json(['error' => 'This relation cannot be created from a name alone.'], 422);
+            return $this->json(['message' => 'This relation cannot be created from a name alone.'], 422);
         }
 
         $label = trim((string) ($this->body($request)['label'] ?? ''));
 
         if ($label === '') {
-            return Response::json(['error' => 'A name is required.'], 422);
+            return $this->json(['message' => 'A name is required.'], 422);
         }
 
         $existing = $resolver->findByLabel($relation, $label);
 
         if ($existing !== null) {
-            return Response::json(['data' => $resolver->option($relation, $existing)]);
+            return $this->json(['data' => $resolver->option($relation, $existing)]);
         }
 
         $entity = $resolver->newFromLabel($relation, $label);
@@ -580,13 +558,13 @@ final class ResourceController implements AppAwareInterface
         // rule on the label refuses here, as it would on the full form.
         foreach ($this->validator->validate($entity) as $violation) {
             /** @var ConstraintViolationInterface $violation */
-            return Response::json(['error' => (string) $violation->getMessage()], 422);
+            return $this->json(['message' => (string) $violation->getMessage()], 422);
         }
 
         $this->entityManager->persist($entity);
         $this->entityManager->flush();
 
-        return Response::json(['data' => $resolver->option($relation, $entity)], 201);
+        return $this->json(['data' => $resolver->option($relation, $entity)], 201);
     }
 
     /**
@@ -598,31 +576,31 @@ final class ResourceController implements AppAwareInterface
         $entity = $this->find($resource, $uuid);
 
         if ($entity === null) {
-            return Response::redirect($this->indexUrl($resource));
+            return $this->redirect($request, $this->indexUrl($resource));
         }
 
         // Adding a row is editing the record it hangs off.
         if (!$resource->permissions()->edit($entity, $this->user())) {
-            return Response::json(['error' => 'Forbidden.'], 403);
+            return $this->json(['message' => 'Forbidden.'], 403);
         }
 
         $key = (string) $field;
 
         if ($this->forms()->field($resource, $key) === null) {
-            return Response::json(['error' => sprintf('"%s" is not a field of this resource.', $key)], 404);
+            return $this->json(['message' => sprintf('"%s" is not a field of this resource.', $key)], 404);
         }
 
         try {
             $errors = $this->submissions()->append($resource, $entity, $key, $this->body($request));
         } catch (\InvalidArgumentException $e) {
-            return Response::json(['error' => $e->getMessage()], 422);
+            return $this->json(['message' => $e->getMessage()], 422);
         }
 
         if ($errors !== []) {
-            return Response::json(['errors' => $errors], 422);
+            return $this->json(['message' => 'The submitted data was invalid.', 'errors' => $errors], 422);
         }
 
-        return Response::redirect($this->recordUrl($resource, $entity));
+        return $this->redirect($request, $this->recordUrl($resource, $entity));
     }
 
     // ── Board ────────────────────────────────────────────────────────────────
@@ -640,11 +618,11 @@ final class ResourceController implements AppAwareInterface
         $entity = $this->find($resource, $uuid);
 
         if ($entity === null) {
-            return Response::json(['error' => 'Not found.'], 404);
+            return $this->json(['message' => 'Not found.'], 404);
         }
 
         if (!$resource->permissions()->edit($entity, $user)) {
-            return Response::json(['error' => 'Forbidden.'], 403);
+            return $this->json(['message' => 'Forbidden.'], 403);
         }
 
         $body   = $this->body($request);
@@ -655,13 +633,13 @@ final class ResourceController implements AppAwareInterface
         $allowed = $resource->permissions()->move($entity, $column, $user);
 
         if ($allowed !== true) {
-            return Response::json(['error' => is_string($allowed) ? $allowed : 'That move is not allowed.'], 422);
+            return $this->json(['message' => is_string($allowed) ? $allowed : 'That move is not allowed.'], 422);
         }
 
         $view = $resource->viewFor((string) ($body['view'] ?? ''));
 
         if (!$view->isBoard()) {
-            return Response::json(['error' => 'This resource has no board to move cards on.'], 404);
+            return $this->json(['message' => 'This resource has no board to move cards on.'], 404);
         }
 
         try {
@@ -674,10 +652,10 @@ final class ResourceController implements AppAwareInterface
                 $this->nullableString($body['before'] ?? null),
             );
         } catch (\InvalidArgumentException $exception) {
-            return Response::json(['error' => $exception->getMessage()], 422);
+            return $this->json(['message' => $exception->getMessage()], 422);
         }
 
-        return Response::json(['data' => $resource->present([$moved])[0] ?? []]);
+        return $this->json(['data' => $resource->present([$moved])[0] ?? []]);
     }
 
     // ── Collaborators ────────────────────────────────────────────────────────
@@ -691,11 +669,7 @@ final class ResourceController implements AppAwareInterface
      */
     private function resource(string $class): PanelResource
     {
-        if ($this->app === null) {
-            throw new \LogicException(self::class . ' handles requests only after the kernel has called setSubscribedServices().');
-        }
-
-        return self::service($this->app, $class);
+        return $this->resources->get($class);
     }
 
     private function listing(ServerRequestInterface $request, PanelResource $resource): ResourceListing
@@ -705,8 +679,6 @@ final class ResourceController implements AppAwareInterface
             $request,
             $this->entityManager,
             $this->urlGenerator,
-            $this->sharedProps,
-            $this->renderer,
             $this->user(),
         );
     }
@@ -722,15 +694,15 @@ final class ResourceController implements AppAwareInterface
     }
 
     /**
-     * A page the host renders, with the props every page carries. The shared
-     * props go first: they supply a flash-derived `errors` of their own, and a
-     * form's validation errors must win over it.
+     * A page, for the kernel to finish: it merges the props every page
+     * carries underneath these, so a form's validation `errors` win over a
+     * flash-derived default, and renders through the host's Inertia setup.
      *
      * @param array<string, mixed> $props
      */
-    private function page(string $component, ServerRequestInterface $request, array $props): ResponseInterface
+    private function page(string $component, array $props): Inertia
     {
-        return $this->renderer->render($component, [...$this->sharedProps->create(), ...$props], $request);
+        return Inertia::render($component, $props);
     }
 
     /**
@@ -742,10 +714,10 @@ final class ResourceController implements AppAwareInterface
         $this->flashBag->add('error', 'You do not have permission to do that.');
 
         if (str_contains($request->getHeaderLine('Accept'), 'application/json') && !$request->hasHeader('X-Inertia')) {
-            return Response::json(['error' => 'Forbidden.'], 403);
+            return $this->json(['message' => 'Forbidden.'], 403);
         }
 
-        return Response::redirect($this->indexUrl($resource));
+        return $this->redirect($request, $this->indexUrl($resource));
     }
 
     /** The relation endpoints feed a form, so they are open exactly when a form is. */
@@ -759,6 +731,59 @@ final class ResourceController implements AppAwareInterface
     private function indexUrl(PanelResource $resource): string
     {
         return $this->urlGenerator->generate($resource->key());
+    }
+
+    /**
+     * A generated route's URL, or null when the resource opted out of it.
+     *
+     * @param array<string, mixed> $params
+     */
+    private function routeUrl(string $name, array $params = []): ?string
+    {
+        try {
+            return $this->urlGenerator->generate($name, $params);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * A redirect the Inertia client can follow: 303 after PUT, PATCH or
+     * DELETE, so the browser re-requests the target with GET instead of
+     * replaying the method against the listing. 302 keeps its meaning for
+     * the GET and POST cases.
+     */
+    private function redirect(ServerRequestInterface $request, string $url): ResponseInterface
+    {
+        $replayable = in_array(strtoupper($request->getMethod()), ['GET', 'HEAD', 'POST'], true);
+
+        return Response::redirect($url, $replayable ? 302 : 303);
+    }
+
+    /**
+     * A JSON reply in the one envelope every endpoint here uses — `message`
+     * for the human, `errors` by field when there are any — with whatever
+     * the flash bag holds riding along as `_toasts`, so a caller that never
+     * navigates still hears what the server had to say. Draining the bag
+     * here means the same message does not surface again on the next page.
+     *
+     * @param array<string, mixed> $data
+     */
+    private function json(array $data, int $status = 200): ResponseInterface
+    {
+        $toasts = [];
+
+        foreach ($this->flashBag->all() as $type => $messages) {
+            foreach ((array) $messages as $message) {
+                $toasts[] = ['type' => $type, 'message' => (string) $message];
+            }
+        }
+
+        if ($toasts !== []) {
+            $data['_toasts'] = $toasts;
+        }
+
+        return Response::json($data, $status);
     }
 
     private function recordUrl(PanelResource $resource, object $entity): string
@@ -775,7 +800,7 @@ final class ResourceController implements AppAwareInterface
 
     private function forms(): FormResolver
     {
-        return $this->forms ??= new FormResolver($this->entityManager);
+        return $this->forms;
     }
 
     private function presenter(): FormPresenter
