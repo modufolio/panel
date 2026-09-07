@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import manifest from '../src/Components/Fields/fieldTypes.json'
 import {
   builtInFieldTypes,
@@ -53,6 +53,8 @@ describe('field registry contract', () => {
 
 describe('BlueprintForm with an unregistered type', () => {
   it('says so where the form is, and still renders the fields it can', async () => {
+    // The form also logs the message for the browser console; keep it out of the test output.
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
     const wrapper = await mountBlueprintForm({
       fields: [
         { type: 'text', key: 'title', label: 'Title' },
@@ -66,5 +68,7 @@ describe('BlueprintForm with an unregistered type', () => {
     expect(alert.text()).toContain('Unknown field type "markdown"')
     expect(alert.text()).toContain("'markdown': () => import('./Fields/MarkdownField.vue')")
     expect(wrapper.findAll('label')).toHaveLength(1)
+    expect(logged).toHaveBeenCalledWith(expect.stringContaining('Unknown field type "markdown"'))
+    logged.mockRestore()
   })
 })
