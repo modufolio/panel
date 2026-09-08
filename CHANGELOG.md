@@ -7,7 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A prefetch that fails says so.** Inertia fires `prefetched` for every
+  hover or viewport prefetch and never `httpException` for one that failed:
+  the response is kept for the click that replays it, and only then did the
+  configured toast appear. A 500 from broken server wiring does not fix
+  itself by then, so `AppLayout` now listens on `prefetched` too and shows the
+  same toast the moment the failure arrives. `notifyPrefetchedError(status)`
+  in `httpErrors.ts` is the reusable piece.
+- **A container key is never guessed twice.** `Form::slug()` returned
+  `'section'` for any label the slug pattern reduced to nothing — a CJK or
+  Cyrillic heading, an emoji — so two such tabs shared a key, and since the key
+  is the client's slot name *and* the `group` on every field beneath it, their
+  fields silently merged into one tab. It now refuses the label and says to
+  pass `key:` instead. Two containers declaring the same key are refused as
+  well, in `Form` (tabs and fieldsets) and in `DrawerTab::collect()`.
+
 ### Added
+
+- **A cell can be edited from the list, on any resource.** `PATCH
+  {prefix}/{key}/{uuid}` is generated beside the edit routes and writes one
+  field: `ResourcePage` wires a handler for every `editable` column to it, so
+  an editable select, text input or `toggleIcon()` saves on a generated page
+  without a hand-written one. Four gates, in order — the record's `edit`
+  permission, the column having declared `editable()` (being in the form is
+  not enough), the field's `writable()` access, then the form's own coercion
+  and rules through `SubmissionHandler`, told to consider only the fields that
+  arrived. The body is keyed by column, so a `value()` mapping is translated
+  server-side rather than restated in a page's save handler, and the current
+  filters, sort and page ride the URL so the reload lands where the edit was
+  made.
 
 - **A boolean can be one clickable icon.** `Column::toggleIcon()` renders a
   flag — featured, pinned, enabled — as a single glyph that flips the value
@@ -95,6 +125,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (0.17.1): a prefetched page must not consume the toast meant for the page
   the user lands on.
 
+- **A colour column guesses a colour picker.** A string column of nine
+  characters or fewer named `color` or `colour` — `brandColor`,
+  `poster_colour` — is guessed as `ColorType` instead of a text input asking
+  for `#6366f1` by hand. Named and measured both, since a `string(7)` is a
+  postcode as often as a swatch, and tried last: a declared `type`, a
+  `#[FormType]` and declared options all still win.
+- **A table column reads the mapping too.** A `date` or `datetime` column
+  renders as a date, and an `enumType` column carries its cases as options —
+  so a cell shows "On Hold" rather than the stored `on_hold` — and becomes a
+  badge in the enum's own colours when the enum implements
+  `HasColorInterface`. `#[ORM\Column(enumType: Status::class)]` is now the
+  whole declaration where a listing used to repeat
+  `->type('badge')->options(Status::class)->colors(Status::class)`. Guesses
+  both, so a declared type, options or colours still win, and a column reading
+  a path or a presenter-only key is left alone. A badge also renders its
+  option's label instead of the raw value, and a colour written as a plain hue
+  (`green`, `yellow` — what `getColor()` usually returns) is translated to the
+  semantic token the components draw with, instead of falling back to grey.
+- **A drawer reads dates and colours.** A generated drawer printed whatever
+  the presenter sent, so a timestamp arrived as `2026-09-08T07:26:29+00:00`
+  and a colour as its hex literal. A value that is ISO-8601 now reads as
+  `Sep 8, 2026 09:26` (or without the time, for a plain date) and a hex
+  literal shows the colour beside it. Strictly recognised, so text that
+  merely starts with digits is left alone, and the date formatter is now one
+  definition shared with the table's date column — the same moment cannot
+  read one way in a cell and another in a drawer.
+
 ### Fixed
 
 - **An addable list on a stacked frame can now be added to.** Every addable
@@ -115,6 +172,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   endpoint the options travel with the field and the control filters them in
   the browser, and the "Create …" row is withheld along with the POST behind
   it.
+- **`defaultSort()` reads a column key.** The declaration names a column, in
+  the snake_case column keys are written in, but the key was passed through
+  unmapped while every column's own field is camelised — so
+  `defaultSort('created_at')` reached the query as a field the entity does not
+  have and the listing answered with a DQL error.
+- **`options` may name a backed enum.** `Field::options()` has always been
+  typed for a class name, the way `Filter::select()->options()` and
+  `Column::colors()` take one, but only an `enumType` column's cases were ever
+  expanded; a declared class name reached the blueprint builder as a string
+  and was refused. A string that is not a backed enum now says so by name.
 - **A stacked drawer no longer shrinks the ones beneath it.** Each level down
   the stack was scaled a little to read as a pile; since the top of the stack
   is never scaled, what it read as was one panel shrinking while its

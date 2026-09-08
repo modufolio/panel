@@ -121,6 +121,33 @@ the action only where the endpoint is — so a list on a frame stacked over
 another resource's record is added to through *its* resource, and a list
 nobody may add to shows no button rather than one that is refused.
 
+### What the mapping fills in
+
+A column reading a mapped field takes two things from the entity, so a
+listing does not restate what Doctrine already knows:
+
+- a `date` or `datetime` column renders as a date;
+- an `enumType` column carries its cases as options, so the cell shows the
+  case's label rather than its stored value, and becomes a badge in the enum's
+  own colours when the enum implements `HasColorInterface`.
+
+```php
+#[ORM\Column(length: 30, nullable: true, enumType: ProjectStatus::class)]
+private ?ProjectStatus $status = null;
+```
+
+```php
+Column::make('status'),   // a badge, labelled and coloured by the enum
+Column::make('updated_at'),
+```
+
+Both are guesses, so anything the column declares wins — `->type('text')` on
+an enum column keeps it text, a declared `colors()` or `options()` stands. A
+column reading a path (`studio.name`) or a presenter-only key is left alone:
+there is nothing mapped to read it from. Colours may be written as the panel's
+semantic tokens (`success`, `warning`, …) or as plain hues (`green`,
+`yellow`); the client translates the latter.
+
 ### Search across resources
 
 A resource takes part in the panel's search (the top-bar button, ⌘K) only
@@ -153,6 +180,33 @@ so what is mounted is what is searched.
 
 Returning non-null is the opt-in for the generated create/edit/delete routes.
 See [fields.md](fields.md).
+
+### Editing a cell from the list
+
+A column declaring `editable()` — a select, a text input, a toggle,
+`toggleIcon()` — is written through `PATCH {prefix}/{key}/{uuid}`, generated
+beside the edit routes and riding the same opt-in and roles. The generated
+listing wires the control to it; a hand-written page may keep its own handler.
+
+What the endpoint accepts is what the listing draws, and nothing more:
+
+1. `Permissions::edit()` for the record, as the full form asks;
+2. the field must belong to a column that says `editable()` — being in the
+   form is not enough, so the writable surface never exceeds the visible one;
+3. `Permissions::writable()` for the field. A whole form *drops* a field this
+   user may not write and saves the rest; a single cell has no rest, so it is
+   refused with a message instead of reported as saved;
+4. the form's own coercion, conditions and rules, applied to just that field.
+
+The body is keyed by **column**, so a column reading one field under another
+name (`Column::make('status')->value('account_status')`) is translated
+server-side. A column that is editable but writes a field the form does not
+declare throws: the listing would otherwise draw a control whose changes go
+nowhere.
+
+Per-field access is enforced but not yet advertised — the schema does not
+carry `writable`, so a control the viewer may not use is drawn, clicked, and
+refused. Declaring it would let the client render it read-only instead.
 
 ### Permissions
 

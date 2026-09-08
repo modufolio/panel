@@ -302,6 +302,14 @@ const cellHandlers = {
 Keyed by **column key** — note `status` above persists to `account_status`,
 which the schema's `valueKey` handles for display and the handler for the write.
 
+A **generated** page supplies these itself: `ResourcePage` builds one handler
+per `editable` column, PATCHing the single field to the resource's `patch`
+route (`resource.urls.patch`), with the current filters, sort and page on the
+URL — the redirect's URL is what Inertia reloads. The server keys the body by
+column and follows the column's `value` mapping, so the translation above is
+one a hand-written page no longer has to restate. A column that is editable
+but names no field of the form is a declaration error, not a silent no-op.
+
 An editable cell is never wrapped in a record link; the control would navigate
 away on the first click.
 

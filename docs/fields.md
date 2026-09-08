@@ -38,6 +38,13 @@ a BelongsTo select from a to-one association, a multiselect from a
 many-to-many, a repeater over a one-to-many's own fields. Options always win,
 so you state only layout, choices, bounds — whatever the schema cannot know.
 
+One guess reads the property's name as well as its column: a string column of
+nine characters or fewer named `color` / `colour` (`brandColor`,
+`poster_colour`) is a colour picker, since `#6366f1` is not something to type
+into a text box. Named *and* measured, because a `string(7)` is a postcode as
+often as a swatch. It is the last thing tried — a declared `type`, a
+`#[FormType]` on the property and declared options all win.
+
 An entry with a `type` is **declared outright**. The type is taken as written,
 ahead of the column and of a `#[FormType]` attribute on the property, and the
 key need not be mapped at all — a `SetType` over one stored object, an
@@ -101,9 +108,30 @@ return Form::make()->tabs([
 
 `tabs()` is `fields()` with only tabs in the list, spelled for reading; a
 tab can sit among plain entries, and fields outside every tab render above
-the bar. A key is derived from the label (`Billing address` →
-`billing-address`) unless one is given. Neither container nests: a tab in a
-tab, or a fieldset in a fieldset, is refused. The client drops a tab whose
+the bar. Neither container nests: a tab in a tab, or a fieldset in a
+fieldset, is refused.
+
+A key is derived from the label (`Billing address` → `billing-address`)
+unless one is given. The key is an address, not an identity token: it names
+the client's slot, lands on every field under the container as its `group`
+or `fieldset`, and is what a bookmarked tab would be written in — so it is
+authored, and stays put. Two consequences, both refused rather than guessed
+at:
+
+```php
+Tab::make('頁籤一')                    // no letters or digits survive the
+                                      // slug pattern → refused
+Tab::make('頁籤一', key: 'tab-1')      // name one, and it is fine
+
+Form::make()->tabs([                  // 'Details' and 'details!' both slug
+    Tab::make('Details')->fields([…]), // to "details" → refused
+    Tab::make('details!')->fields([…]),
+]);
+```
+
+A shared key does not draw two tabs; it draws one holding both sets of
+fields, which reads as fields having gone missing. The same guard applies to
+`DrawerTab`, whose keys you write yourself. The client drops a tab whose
 every field a condition has hidden, and when a submit leaves errors on a tab
 that is not showing, it opens the first tab that has one.
 
