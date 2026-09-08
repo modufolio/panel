@@ -12,6 +12,8 @@ use Modufolio\Panel\Resource\ContainerResourceLocator;
 use Psr\Container\ContainerInterface;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\Permissions;
+use Modufolio\Panel\Table\Column;
+use Modufolio\Panel\Table\TableSchema;
 use Modufolio\Panel\Tests\Case\DoctrineTestCase;
 use Modufolio\Panel\Tests\Fixture\CastDrawerMovieResource;
 use Modufolio\Panel\Tests\Fixture\DerivedMovieResource;
@@ -271,6 +273,228 @@ final class ResourceControllerTest extends DoctrineTestCase
         self::assertSame('/panel/movies/' . $uuid . '/edit', $response->getHeaderLine('Location'));
         $this->clear();
         self::assertSame('Heat (1995)', self::em()->getRepository(Movie::class)->findOneBy(['uuid' => $uuid])?->getTitle());
+    }
+
+    /**
+     * One cell, written where it is read. The redirect carries the list state
+     * the request arrived with, because that URL is what Inertia reloads.
+     */
+    public function testPatchWritesOneFieldAndReturnsToTheListItWasEditedFrom(): void
+    {
+        $heat = $this->seed();
+        $uuid = $heat->getUuid()->toString();
+
+        $response = $this->response($this->controller($this->editableTitle())->handle(
+            $this->http('PATCH', '/panel/movies/' . $uuid . '?page=3&sort=-year', ['title' => 'Heat (1995)']),
+            DerivedMovieResource::class,
+            'patch',
+            $uuid,
+        ));
+
+        self::assertSame(303, $response->getStatusCode());
+        self::assertSame('/panel/movies?page=3&sort=-year', $response->getHeaderLine('Location'));
+        self::assertSame(['Movie updated.'], $this->flash->get('success'));
+
+        $this->clear();
+        $movie = self::em()->getRepository(Movie::class)->findOneBy(['uuid' => $uuid]);
+        self::assertSame('Heat (1995)', $movie?->getTitle());
+        // The rest of the record is untouched: a partial write considers only
+        // the fields that arrived, so nothing else is defaulted to empty.
+        self::assertSame(1995, $movie->getYear());
+    }
+
+    /**
+     * A column may display one field under another name; the body is keyed the
+     * way the client knows the column, and the server translates.
+     */
+    public function testPatchFollowsTheColumnsValueMappingToTheFieldItWrites(): void
+    {
+        $heat = $this->seed();
+        $uuid = $heat->getUuid()->toString();
+
+        $resource = new class extends DerivedMovieResource {
+            public function table(): TableSchema
+            {
+                return TableSchema::make()->columns([
+                    Column::make('name')->value('title')->editable(),
+                ]);
+            }
+        };
+
+        $this->response($this->controller($resource)->handle(
+            $this->http('PATCH', '/panel/movies/' . $uuid, ['name' => 'Heat, remastered']),
+            DerivedMovieResource::class,
+            'patch',
+            $uuid,
+        ));
+
+        $this->clear();
+        self::assertSame('Heat, remastered', self::em()->getRepository(Movie::class)->findOneBy(['uuid' => $uuid])?->getTitle());
+    }
+
+    /**
+     * The endpoint's surface is what the listing draws a control for, not
+     * whatever the form happens to contain.
+     */
+    public function testPatchRefusesAFieldNoColumnDeclaresEditable(): void
+    {
+        $heat = $this->seed();
+        $uuid = $heat->getUuid()->toString();
+
+        $this->response($this->controller($this->editableTitle())->handle(
+            $this->http('PATCH', '/panel/movies/' . $uuid, ['synopsis' => 'Smuggled in beside the form.']),
+            DerivedMovieResource::class,
+            'patch',
+            $uuid,
+        ));
+
+        self::assertSame(
+            ['Nothing in that request can be edited from the list. Editable columns: title.'],
+            $this->flash->get('error'),
+        );
+
+        $this->clear();
+        self::assertNull(self::em()->getRepository(Movie::class)->findOneBy(['uuid' => $uuid])?->getSynopsis());
+    }
+
+    /** The same permission the full form asks, on the same record. */
+    public function testPatchIsRefusedWithoutEditPermission(): void
+    {
+        $heat = $this->seed();
+        $uuid = $heat->getUuid()->toString();
+
+        $resource = new class extends DerivedMovieResource {
+            public function table(): TableSchema
+            {
+                return TableSchema::make()->columns([Column::make('title')->editable()]);
+            }
+
+            public function permissions(): Permissions
+            {
+                return new class extends Permissions {
+                    public function edit(?object $record, ?object $user): bool { return false; }
+                };
+            }
+        };
+
+        $this->response($this->controller($resource)->handle(
+            $this->http('PATCH', '/panel/movies/' . $uuid, ['title' => 'Nope']),
+            DerivedMovieResource::class,
+            'patch',
+            $uuid,
+        ));
+
+        self::assertSame(['You do not have permission to do that.'], $this->flash->get('error'));
+
+        $this->clear();
+        self::assertSame('Heat', self::em()->getRepository(Movie::class)->findOneBy(['uuid' => $uuid])?->getTitle());
+    }
+
+    /**
+     * The cell has closed by the time the answer arrives, so a rejected value
+     * has no input left to pin its message to — it travels as a flash.
+     */
+    public function testAnInvalidPatchExplainsItselfAndWritesNothing(): void
+    {
+        $heat = $this->seed();
+        $uuid = $heat->getUuid()->toString();
+
+        $this->response($this->controller($this->editableTitle())->handle(
+            $this->http('PATCH', '/panel/movies/' . $uuid, ['title' => '']),
+            DerivedMovieResource::class,
+            'patch',
+            $uuid,
+        ));
+
+        self::assertSame([], $this->flash->get('success'));
+        self::assertNotSame([], $this->flash->get('error'));
+
+        $this->clear();
+        self::assertSame('Heat', self::em()->getRepository(Movie::class)->findOneBy(['uuid' => $uuid])?->getTitle());
+    }
+
+    /**
+     * A control whose changes would evaporate is worse than one never
+     * offered: the write goes through the form, so the column has to name a
+     * field the form declares.
+     */
+    public function testAnEditableColumnTheFormDoesNotDeclareIsADeclarationError(): void
+    {
+        $heat = $this->seed();
+        $uuid = $heat->getUuid()->toString();
+
+        $resource = new class extends DerivedMovieResource {
+            public function table(): TableSchema
+            {
+                return TableSchema::make()->columns([Column::make('year')->editable()]);
+            }
+        };
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('column "year" is editable but writes "year", which the form does not declare');
+
+        $this->controller($resource)->handle(
+            $this->http('PATCH', '/panel/movies/' . $uuid, ['year' => 1996]),
+            DerivedMovieResource::class,
+            'patch',
+            $uuid,
+        );
+    }
+
+    /**
+     * A field this user may not write is refused outright, rather than being
+     * dropped the way a whole form drops it: a form with one frozen field
+     * still has the rest to save, a single cell has nothing, and reporting
+     * success for a write that did not happen is the worse answer.
+     */
+    public function testPatchRefusesAFieldThisUserMayNotWrite(): void
+    {
+        $heat = $this->seed();
+        $uuid = $heat->getUuid()->toString();
+
+        $resource = new class extends DerivedMovieResource {
+            public function table(): TableSchema
+            {
+                return TableSchema::make()->columns([Column::make('title')->editable()]);
+            }
+
+            public function permissions(): Permissions
+            {
+                return new class extends Permissions {
+                    public function writable(string $field, ?object $user, ?object $record = null): bool
+                    {
+                        return $field !== 'title';
+                    }
+                };
+            }
+        };
+
+        $this->response($this->controller($resource)->handle(
+            $this->http('PATCH', '/panel/movies/' . $uuid, ['title' => 'Frozen']),
+            DerivedMovieResource::class,
+            'patch',
+            $uuid,
+        ));
+
+        self::assertSame(['You may not change title.'], $this->flash->get('error'));
+        self::assertSame([], $this->flash->get('success'));
+
+        $this->clear();
+        self::assertSame('Heat', self::em()->getRepository(Movie::class)->findOneBy(['uuid' => $uuid])?->getTitle());
+    }
+
+    /** A resource whose title column is editable in place. */
+    private function editableTitle(): DerivedMovieResource
+    {
+        return new class extends DerivedMovieResource {
+            public function table(): TableSchema
+            {
+                return TableSchema::make()->columns([
+                    Column::make('title')->editable(),
+                    Column::make('year'),
+                ]);
+            }
+        };
     }
 
     /**

@@ -13,6 +13,7 @@ use Modufolio\Panel\Routing\ResourceBaseUrl;
 use Modufolio\Panel\Routing\Uuid;
 use Modufolio\Panel\Table\BulkAction;
 use Modufolio\Panel\Table\Column;
+use Modufolio\Panel\Table\ColumnGuesser;
 use Modufolio\Panel\Table\Constraint;
 use Modufolio\Panel\Table\Filter;
 use Modufolio\Panel\Table\Group;
@@ -155,6 +156,11 @@ final class ResourceListing
 
         if ($schema !== null) {
             $schema = $this->resolveLabels($schema);
+            // What the mapping already knows: a date column reads as a date,
+            // an enum column as its case's label — a badge where the enum
+            // carries colours. Before anything else touches the schema, and
+            // never over a declaration.
+            (new ColumnGuesser($this->entityManager))->apply($schema, $this->resource->entityClass());
             $schema = $this->resolveRecordUrl($schema, $key);
             $schema = $this->resolveFilterOptions($schema, $params['filters']);
             $schema = $this->resolveActions($schema, $key);
@@ -761,6 +767,7 @@ final class ResourceListing
             'show'          => $this->routeTemplate($key . '_show'),
             'edit'          => $this->routeTemplate($key . '_edit'),
             'update'        => $this->routeTemplate($key . '_update'),
+            'patch'         => $this->routeTemplate($key . '_patch'),
             'destroy'       => $this->routeTemplate($key . '_destroy'),
             'deletePreview' => $this->routeTemplate($key . '_delete_preview'),
             'bulkDestroy'   => $this->routeUrl($key . '_bulk_destroy'),

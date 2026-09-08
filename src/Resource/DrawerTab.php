@@ -474,6 +474,17 @@ final class DrawerTab
     {
         $byKey = [];
         foreach ($tabs as $tab) {
+            // The key is the client's slot name and what a sibling reference
+            // resolves against, so a repeat does not draw two tabs — it draws
+            // one, and the other's body never appears.
+            if (isset($byKey[$tab->key])) {
+                throw new \LogicException(sprintf(
+                    'Two drawer tabs share the key "%s". A key names the client\'s slot and is how sections '
+                    . 'reference a sibling, so each tab needs its own.',
+                    $tab->key,
+                ));
+            }
+
             $byKey[$tab->key] = $tab;
         }
 

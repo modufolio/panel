@@ -107,6 +107,7 @@ final class ResourceController
             'store'           => $this->store($request, $resource),
             'edit'            => $this->edit($request, $resource, $uuid),
             'update'          => $this->update($request, $resource, $uuid),
+            'patch'           => $this->patch($request, $resource, $uuid),
             'destroy'         => $this->destroy($request, $resource, $uuid),
             'bulkDestroy'     => $this->bulkDestroy($request, $resource),
             'deletePreview'   => $this->deletePreview($resource, $uuid),
@@ -349,6 +350,146 @@ final class ResourceController
             ...$this->editProps($resource, $entity),
             'errors' => new \ArrayObject($errors),
         ]);
+    }
+
+    /**
+     * One field of one record, written where it is read: the listing's
+     * editable cells.
+     *
+     * Three gates, none of which the client can talk its way past. The
+     * record's own `edit` permission, as the full form asks. Then the table's
+     * declaration: only a column that says `editable()` may be written this
+     * way, so the endpoint's surface is exactly what the listing draws a
+     * control for — a field that is merely present in the form is not enough.
+     * Then the submission handler, which applies per-field write access,
+     * coercion and the field's own rules, told to consider only the fields
+     * that arrived.
+     *
+     * A column may display one field under another name
+     * (`Column::make('status')->value('account_status')`), so the body is
+     * keyed the way the client knows the column and translated here — the
+     * mapping a hand-written page used to restate in its save handler.
+     */
+    private function patch(ServerRequestInterface $request, PanelResource $resource, ?string $uuid): ResponseInterface
+    {
+        $entity = $this->find($resource, $uuid);
+
+        if ($entity === null) {
+            return $this->redirect($request, $this->listUrl($request, $resource));
+        }
+
+        if (!$resource->permissions()->edit($entity, $this->user())) {
+            return $this->deny($request, $resource);
+        }
+
+        $editable = $this->editableFields($resource);
+        $values   = [];
+
+        foreach ($this->body($request) as $column => $value) {
+            if (isset($editable[$column])) {
+                $values[$editable[$column]] = $value;
+            }
+        }
+
+        if ($values === []) {
+            // Says which fields *are* writable this way rather than only that
+            // this one is not: the usual cause is a column that renders a
+            // control without declaring `editable()`.
+            $this->flashBag->add('error', sprintf(
+                'Nothing in that request can be edited from the list.%s',
+                $editable === [] ? '' : ' Editable columns: ' . implode(', ', array_keys($editable)) . '.',
+            ));
+
+            return $this->redirect($request, $this->listUrl($request, $resource));
+        }
+
+        // Per-field write access, asked here rather than left to the handler:
+        // the handler *drops* a field this user may not write, which is right
+        // for a whole form (the rest of it still saves) and wrong for a single
+        // cell — it would report success having changed nothing.
+        $permissions = $resource->permissions();
+
+        foreach (array_keys($values) as $field) {
+            if (!$permissions->writable($field, $this->user(), $entity)) {
+                $this->flashBag->add('error', sprintf('You may not change %s.', str_replace('_', ' ', $field)));
+
+                return $this->redirect($request, $this->listUrl($request, $resource));
+            }
+        }
+
+        $errors = $this->submissions()->handle($resource, $entity, $values, $this->user(), array_keys($values));
+
+        if ($errors === []) {
+            $this->flashBag->add('success', $this->label($resource) . ' updated.');
+        } else {
+            // The row snaps back to what the server holds, so the reason has
+            // to travel as a message: there is no field on screen to pin it
+            // to once the cell has closed.
+            $this->flashBag->add('error', reset($errors));
+        }
+
+        return $this->redirect($request, $this->listUrl($request, $resource));
+    }
+
+    /**
+     * The columns a listing may write, as `column key => field written`.
+     *
+     * A column reading a nested path (`organization.name`) is not one of
+     * them: there is no single field behind it to set, and a form that meant
+     * to edit the related record would say so.
+     *
+     * The write goes through the form's declaration — its coercion, its
+     * per-field access, its rules — so a column that is editable but names no
+     * form field is refused loudly rather than saved into nothing. The listing
+     * draws a control for it, and a control whose changes evaporate is worse
+     * than one that was never offered.
+     *
+     * @return array<string, string>
+     */
+    private function editableFields(PanelResource $resource): array
+    {
+        $schema = $resource->table();
+
+        if ($schema === null) {
+            return [];
+        }
+
+        $formFields = array_column($this->forms()->fieldsFor($resource), 'key');
+        $editable   = [];
+
+        foreach ($schema->declaredColumns() as $column) {
+            if (!$column->isEditable() || str_contains($column->field(), '.')) {
+                continue;
+            }
+
+            if (!in_array($column->field(), $formFields, true)) {
+                throw new \LogicException(sprintf(
+                    '%s: column "%s" is editable but writes "%s", which the form does not declare. '
+                    . 'Add the field to form(), or drop editable() from the column.',
+                    $resource::class,
+                    $column->key(),
+                    $column->field(),
+                ));
+            }
+
+            $editable[$column->key()] = $column->field();
+        }
+
+        return $editable;
+    }
+
+    /**
+     * Back to the list the edit was made from, filters and page intact.
+     *
+     * The client sends its list state on the request, because the redirect's
+     * URL is what Inertia reloads: landing on the bare index would answer an
+     * edit made on page 3 of a filtered list with page 1 of an unfiltered one.
+     */
+    private function listUrl(ServerRequestInterface $request, PanelResource $resource): string
+    {
+        $query = http_build_query($request->getQueryParams());
+
+        return $this->indexUrl($resource) . ($query !== '' ? '?' . $query : '');
     }
 
     /**

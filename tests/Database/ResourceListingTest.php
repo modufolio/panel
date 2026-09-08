@@ -350,6 +350,7 @@ final class ResourceListingTest extends DoctrineTestCase
                 'show'          => '/panel/movies/{id}',
                 'edit'          => '/panel/movies/{id}/edit',
                 'update'        => '/panel/movies/{id}',
+                'patch'         => '/panel/movies/{id}',
                 'destroy'       => '/panel/movies/{id}',
                 'deletePreview' => '/panel/movies/{id}/delete-preview',
                 'bulkDestroy'   => '/panel/movies/bulk-delete',

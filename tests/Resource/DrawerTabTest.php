@@ -333,4 +333,17 @@ final class DrawerTabTest extends TestCase
         self::assertSame('details', $tabs[0]['type']);
         self::assertSame(1, $tabs[1]['badge']);
     }
+
+    /**
+     * The key is the client's slot name and what a section reference resolves
+     * against, so a repeat draws one tab holding the first declaration and
+     * silently drops the second's body.
+     */
+    public function testTwoTabsSharingAKeyAreRefused(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Two drawer tabs share the key "details"');
+
+        DrawerTab::collect([DrawerTab::record('details'), DrawerTab::group('details')], ['title' => 't']);
+    }
 }
