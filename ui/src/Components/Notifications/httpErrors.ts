@@ -60,6 +60,21 @@ export function notifyHttpError(status: number): boolean {
   return true
 }
 
+/**
+ * A prefetched response that came back failed. Inertia fires `prefetched`
+ * for every prefetch, success or failure, and returns before its exception
+ * handling — a prefetch warms the cache silently, and the failure would only
+ * surface on the click that replays it. A 500 from broken server wiring does
+ * not fix itself by then, so the toast shows now; a response without a
+ * status, or one that succeeded, is left alone. Returns whether one was
+ * shown.
+ */
+export function notifyPrefetchedError(status: number | undefined): boolean {
+  if (status === undefined || status < 400) return false
+
+  return notifyHttpError(status)
+}
+
 /** The connection failed before any status arrived. */
 export function notifyNetworkError(): void {
   showToast({ type: 'error', message: 'Could not reach the server. Check your connection and try again.' })

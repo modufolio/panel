@@ -101,6 +101,19 @@
             :navigation="field.navigation ?? 'drawer'"
           >{{ field.value }}</DrawerLink>
 
+          <!--
+            A hex literal is a colour: show the colour, and keep the literal
+            beside it for anyone who needs to copy it.
+          -->
+          <span v-else-if="field.color" class="inline-flex items-center gap-2">
+            <span
+              class="h-4 w-4 shrink-0 rounded border border-gray-200"
+              :style="{ backgroundColor: field.color }"
+              aria-hidden="true"
+            />
+            <span class="font-mono text-xs uppercase">{{ field.value }}</span>
+          </span>
+
           <template v-else>{{ field.value }}</template>
         </slot>
       </dd>
@@ -113,6 +126,7 @@
 import { computed } from 'vue'
 import DrawerLink from './DrawerLink.vue'
 import Icon from '../Core/Icon.vue'
+import { formatDate, hasTimeOfDay, parseTimestamp } from '../../Utils/dates'
 
 /**
  * The two-column definition grid every drawer's "details" view is built from.
@@ -258,6 +272,30 @@ function referenceLabel(value: unknown): string | undefined {
   return undefined
 }
 
+/** `#6366f1`, `#63f`, or either with an alpha pair. Nothing else. */
+function hexColour(value: unknown): string | undefined {
+  return typeof value === 'string' && /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(value)
+    ? value
+    : undefined
+}
+
+/**
+ * A timestamp as a person reads it. The server sends ISO-8601, which is a
+ * transport format — `2026-09-08T07:26:29+00:00` in a drawer is a machine
+ * talking. The date column formats the same way, from the same helper.
+ */
+function readableDate(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined
+  }
+
+  const date = parseTimestamp(value)
+
+  return date === null
+    ? undefined
+    : formatDate(date, hasTimeOfDay(value) ? 'MMM D, YYYY HH:mm' : 'MMM D, YYYY')
+}
+
 const resolvedFields = computed<DrawerField[]>(() => {
   if (props.fields !== undefined) {
     return props.fields
@@ -303,9 +341,11 @@ const resolvedFields = computed<DrawerField[]>(() => {
       && value !== null
       && !Array.isArray(value)
 
+    const colour = image ? undefined : hexColour(value)
+
     const text = value === null || value === undefined || value === '' || isEmptyObject
       ? '—'
-      : (reference ?? String(value))
+      : (reference ?? readableDate(value) ?? String(value))
 
     const href = image ? undefined : referenceHref(value)
     const navigation = href !== undefined
@@ -320,6 +360,7 @@ const resolvedFields = computed<DrawerField[]>(() => {
       rows: declaredRows,
       raw: value,
       image,
+      color: colour,
       href,
       navigation,
       pickUrl: declaredPickUrl,

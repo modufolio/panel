@@ -108,7 +108,7 @@ import Toast from '../../Components/Notifications/Toast.vue'
 import GlobalSearchDialog from '../Search/GlobalSearchDialog.vue'
 import { useToast } from '../../Components/Notifications/useToast'
 import { showToast, type PageToast } from '../../Components/Notifications/pageToasts'
-import { notifyHttpError, notifyNetworkError } from '../../Components/Notifications/httpErrors'
+import { notifyHttpError, notifyNetworkError, notifyPrefetchedError } from '../../Components/Notifications/httpErrors'
 
 const props = defineProps({
   // Navigation Items
@@ -304,6 +304,12 @@ const stopInvalidResponses = router.on('httpException', (event) => {
   }
 })
 
+// A prefetch that fails never reaches `httpException` — Inertia keeps it for
+// the click that replays it. Say so now instead; the event is not cancelable.
+const stopFailedPrefetches = router.on('prefetched', (event) => {
+  notifyPrefetchedError(event.detail.response?.status)
+})
+
 const searchOpen = ref(false)
 
 function openSearch(): void {
@@ -333,6 +339,7 @@ const stopExceptions = router.on('networkError', (event) => {
 onUnmounted(() => {
   stopFlushingPrefetched()
   stopInvalidResponses()
+  stopFailedPrefetches()
   stopExceptions()
 })
 </script>

@@ -1,5 +1,8 @@
 /**
- * Pure date math for the date picker. No DOM, no timezones beyond "local".
+ * Pure date math and date *display*, shared by the picker, the table's date
+ * column and the drawer's field grid — one definition, so the same moment
+ * cannot read three ways in three places. No DOM, no timezones beyond
+ * "local".
  *
  * Every Date produced here is a local-time midnight. Dates are constructed
  * through setters rather than string or numeric constructor arguments:
@@ -185,4 +188,107 @@ export function parseUserInput(text: string, reference: Date = todayMidnight()):
 export function formatDisplay(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`
+}
+
+// ── Display ──────────────────────────────────────────────────────────────────
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const FULL_MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
+/**
+ * A date in a `YYYY`/`MMM`/`DD`/`HH`/`mm` template, the tokens a resource
+ * writes in `Column::format()`.
+ */
+export function formatDate(date: Date, format: string): string {
+  const d = date.getDate()
+  const m = date.getMonth()
+  const y = date.getFullYear()
+  const h = date.getHours()
+  const min = date.getMinutes()
+  const s = date.getSeconds()
+
+  const tokens: Record<string, string | number> = {
+    'YYYY': y,
+    'YY': String(y).slice(-2),
+    'MMMM': FULL_MONTHS[m],
+    'MMM': MONTHS[m],
+    'MM': String(m + 1).padStart(2, '0'),
+    'M': m + 1,
+    'DD': String(d).padStart(2, '0'),
+    'D': d,
+    'HH': String(h).padStart(2, '0'),
+    'H': h,
+    'hh': String(h % 12 || 12).padStart(2, '0'),
+    'h': h % 12 || 12,
+    'mm': String(min).padStart(2, '0'),
+    'm': min,
+    'ss': String(s).padStart(2, '0'),
+    's': s,
+    'A': h >= 12 ? 'PM' : 'AM',
+    'a': h >= 12 ? 'pm' : 'am',
+  }
+
+  // Single pass, longest-token-first alternation.
+  //
+  // An earlier implementation swapped each token for a `__PLACEHOLDER_n__`
+  // marker and substituted afterwards — but the literal word "PLACEHOLDER"
+  // contains D, H and A, so the single-character tokens matched *inside*
+  // markers already written and shredded them. Even the default
+  // 'MMM D, YYYY' came out mangled. Replacing in one pass means no output is
+  // ever rescanned.
+  const pattern = /YYYY|YY|MMMM|MMM|MM|M|DD|D|HH|H|hh|h|mm|m|ss|s|A|a/g
+
+  return format.replace(pattern, (token: string) => String(tokens[token]))
+}
+
+/** "just now", "3 hours ago", "2 years ago". */
+export function relativeTime(date: Date, now: Date = new Date()): string {
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+  const days = Math.floor(hours / 24)
+  const weeks = Math.floor(days / 7)
+  const months = Math.floor(days / 30)
+  const years = Math.floor(days / 365)
+
+  const plural = (count: number, unit: string) => `${count} ${count === 1 ? unit : `${unit}s`} ago`
+
+  if (seconds < 60) return 'just now'
+  if (minutes < 60) return plural(minutes, 'minute')
+  if (hours < 24) return plural(hours, 'hour')
+  if (days < 7) return plural(days, 'day')
+  if (weeks < 4) return plural(weeks, 'week')
+  if (months < 12) return plural(months, 'month')
+
+  return plural(years, 'year')
+}
+
+/**
+ * A timestamp the server sent, as a Date — or null when the string is not one.
+ *
+ * Strict on purpose: this decides whether a *presented* value is a date at
+ * all, so anything looser would reformat text that merely starts with digits.
+ * A date without a time is read as local midnight, since `new Date('…-09-08')`
+ * is UTC midnight and renders as the day before west of Greenwich.
+ */
+export function parseTimestamp(value: string): Date | null {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return parseISO(value)
+  }
+
+  if (!/^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/.test(value)) {
+    return null
+  }
+
+  const date = new Date(value)
+
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+/** Whether a timestamp carries a time of day, or is a plain calendar date. */
+export function hasTimeOfDay(value: string): boolean {
+  return !/^\d{4}-\d{2}-\d{2}$/.test(value)
 }

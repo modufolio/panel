@@ -246,6 +246,7 @@ export { default as DrawerRelationList } from './Components/Drawer/DrawerRelatio
 export { default as DrawerRelationTable } from './Components/Drawer/DrawerRelationTable.vue'
 export { configureHttpErrors, httpErrorMessage, notifyHttpError, type HttpErrorMessages } from './Components/Notifications/httpErrors'
 export { reconcileColumnPreferences, columnPreferencesFor, type ColumnPreference } from './Composables/columnPreferences'
+export { semanticColor, type SemanticColor } from './Utils/colors'
 export { default as GlobalSearchDialog } from './Components/Search/GlobalSearchDialog.vue'
 export { useGlobalSearch, type SearchHit, type SearchGroup, type SearchResult } from './Components/Search/useGlobalSearch'
 export { default as ActionFormDialog } from './Components/Dialogs/ActionFormDialog.vue'

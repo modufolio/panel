@@ -69,6 +69,7 @@
       :stack="stack"
       :drawer-type="resource.drawerType"
       :filter-values="form"
+      :cell-handlers="cellHandlers"
       @update:search="updateSearch"
       @sort="handleSort"
       @update:filter="setFilter"
@@ -293,6 +294,7 @@ import { useResourceListing, fillId, type ResourceMeta } from '../../Composables
 import type { TableSchema } from '../Table/tableSchema'
 import type { BoardCard, BoardPayload } from '../Board/boardTypes'
 import type { StackItem } from '../Drawer/useDrawerStack'
+import { recordId, type TableRecord } from '../Table/tableTypes'
 import type { FieldDef } from '../Fields/useBlueprint'
 import type { FieldSpec } from '../Fields/fieldsFromSpec'
 import type { DrawerField } from '../Drawer/drawerFieldGrid'
@@ -345,6 +347,69 @@ const {
   updatePerPage,
   setFilter,
 } = useResourceListing(props)
+
+/**
+ * Save handlers for the schema's `editable` columns.
+ *
+ * A hand-written page supplies these itself; a generated one has nothing to
+ * supply them from, which is why an editable column used to render a control
+ * that saved nowhere. The server's `patch` route is the missing half: one
+ * field, keyed by column, allowlisted there against the same schema this
+ * reads — so what the client offers and what the server accepts cannot drift.
+ *
+ * The list's own state rides on the URL because the redirect's URL is what
+ * Inertia reloads: without it, editing a cell on page 3 of a filtered list
+ * would answer with page 1 of an unfiltered one.
+ */
+const listQuery = computed<string>(() => {
+  const query = new URLSearchParams()
+
+  for (const [name, value] of Object.entries(computedParams.value)) {
+    if (value === undefined || value === null || value === '') continue
+
+    query.set(name, String(value))
+  }
+
+  // The filter form does not hold the page — pagination travels as its own
+  // param — so it is read from the rows the server sent. Without it an edit
+  // made on page 3 answers with page 1.
+  const meta = records.value?.meta
+
+  if (meta?.current_page && meta.current_page > 1) {
+    query.set('page[number]', String(meta.current_page))
+
+    if (meta.per_page) query.set('page[size]', String(meta.per_page))
+  }
+
+  return query.toString()
+})
+
+const cellHandlers = computed<Record<string, (record: TableRecord, column: string, value: unknown) => void>>(() => {
+  const template = props.resource.urls?.patch
+
+  if (!template) return {}
+
+  const handlers: Record<string, (record: TableRecord, column: string, value: unknown) => void> = {}
+
+  for (const column of props.table.columns ?? []) {
+    if (!column.editable) continue
+
+    handlers[column.key] = (record, key, value) => {
+      const url = fillId(template, recordId(record))
+
+      if (!url) return
+
+      // Inertia's payload type is FormData or a plain record of scalars; the
+      // value is whatever control the column declared, narrowed at the edge.
+      const payload = { [key]: value as string | number | boolean | null }
+      const query = listQuery.value
+
+      router.patch(query === '' ? url : `${url}?${query}`, payload, { preserveScroll: true })
+    }
+  }
+
+  return handlers
+})
 
 /** Which of this page's slots override a table cell, and which dress a drawer tab. */
 const slots = useSlots()

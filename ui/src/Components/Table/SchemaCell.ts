@@ -10,6 +10,7 @@ import ColorColumn from '../Columns/ColorColumn.vue'
 import SelectColumn from '../Columns/SelectColumn.vue'
 import ToggleColumn from '../Columns/ToggleColumn.vue'
 import ToggleIconColumn from '../Columns/ToggleIconColumn.vue'
+import { semanticColor } from '../../Utils/colors'
 import CopyButton from '../Columns/CopyButton.vue'
 import { resolveColumnComponent } from '../Columns/columnRegistry'
 import {
@@ -145,7 +146,7 @@ export default defineComponent({
           if (flag(record, column.readOnlyWhen) || !column.editable) {
             return h(BadgeColumn, {
               label: labelForOption(column, value),
-              color: column.colors?.[String(value)] ?? 'gray',
+              color: semanticColor(column.colors?.[String(value)]),
             })
           }
 
@@ -181,8 +182,11 @@ export default defineComponent({
 
         case 'badge':
           return h(component, {
-            label: String(value),
-            color: column.colors?.[String(value)] ?? 'gray',
+            // The stored value is the key; the label is what the options —
+            // an enum's cases, most often — call that case. Without this a
+            // badge read `on_hold` where the select beside it read "On Hold".
+            label: labelForOption(column, value),
+            color: semanticColor(column.colors?.[String(value)]),
           })
 
         case 'boolean':

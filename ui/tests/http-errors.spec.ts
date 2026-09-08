@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const showToast = vi.fn()
 vi.mock('../src/Components/Notifications/pageToasts', () => ({ showToast }))
 
-const { configureHttpErrors, httpErrorMessage, notifyHttpError } = await import('../src/Components/Notifications/httpErrors')
+const { configureHttpErrors, httpErrorMessage, notifyHttpError, notifyPrefetchedError } = await import('../src/Components/Notifications/httpErrors')
 
 /**
  * A failed status maps to one sentence, declared once; a status mapped to
@@ -33,6 +33,18 @@ describe('HTTP error messages', () => {
 
     expect(notifyHttpError(422)).toBe(false)
     expect(showToast).toHaveBeenCalledTimes(2)
+  })
+
+  it('reports a prefetch that failed, and ignores one that did not', () => {
+    // Inertia fires `prefetched` for every prefetch and never `httpException`
+    // for a failed one, so this is the only place a broken prefetch is seen.
+    expect(notifyPrefetchedError(200)).toBe(false)
+    expect(notifyPrefetchedError(undefined)).toBe(false)
+    expect(notifyPrefetchedError(422)).toBe(false)
+    expect(showToast).not.toHaveBeenCalled()
+
+    expect(notifyPrefetchedError(500)).toBe(true)
+    expect(showToast).toHaveBeenCalledWith({ type: 'error', message: expect.any(String) })
   })
 
   it('takes the application\'s own sentences, and lets it silence a status', () => {

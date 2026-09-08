@@ -36,6 +36,11 @@ export interface DrawerField {
    */
   image?: string
   /**
+   * A hex literal to show as a swatch beside the value — recognised from a
+   * value shaped `#6366f1`. Absent for every other field.
+   */
+  color?: string
+  /**
    * A break rather than a field: a rule (`line`) or a gap (`space`) across
    * the full row, the same breaks the form declares between its fields.
    */

@@ -18,6 +18,8 @@ export interface ResourceUrls {
   show?: string | null
   edit?: string | null
   update?: string | null
+  /** One field of one record, for the listing's editable cells. */
+  patch?: string | null
   destroy?: string | null
   deletePreview?: string | null
   bulkDestroy?: string | null
