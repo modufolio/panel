@@ -135,7 +135,7 @@ final class PermissionInspectorTest extends DoctrineTestCase
         $movies = $this->movies($report);
 
         self::assertSame(
-            ['movies', 'movies_export', 'movies_edit', 'movies_update', 'movies_relation_options', 'movies_relation_create', 'movies_relation_store'],
+            ['movies', 'movies_export', 'movies_edit', 'movies_update', 'movies_patch', 'movies_relation_options', 'movies_relation_create', 'movies_relation_store'],
             $movies['routes'],
         );
         self::assertSame('/panel', $movies['prefix']);

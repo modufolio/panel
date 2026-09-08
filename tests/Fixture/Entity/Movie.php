@@ -69,6 +69,18 @@ class Movie
     #[FormType(UrlType::class)]
     private ?string $website = null;
 
+    /** A short string column named for a colour: the guesser reads it as one. */
+    #[ORM\Column(name: 'poster_colour', length: 7, nullable: true)]
+    private ?string $posterColour = null;
+
+    /** As short, not a colour: the name is half the guess. */
+    #[ORM\Column(name: 'certificate', length: 5, nullable: true)]
+    private ?string $certificate = null;
+
+    /** An enum with labels and no colours: a cell reads the label, not a badge. */
+    #[ORM\Column(length: 20, nullable: true, enumType: Audience::class)]
+    private ?Audience $audience = null;
+
     /**
      * Nullable at the column so the schema can `ON DELETE SET NULL`, while the
      * constraint keeps the form treating it as mandatory — the case the
@@ -337,6 +349,41 @@ class Movie
     public function setCreatedAt(\DateTimeImmutable $createdAt): self
     {
         $this->createdAt = $createdAt;
+
+        return $this;
+    }
+
+    public function getPosterColour(): ?string
+    {
+        return $this->posterColour;
+    }
+
+    public function setPosterColour(?string $posterColour): self
+    {
+        $this->posterColour = $posterColour;
+
+        return $this;
+    }
+
+    public function getCertificate(): ?string
+    {
+        return $this->certificate;
+    }
+
+    public function setCertificate(?string $certificate): self
+    {
+        $this->certificate = $certificate;
+
+        return $this;
+    }
+    public function getAudience(): ?Audience
+    {
+        return $this->audience;
+    }
+
+    public function setAudience(?Audience $audience): self
+    {
+        $this->audience = $audience;
 
         return $this;
     }
