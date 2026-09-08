@@ -9,6 +9,7 @@ use Modufolio\Panel\Blueprint\FormType;
 use Modufolio\Panel\Blueprint\LabelField;
 use Modufolio\Panel\Blueprint\Separator;
 use Modufolio\Panel\Field\BelongsToType;
+use Modufolio\Panel\Field\ColorType;
 use Modufolio\Panel\Field\DateTimeType;
 use Modufolio\Panel\Field\DateType;
 use Modufolio\Panel\Field\DecimalType;
@@ -124,6 +125,24 @@ final class FormFieldGuesser
         $pinned = $overrides['type'] ?? null;
         unset($overrides['type']);
 
+        // `options` may name a backed enum instead of listing its cases — the
+        // way Filter::select() and Column::colors() take one, and the way
+        // Field::options() has always been typed. Expanded here so every path
+        // below sees a list; the builder's own validation rejects a string.
+        if (isset($overrides['options']) && is_string($overrides['options'])) {
+            $enum = $overrides['options'];
+
+            if (!is_a($enum, \BackedEnum::class, true)) {
+                throw new \InvalidArgumentException(sprintf(
+                    'form(): the `options` of "%s" name %s, which is not a backed enum; pass the choices as a list instead.',
+                    $key,
+                    $enum,
+                ));
+            }
+
+            $overrides['options'] = EnumOptions::for($enum);
+        }
+
         if ($pinned !== null && (!is_string($pinned) || !is_a($pinned, FieldTypeInterface::class, true))) {
             throw new \InvalidArgumentException(sprintf(
                 'form(): the `type` of "%s" must be a %s class name, got %s.',
@@ -154,6 +173,37 @@ final class FormFieldGuesser
         }
 
         return $this->guessScalar($meta, $property, $overrides, $pinned);
+    }
+
+    /**
+     * A short string column named for a colour is a colour picker, not a text
+     * input asking the user to type `#6366f1` by hand.
+     *
+     * Named *and* measured: a `string(7)` is a postcode as often as a swatch,
+     * and a `description` is not a colour however short the column. The length
+     * admits `#rrggbb` and the `#rrggbbaa` form that carries alpha; anything
+     * longer is prose about a colour rather than one.
+     *
+     * Last in line, as a guess should be — a declared `type`, a #[FormType] on
+     * the property and declared options all win.
+     *
+     * @param ClassMetadata<object> $meta
+     */
+    private function looksLikeAColour(ClassMetadata $meta, string $field): bool
+    {
+        if ((string) $meta->getTypeOfField($field) !== 'string') {
+            return false;
+        }
+
+        $length = $meta->getFieldMapping($field)['length'] ?? null;
+
+        if (!is_int($length) || $length > 9) {
+            return false;
+        }
+
+        $name = strtolower((string) preg_replace('/(?<!^)[A-Z]/', '_$0', $field));
+
+        return preg_match('/(^|_)colou?r$/', $name) === 1;
     }
 
     /**
@@ -219,15 +269,19 @@ final class FormFieldGuesser
             $overrides['options'] ??= EnumOptions::for($enum);
         }
 
-        $type = $pinned ?? $this->declaredType($meta, $field) ?? (isset($overrides['options']) ? SelectType::class : match ((string) $meta->getTypeOfField($field)) {
-            'text' => TextareaType::class,
-            'integer', 'smallint', 'bigint' => NumberType::class,
-            'decimal', 'float' => DecimalType::class,
-            'boolean' => ToggleType::class,
-            'date', 'date_immutable' => DateType::class,
-            'datetime', 'datetime_immutable', 'datetimetz', 'datetimetz_immutable' => DateTimeType::class,
-            default => TextType::class,
-        });
+        $type = $pinned ?? $this->declaredType($meta, $field) ?? match (true) {
+            isset($overrides['options']) => SelectType::class,
+            $this->looksLikeAColour($meta, $field) => ColorType::class,
+            default => match ((string) $meta->getTypeOfField($field)) {
+                'text' => TextareaType::class,
+                'integer', 'smallint', 'bigint' => NumberType::class,
+                'decimal', 'float' => DecimalType::class,
+                'boolean' => ToggleType::class,
+                'date', 'date_immutable' => DateType::class,
+                'datetime', 'datetime_immutable', 'datetimetz', 'datetimetz_immutable' => DateTimeType::class,
+                default => TextType::class,
+            },
+        };
 
         $options = $overrides;
 
