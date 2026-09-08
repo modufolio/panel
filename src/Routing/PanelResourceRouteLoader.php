@@ -143,6 +143,25 @@ final class PanelResourceRouteLoader extends Loader
                         ['uuid' => Uuid::PATTERN],
                     ),
                 );
+
+                // One field, edited where it is read: the listing's editable
+                // cells. PATCH beside the PUT because it is the same
+                // permission on the same record, and partial by definition —
+                // the handler writes what the body names and leaves the rest
+                // of the record alone. It rides the edit opt-in rather than
+                // having its own: a resource that does not offer editing does
+                // not offer editing a cell either.
+                $routes->add(
+                    "{$key}_patch",
+                    $this->createRoute(
+                        "{$prefix}/{$key}/{uuid}",
+                        ['PATCH'],
+                        'patch',
+                        $resourceClass,
+                        $roles,
+                        ['uuid' => Uuid::PATTERN],
+                    ),
+                );
             }
 
             // Relation options for the form's searchable selects. Emitted with

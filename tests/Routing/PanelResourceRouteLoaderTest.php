@@ -203,6 +203,7 @@ final class PanelResourceRouteLoaderTest extends TestCase
             'actors_destroy'          => ['/panel/actors/{uuid}', ['DELETE']],
             'actors_edit'             => ['/panel/actors/{uuid}/edit', ['GET']],
             'actors_export'           => ['/panel/actors/export', ['POST']],
+            'actors_patch'            => ['/panel/actors/{uuid}', ['PATCH']],
             'actors_relation_create'  => ['/panel/actors/relations/{field}', ['POST']],
             'actors_relation_options' => ['/panel/actors/relations/{field}', ['GET']],
             'actors_relation_store'   => ['/panel/actors/{uuid}/relations/{field}', ['POST']],

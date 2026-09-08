@@ -83,6 +83,20 @@ final class DerivedListQuery extends AbstractQuery implements ListQueryInterface
 
         $default = $table?->declaredDefaultSort();
 
+        // The declaration names a column, in the snake_case every column key
+        // is written in; the order is applied as `{alias}.{property}`. Mapped
+        // here as a column's own field is, so `defaultSort('created_at')`
+        // orders by `createdAt` instead of failing as an unknown field.
+        if ($default !== null) {
+            $default = array_combine(
+                array_map(
+                    static fn (string $key): string => $sortable[$key] ?? self::property($key),
+                    array_keys($default),
+                ),
+                array_values($default),
+            );
+        }
+
         if ($default === null) {
             $first   = array_key_first($sortable);
             $default = $first === null ? ['id' => 'ASC'] : [$sortable[$first] => 'ASC'];

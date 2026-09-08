@@ -82,6 +82,29 @@ final class DerivedListQueryTest extends DoctrineTestCase
         self::assertSame(['Collateral', 'Heat', 'Jurassic Park', 'Jaws'], $this->titles($this->props(new DerivedMovieResource())));
     }
 
+    /**
+     * The default order names a column, in the snake_case column keys are
+     * written in — the property behind it is what the query orders by. Passing
+     * the key through unmapped made `defaultSort('created_at')` a DQL error
+     * about a field the entity does not have.
+     */
+    public function testTheDefaultOrderReadsAColumnKeyNotAPropertyName(): void
+    {
+        $this->seed();
+
+        $resource = new class extends DerivedMovieResource {
+            public function table(): TableSchema
+            {
+                return parent::table()->defaultSort('created_at', 'DESC');
+            }
+        };
+
+        self::assertSame(
+            ['Jurassic Park', 'Collateral', 'Jaws', 'Heat'],
+            $this->titles($this->props($resource)),
+        );
+    }
+
     public function testSortabilityFollowsTheColumns(): void
     {
         $this->seed();
