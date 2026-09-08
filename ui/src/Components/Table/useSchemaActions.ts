@@ -19,6 +19,7 @@ interface ActionOptions {
   schema: () => TableSchema
   /** Per-record verdicts keyed by id, from the collection's `meta.can`. */
   can?: () => Record<string, { edit: boolean; delete: boolean }> | undefined
+  why?: () => Record<string, Partial<Record<'edit' | 'delete', string>>> | undefined
   /** Appended to record links so a drawer preserves the current list state. */
   queryParams: () => Record<string, unknown>
   /** The resource's own word for one record ('movie'), for the delete dialog. */
@@ -39,11 +40,17 @@ export function useSchemaActions(options: ActionOptions) {
   const pendingDelete = ref<{ action: SchemaRowAction; record: Row } | null>(null)
 
   const pendingBulk = ref<{ action: SchemaBulkAction; records: Row[] } | null>(null)
+  /** A `form` row action waiting for its dialog: the record and the URL it posts to. */
+  const pendingForm = ref<{ action: SchemaRowAction; record: Row; url: string } | null>(null)
+  /** A bulk action with fields waiting for its dialog. */
+  const pendingBulkForm = ref<{ action: SchemaBulkAction; records: Row[] } | null>(null)
 
   const deleteLabel = computed(() => options.recordLabel() || 'record')
 
   function rowActionsFor(record: Row): SchemaRowAction[] {
-    return visibleRowActions(options.schema().actions, record, options.can?.()?.[String(recordId(record))])
+    const id = String(recordId(record))
+
+    return visibleRowActions(options.schema().actions, record, options.can?.()?.[id], options.why?.()?.[id])
   }
 
   function submitDelete(record: Row): void {
@@ -74,6 +81,8 @@ export function useSchemaActions(options: ActionOptions) {
   )
 
   function runRowAction(action: SchemaRowAction, record: Row): void {
+    if (action.disabled) return
+
     const url = resolveRecordUrl(action.urlTemplate ?? options.schema().recordUrl, record)
 
     switch (action.behaviour) {
@@ -89,6 +98,12 @@ export function useSchemaActions(options: ActionOptions) {
 
       case 'visit':
         if (url) router.visit(url)
+        break
+
+      case 'form':
+        // Asks first — the declared fields, or just a confirmation — then
+        // posts to the resolved URL. Without a URL there is nowhere to post.
+        if (url) pendingForm.value = { action, record, url }
         break
 
       case 'delete':
@@ -117,6 +132,13 @@ export function useSchemaActions(options: ActionOptions) {
 
   function runBulkAction(action: SchemaBulkAction, records: Row[]): void {
     if (records.length === 0) return
+
+    // Fields to fill in: the dialog posts them beside the ids.
+    if (action.fields?.length && action.url) {
+      pendingBulkForm.value = { action, records }
+
+      return
+    }
 
     if (action.confirm) {
       pendingBulk.value = { action, records }
@@ -156,5 +178,7 @@ export function useSchemaActions(options: ActionOptions) {
     pendingBulk,
     bulkMessage,
     confirmBulk,
+    pendingForm,
+    pendingBulkForm,
   }
 }

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Table;
 
+use Modufolio\Panel\Blueprint\BlueprintBuilder;
+use Modufolio\Panel\Field\TextType;
+use Modufolio\Panel\Form\Field;
 /**
  * One action offered on a row, declared by the resource rather than written
  * into every listing's `#actions` slot.
@@ -45,6 +48,9 @@ final class RowAction
     /** Dispatched to the page's handler for this action's name. */
     public const BEHAVIOUR_HANDLER = 'handler';
 
+    /** Asks in a dialog — the fields, or just a confirmation — then posts to the URL. */
+    public const BEHAVIOUR_FORM = 'form';
+
     private string $label;
 
     private ?string $icon = null;
@@ -62,6 +68,13 @@ final class RowAction
     private bool $soft = false;
 
     private bool $confirm = false;
+
+    /** @var list<Field> Asked for in a dialog before the action runs; posted with it. */
+    private array $fields = [];
+
+    private string $method = 'post';
+
+    private ?string $submitLabel = null;
 
     private ?string $confirmMessage = null;
 
@@ -121,6 +134,16 @@ final class RowAction
     public static function make(string $name): self
     {
         return new self($name, self::BEHAVIOUR_HANDLER);
+    }
+
+    /**
+     * An action that asks before it runs: a confirmation, or a small form
+     * whose values are posted with it — "Change status", with the new status
+     * and a reason. The dialog is generic; the URL is the host's handler.
+     */
+    public static function form(string $name, string $urlTemplate): self
+    {
+        return (new self($name, self::BEHAVIOUR_FORM))->url($urlTemplate);
     }
 
     public function label(string $label): self
@@ -202,6 +225,66 @@ final class RowAction
         return $this;
     }
 
+    /**
+     * What the dialog asks for, declared like a form's fields; the values
+     * travel in the body under their keys. The same builder the forms use,
+     * so every field type and option is available.
+     *
+     * @param list<Field> $fields
+     */
+    public function fields(array $fields): self
+    {
+        $this->fields = $fields;
+
+        return $this;
+    }
+
+    /** The HTTP method the dialog submits with; post by default. */
+    public function method(string $method): self
+    {
+        $method = strtolower($method);
+
+        if (!in_array($method, ['post', 'put', 'patch', 'delete'], true)) {
+            throw new \InvalidArgumentException(sprintf('Action "%s": method must be post, put, patch or delete, "%s" given.', $this->name, $method));
+        }
+
+        $this->method = $method;
+
+        return $this;
+    }
+
+    public function submitLabel(string $label): self
+    {
+        $this->submitLabel = $label;
+
+        return $this;
+    }
+
+    /**
+     * The dialog's fields as the client renders them: each Field's options
+     * through the blueprint builder, exactly as a resource form's would be.
+     *
+     * @return list<array<string, mixed>>|null
+     */
+    private function fieldSpecs(): ?array
+    {
+        if ($this->fields === []) {
+            return null;
+        }
+
+        $builder = new BlueprintBuilder();
+
+        foreach ($this->fields as $field) {
+            $options = $field->toArray();
+            $type    = $options['type'] ?? TextType::class;
+            unset($options['type']);
+
+            $builder->add($field->key(), is_string($type) ? $type : TextType::class, $options);
+        }
+
+        return $builder->fields();
+    }
+
     public function name(): string
     {
         return $this->name;
@@ -223,6 +306,9 @@ final class RowAction
             'visibleWhen'    => $this->visibleWhen,
             'confirm'        => $this->confirm ?: null,
             'confirmMessage' => $this->confirmMessage,
+            'fields'         => $this->fieldSpecs(),
+            'method'         => $this->fields === [] && $this->method === 'post' ? null : $this->method,
+            'submitLabel'    => $this->submitLabel,
         ], static fn (mixed $value): bool => $value !== null);
     }
 
