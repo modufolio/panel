@@ -3,7 +3,7 @@ import { describe, it, expect, vi } from 'vitest'
 // Hoisted with the mock: the static imports above load the composable's
 // module graph before any plain `const` here would be initialised.
 const { get } = vi.hoisted(() => ({ get: vi.fn() }))
-vi.mock('@inertiajs/vue3', () => ({ router: { get, visit: vi.fn() } }))
+vi.mock('@inertiajs/vue3', () => ({ router: { prefetch: vi.fn(), flushAll: vi.fn(), get, visit: vi.fn() } }))
 import { defineComponent, h } from 'vue'
 import { mount } from '@vue/test-utils'
 import { useResourceListing, humanize } from '../src/Composables/useResourceListing'

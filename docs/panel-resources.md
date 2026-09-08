@@ -86,6 +86,64 @@ the write actions too — override it only for a resource that has outgrown it
 | `drawerType()` | Slot name for one record (default: the singular of `key()`) |
 | `drawerTitle()` | Heading for the open record |
 
+A relation tab lists related rows two lines each — `primary()` and
+`secondary()`. When the reader needs more than that before opening anything,
+give the tab columns and it renders as a table with headers, drawn by the
+same cell renderer as the listing:
+
+```php
+DrawerTab::relation('tasks')->label('Sub-tasks')
+    ->columns([
+        Column::make('title'),
+        Column::make('completed')->type('boolean')->label('Done'),
+        Column::make('due_date')->type('date'),
+    ])
+    ->recordUrl('/panel/tasks/{id}')
+    ->empty('No sub-tasks yet.'),
+```
+
+A column that declares a summary, is editable or links to the record is
+refused there: a drawer has nothing to aggregate over, no save path, and the
+row already opens its record through `recordUrl()`.
+
+`addable()` puts an add action on the list. The row form comes from the
+resource's own form declaration — a repeater contributes its row's fields, a
+to-many contributes itself narrowed to one choice — and the frame carries the
+endpoint the row is posted to, `{key}_relation_store`, resolved per record:
+
+```php
+DrawerTab::relation('cast')->primary('character')->addable('+ Add cast'),
+```
+
+The endpoint is stamped only when the resource generates form routes and
+`Permissions::edit()` admits this viewer for this record, and the client shows
+the action only where the endpoint is — so a list on a frame stacked over
+another resource's record is added to through *its* resource, and a list
+nobody may add to shows no button rather than one that is refused.
+
+### Search across resources
+
+A resource takes part in the panel's search (the top-bar button, ⌘K) only
+when it says so, and is then searched the way its own listing is — the same
+`searchable()` columns, the same permission scope, every word of the query
+required — a few hits at a time:
+
+```php
+public function searchableGlobally(): bool { return true; }
+
+/** @param array<string, mixed> $row the presented row */
+public function globalSearchDetails(array $row): array
+{
+    return [(string) $row['year'], (string) $row['studio']];
+}
+```
+
+The hit's title is the row's `title`, `name`, `label` or `email`
+(`globalSearchTitle()` to choose otherwise); its URL is the record's show
+route. The route loader adds `GET {prefix}/search` once, admitted by any role
+a resource declared; the module wires `Search\GlobalSearch` from the routes,
+so what is mounted is what is searched.
+
 ### The form
 
 | Method | Purpose |
@@ -119,6 +177,7 @@ One that refuses anything overrides the method for it:
 | `scope($qb, $alias, $user)` | Row — what the listing, its counts and the record lookup can see at all |
 | `readable($field, $user, $record)` / `writable($field, $user, $record)` | Field, per user and per record — see [fields.md](fields.md#per-field-access) |
 | `move($record, $lane, $user)` | Board — which lanes a card may be dragged into; a string is the refusal shown |
+| `reason($ability, $record, $user)` | Why `edit` or `delete` was refused, when the resource can say — shown as a disabled action's tooltip and in a bulk delete's report; null keeps the action hidden |
 
 A class rather than hooks on the resource, because rules are behaviour: typed
 record, typed user, testable without a resource, reusable through a base class
@@ -459,8 +518,10 @@ disagree about what a predicate means:
   always did);
 - **the default order**: `TableSchema::defaultSort('startsAt', 'DESC')`, else
   the first sortable column ascending, else the id;
-- **search**: a case-insensitive `LIKE` across the `searchable()` columns,
-  joining a to-one relation a `value('studio.name')` path crosses —
+- **search**: every word of the search — a quoted phrase is one word — as a
+  case-insensitive `LIKE` across the `searchable()` columns, AND-ed, so "john
+  smith" finds a first name in one column and a last name in another; a
+  to-one relation a `value('studio.name')` path crosses is joined —
   `Query\SearchQuery`;
 - **the soft-delete scope**: `FilterTrashedQuery`, when the entity has a
   `deletedAt`.

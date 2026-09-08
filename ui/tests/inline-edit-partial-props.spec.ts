@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const patch = vi.fn()
 const post = vi.fn()
-vi.mock('@inertiajs/vue3', () => ({ router: { patch, post } }))
+vi.mock('@inertiajs/vue3', () => ({ router: { prefetch: vi.fn(), flushAll: vi.fn(), patch, post } }))
 
 const { useInlineEdit } = await import('../src/Components/Composables/useInlineEdit')
 

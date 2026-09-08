@@ -136,3 +136,13 @@ overlay used to carry, and fixes the bugs that came with them.
   resolve sub-components without importing the composable back.
 - Docs: [async-writes.md](docs/async-writes.md),
   [relation-fields.md](docs/relation-fields.md).
+
+### Toggle icon columns
+
+- `Column::toggleIcon()`: a boolean rendered as one clickable icon — featured,
+  pinned, enabled — with `onIcon`/`offIcon` and `onColor`/`offColor` for the
+  two states. Editable by definition; the click saves through the same
+  `cellHandlers` entry every other in-place edit uses. `disabledWhen` keeps the
+  icon inert, `readOnlyWhen` drops the button for a plain indicator.
+- `ToggleIconColumn.vue`, exported alongside the other column components and
+  documented in [table-schema.md](docs/table-schema.md).

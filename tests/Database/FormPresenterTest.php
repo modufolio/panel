@@ -222,8 +222,8 @@ final class FormPresenterTest extends DoctrineTestCase
             . '$panel->resource(\\' . MovieResource::class . '::class)->only([\'index\', \'show\']); }',
         );
 
-        // A form without relations: the narrow route set has no relation
-        // options route either, and a lookup could not be built against it.
+        // A form without relations, to keep this about the destroy route
+        // alone — a relation under the narrow route set is its own case.
         $resource = new class extends MovieResource {
             public function form(): Form
             {
@@ -374,6 +374,33 @@ final class FormPresenterTest extends DoctrineTestCase
     }
 
     /** resolvedFields() is the declaration before access: the drawer's addable tab builds from it. */
+    /**
+     * A resource that generates no form routes has no relation-options
+     * endpoint. Asking the generator for it threw, so a page that merely
+     * *showed* one of these records died on the way out; the list travels
+     * with the field instead, and the control filters it in the browser.
+     */
+    public function testARelationWithNoSearchEndpointCarriesItsOptions(): void
+    {
+        $this->persist((new Studio())->setName('Warner Bros.'));
+
+        $urls = $this->urlGeneratorFromConfig(
+            'function (PanelResourceConfigurator $panel): void { $panel->resource(\\'
+            . MovieResource::class . '::class)->only([\'index\', \'show\']); }',
+        );
+
+        $studio = $this->byKey($this->presenter($urls)->fields(new MovieResource()))['studio_id'];
+        $props  = $this->section($studio, 'props');
+
+        self::assertSame('belongs-to', $studio['type']);
+        self::assertSame([['value' => 'Warner Bros.', 'label' => 'Warner Bros.']], array_map(
+            static fn (array $option): array => ['value' => $option['label'], 'label' => $option['label']],
+            $studio['options'],
+        ), 'The rows travel, since nothing can be asked for them.');
+        self::assertArrayNotHasKey('searchUrl', $props);
+        self::assertFalse($props['allowCreate'], 'Creating needs the POST that is not there either.');
+    }
+
     public function testResolvedFieldsResolveOptionsWithoutApplyingAccess(): void
     {
         $fields = $this->byKey($this->presenter()->resolvedFields($this->accessResource()));

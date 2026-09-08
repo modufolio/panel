@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 
 const visit = vi.fn()
-vi.mock('@inertiajs/vue3', () => ({ router: { visit } }))
+vi.mock('@inertiajs/vue3', () => ({ router: { prefetch: vi.fn(), flushAll: vi.fn(), visit } }))
 
 const { default: DrawerStack } = await import('../src/Components/Drawer/DrawerStack.vue')
 

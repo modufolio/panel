@@ -18,9 +18,14 @@ export interface StackItemTab {
   sections?: StackItemTab[]
   /**
    * Details tabs only: which record keys this grid shows and in what order,
-   * as `key => label override`. Absent means every eligible key.
+   * as `key => label override` — or, for a field claiming rows, a wide
+   * layout, or an image picker, `key => { label?, wide?, rows?, pickUrl?,
+   * pickTarget? }`. `pickUrl`/`pickTarget` are stamped per record by the
+   * server (FieldPickUrls) exactly as `addUrl`/`addTarget` are on an addable
+   * list below — present only when the viewer may write that field. Absent
+   * `fields` means every eligible key.
    */
-  fields?: Record<string, string | null>
+  fields?: Record<string, string | null | { label?: string | null; wide?: boolean; rows?: number; pickUrl?: string | null; pickTarget?: string | null; pickLabel?: string | null }>
   /** Relation tabs only: whether a row drills into a frame or visits a page. */
   navigation?: 'drawer' | 'visit'
   /** Row list styling: one bordered list, or a card per row. */
@@ -42,6 +47,13 @@ export interface StackItemTab {
   addFields?: FieldSpec[]
   /** Addable lists only: the form field the added row is written through. */
   addTarget?: string | null
+  /**
+   * Addable lists only: where a new row is posted. Stamped per record by the
+   * server (RelationAddUrls), so a list on a stacked frame of another resource
+   * posts to that resource's endpoint — and a list the viewer may not add to
+   * carries no URL and is not addable.
+   */
+  addUrl?: string | null
 }
 
 /**

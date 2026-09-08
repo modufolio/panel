@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 
 const visit = vi.fn()
 const get = vi.fn()
-vi.mock('@inertiajs/vue3', () => ({ router: { visit, get, reload: vi.fn(), delete: vi.fn() } }))
+vi.mock('@inertiajs/vue3', () => ({ router: { prefetch: vi.fn(), flushAll: vi.fn(), visit, get, reload: vi.fn(), delete: vi.fn() } }))
 
 const { default: ResourcePage } = await import('../src/Components/Resource/ResourcePage.vue')
 const { default: ViewSwitcher } = await import('../src/Components/Board/ViewSwitcher.vue')

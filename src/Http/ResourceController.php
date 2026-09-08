@@ -16,10 +16,13 @@ use Modufolio\Panel\Form\FormPresenter;
 use Modufolio\Panel\Form\FormResolver;
 use Modufolio\Panel\Form\SubmissionHandler;
 use Modufolio\Panel\Resource\BoardMover;
+use Modufolio\Panel\Resource\FieldPickUrls;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\RecordLocator;
+use Modufolio\Panel\Resource\RelationAddUrls;
 use Modufolio\Panel\Resource\RelationOptionResolver;
 use Modufolio\Panel\Resource\ResourceListing;
+use Modufolio\Panel\Search\GlobalSearch;
 use Modufolio\Psr7\Http\Response;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -61,6 +64,9 @@ final class ResourceController
     private ?PlanExecutor $executor = null;
     private ?RecordLocator $locator = null;
     private ?RelationOptionResolver $relations = null;
+
+    private ?RelationAddUrls $addUrls = null;
+    private ?FieldPickUrls $fieldPickUrls = null;
     private readonly FormResolver $forms;
 
     public function __construct(
@@ -72,6 +78,7 @@ final class ResourceController
         private readonly ResourceLocatorInterface $resources,
         ?FormResolver $forms = null,
         private readonly ?ExportAdapterProviderInterface $exports = null,
+        private readonly ?GlobalSearch $search = null,
     ) {
         // A host without a media library gets the plain resolver.
         $this->forms = $forms ?? new FormResolver($entityManager);
@@ -85,6 +92,11 @@ final class ResourceController
         ?string $uuid = null,
         ?string $field = null,
     ): ResponseInterface|Inertia {
+        // The one operation that spans resources instead of naming one.
+        if ($operation === 'search') {
+            return $this->search($request);
+        }
+
         $resource = $this->resource($resourceClass);
 
         return match ($operation) {
@@ -164,6 +176,7 @@ final class ResourceController
                 'edit'   => $resource->permissions()->edit($entity, $this->user()),
                 'delete' => $resource->permissions()->delete($entity, $this->user()),
             ],
+            'why'               => $this->reasons($resource, $entity),
             'urls'              => [
                 'edit'    => $this->routeUrl($resource->key() . '_edit', $resource->recordRouteParams($entity)),
                 'destroy' => $this->routeUrl($resource->key() . '_destroy', $resource->recordRouteParams($entity)),
@@ -171,7 +184,17 @@ final class ResourceController
             // Badges count the rows the record already carries, so declaring
             // a tab costs no query. The resolved form comes along so an
             // addable list can carry the form its add action opens.
-            'tabs'              => $resource->drawerTabsFor($record, $this->presenter()->resolvedFields($resource)),
+            'tabs'              => $this->fieldPickUrls()->stamp(
+                $this->addUrls()->stamp(
+                    $resource->drawerTabsFor($record, $this->presenter()->resolvedFields($resource)),
+                    $resource,
+                    $entity,
+                    $this->user(),
+                ),
+                $resource,
+                $entity,
+                $this->user(),
+            ),
             'presentation'      => 'drawer',
         ];
 
@@ -402,24 +425,38 @@ final class ResourceController
         $uuids = is_array($body['ids'] ?? null) ? $body['ids'] : [];
 
         $deleted = 0;
-        $skipped = 0;
+        $asked   = 0;
+        /** @var array<string, int> reason => how many */
+        $skipped = [];
+        $skip    = static function (string $reason) use (&$skipped): void {
+            $skipped[$reason] = ($skipped[$reason] ?? 0) + 1;
+        };
 
         foreach ($uuids as $uuid) {
             if (!is_string($uuid)) {
                 continue;
             }
 
+            ++$asked;
             $entity = $this->find($resource, $uuid);
 
-            if ($entity === null || !$resource->permissions()->delete($entity, $this->user())) {
-                $skipped++;
+            if ($entity === null) {
+                $skip('no longer exists');
+
+                continue;
+            }
+
+            if (!$resource->permissions()->delete($entity, $this->user())) {
+                $skip($resource->permissions()->reason('delete', $entity, $this->user()) ?? 'not allowed');
 
                 continue;
             }
 
             if (method_exists($entity, 'softDelete')) {
-                // Already trashed: leave its deletion time alone.
+                // Already trashed: leave its deletion time alone, and say so.
                 if (method_exists($entity, 'isDeleted') && $entity->isDeleted()) {
+                    $skip('already in the trash');
+
                     continue;
                 }
 
@@ -432,7 +469,7 @@ final class ResourceController
             $plan = (new Collector($this->entityManager))->collect($entity);
 
             if ($plan->isBlocked()) {
-                $skipped++;
+                $skip('referenced by protected records');
 
                 continue;
             }
@@ -443,15 +480,67 @@ final class ResourceController
 
         $this->entityManager->flush();
 
+        // The outcome, reason by reason: "7 of 10 deleted" and one line per
+        // reason something was skipped, so nobody has to guess which three.
         $label = strtolower($this->label($resource));
 
-        $this->flashBag->add('success', sprintf('%d %s(s) deleted.', $deleted, $label));
+        $this->flashBag->add(
+            $deleted > 0 ? 'success' : 'warning',
+            $skipped === []
+                ? sprintf('%d %s(s) deleted.', $deleted, $label)
+                : sprintf('%d of %d %s(s) deleted.', $deleted, $asked, $label),
+        );
 
-        if ($skipped > 0) {
-            $this->flashBag->add('error', sprintf('%d %s(s) were skipped: not allowed, or referenced by protected records.', $skipped, $label));
+        foreach ($skipped as $reason => $count) {
+            $this->flashBag->add('warning', sprintf('%d skipped: %s.', $count, rtrim($reason, '.')));
         }
 
         return $this->redirect($request, $this->indexUrl($resource));
+    }
+
+    /**
+     * `GET {prefix}/search?q=…`: the panel's search across every resource
+     * that opted in, as JSON for the search dialog. Bounded per resource,
+     * scoped per viewer, by {@see GlobalSearch}.
+     */
+    private function search(ServerRequestInterface $request): ResponseInterface
+    {
+        if ($this->search === null) {
+            return $this->json(['message' => 'Search across resources is not wired.'], 404);
+        }
+
+        $params = $request->getQueryParams();
+        $query  = is_string($params['q'] ?? null) ? $params['q'] : '';
+        $limit  = is_numeric($params['limit'] ?? null) ? max(1, min(20, (int) $params['limit'])) : GlobalSearch::DEFAULT_LIMIT;
+
+        return $this->json($this->search->search($query, $this->user(), $limit));
+    }
+
+    /**
+     * The refusals a resource can explain for one record, for a frame's
+     * footer: `{delete: "Admins cannot be deleted"}`, empty when every
+     * ability is allowed or no reason is given.
+     *
+     * @return array<string, string>
+     */
+    private function reasons(PanelResource $resource, object $entity): array
+    {
+        $permissions = $resource->permissions();
+        $reasons     = [];
+
+        foreach (['edit', 'delete'] as $ability) {
+            if ($permissions->{$ability}($entity, $this->user())) {
+                continue;
+            }
+
+            $reason = $permissions->reason($ability, $entity, $this->user());
+
+            if ($reason !== null) {
+                $reasons[$ability] = $reason;
+            }
+        }
+
+        return $reasons;
     }
 
     /**
@@ -821,6 +910,16 @@ final class ResourceController
     private function relations(): RelationOptionResolver
     {
         return $this->relations ??= new RelationOptionResolver($this->entityManager);
+    }
+
+    private function addUrls(): RelationAddUrls
+    {
+        return $this->addUrls ??= new RelationAddUrls($this->urlGenerator);
+    }
+
+    private function fieldPickUrls(): FieldPickUrls
+    {
+        return $this->fieldPickUrls ??= new FieldPickUrls($this->urlGenerator);
     }
 
     /** @return array<string, mixed> */

@@ -60,6 +60,7 @@
       :records="records.data"
       :summaries="records.meta?.summaries ?? {}"
       :can="records.meta?.can ?? {}"
+      :why="records.meta?.why ?? {}"
       :search="form.search ?? undefined"
       :sort-column="computedSortColumn ?? undefined"
       :sort-direction="computedSortDirection"
@@ -125,7 +126,19 @@
       definition list over whatever presentOne() returned — a resource wanting
       a designed detail view writes its own page instead.
     -->
-    <DrawerStack :stack="stack" :base-url="resource.baseUrl" width="md">
+    <!--
+      `add` is handled here for every frame in the stack, not only for this
+      resource's own: the list names its endpoint, so extending a stacked
+      record of another resource works from the same form.
+    -->
+    <DrawerStack
+      :stack="stack"
+      :base-url="resource.baseUrl"
+      width="md"
+      :overlays="addForm ? 1 : 0"
+      @add="(section, item) => openAddForm(item, section)"
+      @pick-image="(field, item) => { imagePicker = { field, item } }"
+    >
       <!--
         Tabs when the resource declares them (PanelResource::drawerTabs()),
         the plain grid when it does not — a resource with no child collections
@@ -142,9 +155,9 @@
           :frame="item"
           :active-tab="activeTab(item)"
           :aria-label="`${singularLabel} sections`"
-          :can-add="canAdd"
           @update:tab="(key) => (drawerTab = key)"
           @add="(section) => openAddForm(item, section)"
+          @pick-image="(field) => { imagePicker = { field, item } }"
         >
           <!--
             Forward this page's own slots, so an application can give a custom
@@ -177,19 +190,43 @@
       editing the same row would.
     -->
     <Teleport v-if="addForm" to="body">
-      <div class="fixed inset-0 z-[60] bg-gray-900/25" @click="closeAddForm" />
+      <!--
+        `data-overlay-backdrop` keeps this out of the inert pass the panel's
+        own layer applies to everything beside it — a scrim that is inert
+        swallows the press it exists to receive, which is why clicking the
+        dimmed page did nothing.
+      -->
+      <div
+        class="fixed inset-0 z-[60] bg-gray-900/25"
+        data-overlay-backdrop
+        data-testid="add-panel-scrim"
+        @click="dismissEverything"
+      />
 
+      <!--
+        As wide as the drawers it stands on (`max-w-xl` is the stack's `md`),
+        so the panel that adds to a list reads as the next panel in the stack
+        rather than as a narrower thing pasted over it. `:overlays` above
+        makes the drawers shift left for it, too.
+      -->
       <div
         ref="addPanelRef"
         role="dialog"
         aria-modal="true"
-        class="fixed inset-y-0 right-0 z-[61] flex w-full max-w-md flex-col bg-white shadow-lg"
+        class="fixed inset-y-0 right-0 z-[61] flex w-full max-w-xl flex-col bg-white shadow-2xl"
+        data-testid="add-panel"
       >
-        <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-          <h2 class="text-lg font-semibold text-gray-900">{{ addForm.tab.addLabel?.replace(/^\+\s*/, '') || 'Add' }} {{ addForm.tab.label }}</h2>
-          <button type="button" class="text-gray-400 hover:text-gray-600" @click="closeAddForm">
+        <!-- Close on the left, as every drawer in the stack has it. -->
+        <div class="flex items-center gap-3 border-b border-gray-200 px-6 py-4">
+          <button
+            type="button"
+            class="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            aria-label="Close"
+            @click="closeAddForm"
+          >
             <Icon name="x" class="h-5 w-5" />
           </button>
+          <h2 class="truncate text-lg font-semibold text-gray-900">{{ addForm.tab.addLabel?.replace(/^\+\s*/, '') || 'Add' }} {{ addForm.tab.label }}</h2>
         </div>
 
         <div class="flex-1 overflow-y-auto p-6">
@@ -218,6 +255,17 @@
         </div>
       </div>
     </Teleport>
+
+    <!--
+      Picking an image for a `pickable` drawer field (a cover with no value
+      yet) — over the drawer rather than by leaving it for the full edit
+      form, the same reasoning as the add-a-row panel above.
+    -->
+    <MediaPickerDialog
+      :is-open="imagePicker !== null"
+      @close="imagePicker = null"
+      @select="onImageSelected"
+    />
   </div>
 </template>
 
@@ -247,6 +295,7 @@ import type { BoardCard, BoardPayload } from '../Board/boardTypes'
 import type { StackItem } from '../Drawer/useDrawerStack'
 import type { FieldDef } from '../Fields/useBlueprint'
 import type { FieldSpec } from '../Fields/fieldsFromSpec'
+import type { DrawerField } from '../Drawer/drawerFieldGrid'
 import SchemaTable from '../Table/SchemaTable.vue'
 import TablePagination from '../Table/TablePagination.vue'
 import ColumnToggle from '../Table/ColumnToggle.vue'
@@ -256,9 +305,11 @@ import PageHeader from '../Layout/PageHeader.vue'
 import DrawerStack from '../Drawer/DrawerStack.vue'
 import DrawerRecordFrame from '../Drawer/DrawerRecordFrame.vue'
 import BlueprintForm from '../Fields/BlueprintForm.vue'
+import type { MediaItem } from '../Media/MediaPickerDialog.vue'
 import Icon from '../Core/Icon.vue'
 import BoardView from '../Board/BoardView.vue'
 import ViewSwitcher from '../Board/ViewSwitcher.vue'
+import MediaPickerDialog from '../Media/MediaPickerDialog.vue'
 
 defineOptions({ inheritAttrs: false })
 
@@ -412,15 +463,6 @@ function activeTab(item: StackItem): string {
 }
 
 /**
- * Whether to offer the list's add action. The declaration asks for it; the
- * viewer's ability to edit the record decides — offering an action the server
- * would turn away is a broken promise, not a shortcut.
- */
-function canAdd(tab: { addable?: boolean }): boolean {
-  return tab.addable === true && props.resource.canEdit === true
-}
-
-/**
  * What the add form needs of the list it adds to. Structural on purpose: the
  * frame emits its own section type, the stack declares another, and both
  * carry these four.
@@ -429,7 +471,8 @@ interface AddableTab {
   label: string
   addLabel?: string | null
   addFields?: FieldSpec[]
-  addTarget?: string | null
+  /** Where the row goes, stamped per record by the server. */
+  addUrl?: string | null
 }
 
 /**
@@ -439,7 +482,7 @@ interface AddableTab {
  * full form — reading a record and extending one of its lists is one task, and
  * leaving the record to do it loses the place.
  */
-const addForm = ref<{ tab: AddableTab; fields: FieldDef[]; recordId: string } | null>(null)
+const addForm = ref<{ tab: AddableTab; fields: FieldDef[] } | null>(null)
 const addValues = ref<Record<string, unknown>>({})
 const addErrors = ref<Record<string, string>>({})
 const addSaving = ref(false)
@@ -458,7 +501,7 @@ function openAddForm(item: StackItem, tab: AddableTab): void {
 
   addValues.value = initialValues(fields)
   addErrors.value = {}
-  addForm.value = { tab, fields, recordId: String(item.data.id) }
+  addForm.value = { tab, fields }
 }
 
 /**
@@ -476,10 +519,61 @@ useDismissableLayer(() => addForm.value !== null, {
   modalElement: () => addPanelRef.value,
 })
 
+/**
+ * A press on the dimmed page puts the whole stack away, form included — the
+ * dimmed page is what is left of the listing, and pressing it means "back to
+ * that". Closing only the form left the user pressing the same grey twice to
+ * get out of three panels.
+ */
+function dismissEverything(): void {
+  closeAddForm()
+  drawerStack.closeAll()
+}
+
 function closeAddForm(): void {
   addForm.value = null
   addErrors.value = {}
   addSaving.value = false
+}
+
+/**
+ * The open image picker, if any: which field is being set, on which record.
+ * Same over-the-drawer reasoning as `addForm` above — picking a cover should
+ * not mean leaving the record to reach the full edit form.
+ */
+const imagePicker = ref<{ field: DrawerField; item: StackItem } | null>(null)
+
+async function onImageSelected(image: MediaItem): Promise<void> {
+  const open = imagePicker.value
+  imagePicker.value = null
+
+  if (open === null || !open.field.pickUrl || !open.field.pickTarget) {
+    return
+  }
+
+  try {
+    const response = await fetch(open.field.pickUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-TOKEN': getCsrfToken() ?? '',
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({ [open.field.pickTarget]: image.id }),
+    })
+
+    if (!response.ok) {
+      return
+    }
+
+    // Same reasoning as submitAddForm(): the server owns the record's shape,
+    // so re-read the frame rather than patching a second copy of it here.
+    router.reload()
+  } catch (error) {
+    console.error(error)
+  }
 }
 
 async function submitAddForm(): Promise<void> {
@@ -491,10 +585,18 @@ async function submitAddForm(): Promise<void> {
   addSaving.value = true
   addErrors.value = {}
 
-  // The server names the field to write to: a tab may *read* from a
-  // display copy (`tag_list`) while the field that edits the relation is the
-  // form's own (`tags`), and posting to the display key is a 404.
-  const url = `${props.resource.baseUrl}/${open.recordId}/relations/${open.tab.addTarget}`
+  // The server names the endpoint, record and field included. Composing it
+  // here from this page's resource was wrong the moment a frame of another
+  // resource was stacked over it — and it also had to know that a tab may
+  // *read* from a display copy (`tag_list`) while the field that edits the
+  // relation is the form's own (`tags`).
+  const url = open.tab.addUrl ?? ''
+
+  if (url === '') {
+    addErrors.value = { _: 'This list cannot be added to here.' }
+    addSaving.value = false
+    return
+  }
 
   try {
     const response = await fetch(url, {
@@ -522,8 +624,11 @@ async function submitAddForm(): Promise<void> {
 
     closeAddForm()
     // The server owns the record's shape, so re-read the frame rather than
-    // patching a second copy of it here.
-    drawerStack.pushWithParams(open.recordId, computedParams.value as Record<string, string>)
+    // patching a second copy of it here. Reloading the current URL rebuilds
+    // whatever stack it addresses — the record alone, or the record with
+    // another resource's frame over it — which navigating to this resource's
+    // record URL would have collapsed to one frame.
+    router.reload()
   } catch (error) {
     console.error(error)
     addErrors.value = { _: 'Could not save.' }

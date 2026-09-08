@@ -16,29 +16,49 @@
           `include` is the tab's declared field list. Without it the grid falls
           back to every key the record carries, minus ids and collections.
         -->
-        <DrawerFieldGrid v-if="tab.grid !== false" :data="frame?.data ?? {}" :include="tab.fields ?? undefined" />
+        <DrawerFieldGrid
+          v-if="tab.grid !== false"
+          :data="frame?.data ?? {}"
+          :include="tab.fields ?? undefined"
+          @pick-image="(field) => emit('pick-image', field)"
+        />
 
-        <DrawerRelationList
-          v-for="section in tab.sections ?? []"
-          :key="section.key"
-          :heading="section.label"
-          :items="rowsFor(section)"
-          :empty-text="section.empty ?? undefined"
-          :addable="isAddable(section)"
-          :add-label="section.addLabel ?? undefined"
-          :href="rowHref(section)"
-          :navigation="section.navigation ?? 'drawer'"
-          bordered
-          dense
-          @add="emit('add', section)"
-        >
-          <template #row="{ item: row }">
-            <span class="truncate text-sm text-gray-800">{{ primaryOf(row, section) }}</span>
-            <span v-if="section.secondary" class="truncate text-xs text-gray-500">
-              {{ row[section.secondary] ?? '—' }}
-            </span>
-          </template>
-        </DrawerRelationList>
+        <template v-for="section in tab.sections ?? []" :key="section.key">
+          <!-- A section with columns is a table with headers; without, the two-line list. -->
+          <DrawerRelationTable
+            v-if="section.columns?.length"
+            :heading="section.label"
+            :columns="section.columns"
+            :rows="rowsFor(section)"
+            :empty-text="section.empty ?? undefined"
+            :addable="isAddable(section)"
+            :add-label="section.addLabel ?? undefined"
+            :href="rowHref(section)"
+            :navigation="section.navigation ?? 'drawer'"
+            bordered
+            @add="emit('add', section)"
+          />
+          <DrawerRelationList
+            v-else
+            :heading="section.label"
+            :items="rowsFor(section)"
+            :empty-text="section.empty ?? undefined"
+            :addable="isAddable(section)"
+            :add-label="section.addLabel ?? undefined"
+            :href="rowHref(section)"
+            :navigation="section.navigation ?? 'drawer'"
+            bordered
+            dense
+            @add="emit('add', section)"
+          >
+            <template #row="{ item: row }">
+              <span class="truncate text-sm text-gray-800">{{ primaryOf(row, section) }}</span>
+              <span v-if="section.secondary" class="truncate text-xs text-gray-500">
+                {{ row[section.secondary] ?? '—' }}
+              </span>
+            </template>
+          </DrawerRelationList>
+        </template>
       </div>
 
       <!--
@@ -74,6 +94,20 @@
         </slot>
       </div>
 
+      <DrawerRelationTable
+        v-else-if="tab.columns?.length"
+        :key="`table-${tab.key}`"
+        :heading="tab.label"
+        :columns="tab.columns"
+        :rows="rowsFor(tab)"
+        :empty-text="tab.empty ?? undefined"
+        :addable="isAddable(tab)"
+        :add-label="tab.addLabel ?? undefined"
+        :href="rowHref(tab)"
+        :navigation="tab.navigation ?? 'drawer'"
+        @add="emit('add', tab)"
+      />
+
       <DrawerRelationList
         v-else
         :key="tab.key"
@@ -99,16 +133,18 @@
   </DrawerTabs>
 
   <!-- No tabs declared: the record as one grid, as a frame did before tabs. -->
-  <DrawerFieldGrid v-else :data="frame?.data ?? {}" />
+  <DrawerFieldGrid v-else :data="frame?.data ?? {}" @pick-image="(field) => emit('pick-image', field)" />
 </template>
 
 <script setup lang="ts">
 import DrawerFieldGrid from './DrawerFieldGrid.vue'
+import type { DrawerField } from './drawerFieldGrid'
 import type { FieldSpec } from '../Fields/fieldsFromSpec'
 import DrawerRelationList from './DrawerRelationList.vue'
+import DrawerRelationTable from './DrawerRelationTable.vue'
 import DrawerTabs from './DrawerTabs.vue'
 import type { DrawerTab } from './drawerTabs'
-import { resolveRecordUrl } from '../Table/tableSchema'
+import { resolveRecordUrl, type SchemaColumn } from '../Table/tableSchema'
 
 /**
  * Renders one drawer frame from the frame itself.
@@ -153,10 +189,14 @@ interface RelationSection extends DrawerTab {
   /** Addable lists only: the row form's fields as declared, and the field the row is written through. */
   addFields?: FieldSpec[]
   addTarget?: string | null
-  fields?: Record<string, string | null> | null
+  /** Addable lists only: the endpoint a new row is posted to, from the server. */
+  addUrl?: string | null
+  fields?: Record<string, string | null | { label?: string | null; wide?: boolean; rows?: number; pickUrl?: string | null; pickTarget?: string | null; pickLabel?: string | null }> | null
   sections?: RelationSection[]
   recordUrl?: string | null
   navigation?: 'drawer' | 'visit'
+  /** Declared through DrawerTab::columns(): the rows render as a table with headers. */
+  columns?: SchemaColumn[] | null
 }
 
 interface Frame {
@@ -170,21 +210,15 @@ const props = withDefaults(defineProps<{
   /** The tab to show; the first declared one when unset. */
   activeTab?: string
   ariaLabel?: string
-  /**
-   * Whether a list may offer its add action. Kept a prop rather than read from
-   * the declaration so a page can withhold it — permission is the page's
-   * business, not the frame's.
-   */
-  canAdd?: (section: RelationSection) => boolean
 }>(), {
   activeTab: undefined,
   ariaLabel: 'Sections',
-  canAdd: undefined,
 })
 
 const emit = defineEmits<{
   (e: 'update:tab', key: string): void
   (e: 'add', section: RelationSection): void
+  (e: 'pick-image', field: DrawerField): void
 }>()
 
 /** Rows come from the key the server named, not from the tab's own key. */
@@ -199,10 +233,15 @@ function primaryOf(row: Record<string, unknown>, section: RelationSection): unkn
   return row[section.primary ?? 'name'] ?? '—'
 }
 
+/**
+ * A list offers "+ Add" when the server said where the row goes. `addUrl` is
+ * stamped per record by RelationAddUrls — it is absent when the resource has
+ * no relation endpoint and when this viewer may not edit this record — so the
+ * button appears exactly where a POST would be accepted, on the page's own
+ * frame and on a frame of another resource stacked over it alike.
+ */
 function isAddable(section: RelationSection): boolean {
-  if (!section.addable) return false
-
-  return props.canAdd ? props.canAdd(section) : true
+  return section.addable === true && typeof section.addUrl === 'string' && section.addUrl !== ''
 }
 
 /**

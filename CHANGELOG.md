@@ -7,6 +7,128 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A boolean can be one clickable icon.** `Column::toggleIcon()` renders a
+  flag — featured, pinned, enabled — as a single glyph that flips the value
+  where it stands, with `onIcon()`/`offIcon()`, `onColor()`/`offColor()` and
+  `onLabel()`/`offLabel()` for the two states. Editable by definition, since
+  an icon nobody can click is `boolean()` with a nicer glyph; the click saves
+  through the page's `cellHandlers` entry like every other in-place edit, and
+  `disabledWhen()` / `readOnlyWhen()` apply as they do to an editable select.
+- **Every word of a search must match somewhere.** The listing splits the
+  search into words — a phrase in double quotes stays one — and requires
+  each in any searchable column, so "john smith" finds a first name in one
+  column and a last name in another. `SearchQuery::terms()` is the shared
+  splitter.
+- **A refusal can say why.** `Permissions::reason($ability, $record, $user)`
+  returns a sentence for a refused `edit` or `delete` — "Admins cannot be
+  deleted" — and the listing carries it as `meta.why` beside `meta.can`, the
+  drawer frame as `why` beside `can`. The UI shows such an action disabled
+  with the sentence as its tooltip instead of dropping it; a refusal without
+  a reason is not offered, as before.
+- **A selected relationship filter value is always labelled.** When the
+  option list had to be cut at a hundred, the value in force is fetched on
+  its own and appended, so the control and the chip above the table show
+  "Studio 101", never a bare id.
+- **Failed requests say something useful.** `createPanel({ errorMessages })`
+  maps HTTP statuses to sentences — the defaults cover 401, 403, 404, 409,
+  419 (session expired), 429 and the 5xx range; 422 stays the forms' — and
+  the layout turns a response Inertia cannot use into that toast instead of
+  the raw error modal; a request that never got a status says so. `apiFetch`
+  falls back to the same sentences when the server sent no message.
+- **A header click walks ascending, descending, unsorted.** The third click
+  returns the list to the resource's default order instead of trapping it in
+  the last direction chosen.
+- **Column choices are remembered per resource.** Which columns a viewer
+  turned off is kept in the browser and reconciled against the schema on
+  every load: a column the resource no longer has is forgotten, a new one
+  starts as declared, and a column that is not toggleable is always shown.
+- **An action can ask before it runs.** `RowAction::form('reject', '/panel/issues/{id}/reject')`
+  opens a dialog: `->fields([Field::make('reason')->textarea()->required(), …])`
+  declared like a form's, rendered by the blueprint form, and posted to the
+  URL with `->method('patch')` (POST by default) and `->submitLabel()`; a
+  `->confirm('…')` without fields is a confirmation. `BulkAction::fields()`
+  does the same for a selection, posting the values beside `ids`. Validation
+  errors land on the dialog's fields the Inertia way. "Change status with a
+  reason", "assign to", "reject with a note" no longer need a page of their own.
+- **Search across resources.** A resource opts in with
+  `searchableGlobally()`, is searched the way its own listing is — same
+  searchable columns, same scope, every word required — and answers a few
+  hits with `globalSearchTitle()` (title or name by default),
+  `globalSearchDetails()` and the record's URL. The route loader adds one
+  `GET {prefix}/search` beside the resources, admitted by any role a resource
+  declared, dispatched to `ResourceController` as the `search` operation; the
+  module wires `Search\GlobalSearch` from the routes. In the UI,
+  `<AppLayout global-search>` turns the top-bar button and ⌘K / Ctrl+K into a
+  dialog with hits grouped by resource, arrow keys and Enter.
+- **A bulk delete reports its outcome reason by reason.** "7 of 10 movies
+  deleted." and one line per reason something was skipped — the permission's
+  reason, "no longer exists", "already in the trash", "referenced by
+  protected records" — with a count each, instead of one number for
+  everything that did not happen.
+- **A relation tab as a table.** `DrawerTab::relation('tasks')->columns([...])`
+  renders the related rows with a header row and one cell per column — the
+  same `Column` objects the listing uses, drawn by the same cell renderer — so
+  a record's tasks show their title, state and dates at a glance instead of a
+  primary line with one value underneath. Without `columns()` the two-line
+  list stays. A column that declares a summary, is editable or links to the
+  record is refused: a drawer has nothing to aggregate over, no save path, and
+  the row already opens its record (`recordUrl()`). The UI exports
+  `DrawerRelationTable` beside `DrawerRelationList`.
+- **Drawer fields can span rows.** A details-tab field declared with
+  `'cover' => ['rows' => 3]` claims that many grid rows, and the fields that
+  follow fill the rows beside it. A media reference declared this way renders
+  as a square the height of those rows, cropped rather than stretched, which
+  is how a poster sits next to a title, director and genre instead of shrinking
+  into one cell; without an image the square stays blank so every record lays
+  out the same. `rows` joins `label` and `width` as the options a drawer
+  field understands.
+
+- **Prefetching where a visit is likely.** Sidebar and top-navigation links and
+  the pagination links prefetch on hover with a ten-second cache, and an open
+  drawer prefetches the records its next and previous arrows lead to, with the
+  same drawer request a key press would make, so walking a list or a calendar
+  month is served from the cache. Every completed write — a router visit that
+  is not a GET, or a JSON call through `apiFetch` — flushes the prefetched
+  pages, since a listing is a snapshot. Needs appkit's prefetch-aware flash
+  (0.17.1): a prefetched page must not consume the toast meant for the page
+  the user lands on.
+
+### Fixed
+
+- **An addable list on a stacked frame can now be added to.** Every addable
+  list on a drawer frame carries `addUrl` — its own resource's
+  `{key}_relation_store` endpoint, resolved for that record by
+  `RelationAddUrls`, and stamped only where the routes exist and
+  `Permissions::edit()` admits the viewer. The client offers "+ Add" exactly
+  where an endpoint is, and posts to it. Before, the URL was composed from the
+  page's own resource: a film stacked over an actor showed a "+ Add" on its
+  cast that addressed the actors endpoint and did nothing.
+
+  `DrawerRecordFrame` drops its `canAdd` prop with it: the decision is the
+  server's now, per record, so a page has nothing left to withhold.
+- **A form no longer dies on a resource that generates no form routes.** A
+  relation asked the URL generator for `{key}_relation_options` unguarded, so a
+  resource routed for reading only threw on the way out of `FormPresenter` —
+  taking down the page that merely *showed* one of its records. Without that
+  endpoint the options travel with the field and the control filters them in
+  the browser, and the "Create …" row is withheld along with the POST behind
+  it.
+- **A stacked drawer no longer shrinks the ones beneath it.** Each level down
+  the stack was scaled a little to read as a pile; since the top of the stack
+  is never scaled, what it read as was one panel shrinking while its
+  neighbour kept its size. The panels keep their width now and only shift
+  left. The panel that adds a row to a list stands on the stack too — same
+  width as the drawers, and they shift left for it — rather than being a
+  narrower thing pasted over a stack that had not moved. Its close button
+  moved to the left, where every drawer carries one, and its scrim is marked
+  `data-overlay-backdrop`: without that it was made inert
+  along with everything else beside the panel, so pressing the dimmed page —
+  the one gesture a scrim exists for — did nothing. Pressing it now puts the
+  whole stack away, form included, rather than peeling off one panel per
+  press.
+
 ## [0.6.0] - 2026-09-07
 
 ### Changed

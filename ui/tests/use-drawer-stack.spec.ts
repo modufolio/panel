@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const visit = vi.fn()
-vi.mock('@inertiajs/vue3', () => ({ router: { visit } }))
+vi.mock('@inertiajs/vue3', () => ({ router: { prefetch: vi.fn(), flushAll: vi.fn(), visit } }))
 
 const { useDrawerStack } = await import('../src/Components/Drawer/useDrawerStack')
 

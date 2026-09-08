@@ -181,13 +181,17 @@ final class FormPresenter
             // asks again by identifier for whatever it already holds.
             $props = is_array($field['props'] ?? null) ? $field['props'] : [];
 
-            $field['options'] = [];
+            // Unless there is nothing to ask: a resource that generates no
+            // form routes has no relation-options route, and asking the
+            // generator for one that does not exist threw — which took down
+            // the page that merely *showed* a record. The list travels with
+            // the field instead, and the control filters it in the browser.
+            $searchUrl = $this->url($resource->key() . '_relation_options', ['field' => $path]);
+
+            $field['options'] = $searchUrl === null ? $resolver->all($relation) : [];
             $field['props']   = [
                 ...$props,
-                'searchUrl' => $this->urlGenerator->generate(
-                    $resource->key() . '_relation_options',
-                    ['field' => $path],
-                ),
+                ...($searchUrl === null ? [] : ['searchUrl' => $searchUrl]),
                 // The control renders its current value from these keys, and
                 // its own search results arrive in the same shape.
                 'valueKey'  => 'value',
@@ -195,8 +199,9 @@ final class FormPresenter
                 // An optional relation needs a way back to "no selection".
                 'clearable' => ($field['required'] ?? false) !== true,
                 // The "Create …" row, offered only when a name is all a new
-                // row needs. The POST re-checks; this is the offer.
-                'allowCreate' => $isLookup && $resolver->creatableFromLabel($relation),
+                // row needs, and only where the POST that backs it exists.
+                // The POST re-checks; this is the offer.
+                'allowCreate' => $searchUrl !== null && $isLookup && $resolver->creatableFromLabel($relation),
             ];
             // A native <select> cannot search; the lookup can, and reads the
             // same option shape.

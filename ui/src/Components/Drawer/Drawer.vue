@@ -105,7 +105,7 @@ import { useBodyScrollLock } from '../../Primitives/useBodyScrollLock'
 import { useDismissableLayer } from '../../Primitives/useDismissableLayer'
 import { getTeleportTarget } from '../../Primitives/teleportTarget'
 import { useId } from '../../Primitives/useId'
-import { visitDrawer } from './visitDrawer'
+import { visitDrawer, prefetchDrawer } from './visitDrawer'
 
 // Stable across a server render and its hydration, which `Math.random()` is not
 const titleId = useId(undefined, 'drawer-title')
@@ -185,14 +185,14 @@ const drawerStyle = computed(() => {
   // Depth from the top of the stack: 0 = active drawer, 1 = the one beneath…
   const depth = props.stackSize - 1 - props.level
   // Reverse offset: oldest drawer shifts left, newest stays at right edge.
-  // The slight scale-down per level (Keystone's drawer stack used the same
-  // trick) is what reads as a *pile* rather than overlapping panels — the
-  // peeking drawer is visibly "behind", not merely beside.
+  // A shift and nothing else — the panels keep their size. Each level used to
+  // scale down a little, meant to read as a *pile*; what it actually read as
+  // was a drawer that shrank when you opened another, next to one that did
+  // not, since the top of the stack is never scaled.
   const offset = depth * 150
   return {
     zIndex: baseZIndex + (props.level * 2) + 1,
-    transform: depth > 0 ? `translateX(-${offset}px) scale(${1 - depth * 0.04})` : undefined,
-    transformOrigin: 'center right',
+    transform: depth > 0 ? `translateX(-${offset}px)` : undefined,
     transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
   }
 })
@@ -273,6 +273,16 @@ function navigateTo(url: string): void {
   recordNavigationInFlight = true
   visitDrawer(url, { onFinish: () => { recordNavigationInFlight = false } })
 }
+
+// The records an arrow key would open next are fetched ahead, so walking a
+// list or a month feels instant. Only while open, and only what the frame
+// names; the cache is short-lived and every write flushes it.
+watch(() => [props.isOpen, props.nextRecordUrl, props.previousRecordUrl] as const, ([isOpen, next, previous]) => {
+  if (!isOpen) return
+  for (const url of [next, previous]) {
+    if (url) prefetchDrawer(url)
+  }
+}, { immediate: true })
 
 watch(() => props.isOpen, (isOpen) => {
   scrollLocked.value = isOpen

@@ -58,7 +58,7 @@
         </template>
 
         <slot :name="item.type" :item="item" :index="index" :data="item.data">
-          <DrawerRecordFrame :frame="item" />
+          <DrawerRecordFrame :frame="item" @add="(section) => emit('add', section, item)" @pick-image="(field) => emit('pick-image', field, item)" />
         </slot>
 
         <template #footer v-if="$slots[`footer-${item.type}`]">
@@ -78,7 +78,7 @@
         :close-on-overlay="false"
         :next-record-url="item.nextRecordUrl"
         :previous-record-url="item.previousRecordUrl"
-        :stack-size="stack.length"
+        :stack-size="stack.length + overlays"
         @close="guarded(index, () => closeFrom(index))"
         @back="guarded(index, () => goBack(index))"
         @activate="guarded(index + 1, () => closeFrom(index + 1))"
@@ -101,7 +101,7 @@
             collections and made cross-resource stacking look broken even when
             the server had built the stack correctly.
           -->
-          <DrawerRecordFrame :frame="item" />
+          <DrawerRecordFrame :frame="item" @add="(section) => emit('add', section, item)" @pick-image="(field) => emit('pick-image', field, item)" />
         </slot>
 
         <template #footer v-if="$slots[`footer-${item.type}`]">
@@ -145,9 +145,24 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  /**
+   * Panels the page draws over the stack — the add form, today. They stand on
+   * the stack, so the drawers shift left for them as they do for a frame, and
+   * the topmost drawer stops answering the record-navigation keys while one
+   * is open.
+   */
+  overlays: {
+    type: Number,
+    default: 0,
+  },
 })
 
-const emit = defineEmits(['close', 'close:all', 'back'])
+/**
+ * `add` carries the frame as well as the list: a stacked frame belongs to
+ * another resource, and the row is posted to that record's own endpoint —
+ * which the frame names and the stack does not have to know.
+ */
+const emit = defineEmits(['close', 'close:all', 'back', 'add', 'pick-image'])
 
 /** Absent presentation means drawer — every frame built before dialogs existed. */
 function isDialog(item: StackItem): boolean {
