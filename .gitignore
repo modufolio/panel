@@ -21,3 +21,4 @@ ui/dist/
 # Visual Studio Code
 .vscode/
 /.phpstan.cache
+/node_modules
