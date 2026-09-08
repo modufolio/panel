@@ -12,8 +12,10 @@
  *   })
  */
 
+import { router } from '@inertiajs/vue3'
 import { getCsrfToken } from './csrf'
 import { showToastsIn } from '../Components/Notifications/pageToasts'
+import { httpErrorMessage } from '../Components/Notifications/httpErrors'
 
 export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   /** Plain objects are JSON-encoded; strings/FormData/Blob are sent as-is. */
@@ -106,12 +108,19 @@ export async function apiFetch<T = unknown>(url: string, options: ApiFetchOption
   // caller never loads the page that would otherwise carry it.
   showToastsIn(payload)
 
+  // A write makes every prefetched page a stale snapshot.
+  if (response.ok && (rest.method ?? 'GET').toUpperCase() !== 'GET') {
+    router.flushAll()
+  }
+
   if (!response.ok) {
+    // The server's own sentence first; then the one configured for the
+    // status; then the bare status, which is at least honest.
     const message =
       payload && typeof payload === 'object' && 'message' in payload &&
       typeof (payload as { message?: unknown }).message === 'string'
         ? (payload as { message: string }).message
-        : `Request failed with status ${response.status}`
+        : httpErrorMessage(response.status) ?? `Request failed with status ${response.status}`
     throw new ApiError(message, response.status, payload)
   }
 

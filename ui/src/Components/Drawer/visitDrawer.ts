@@ -75,3 +75,18 @@ export function withDrawerParams(url: string, params: Record<string, unknown> = 
 export function visitDrawer(url: string, options: VisitDrawerOptions = {}): void {
   router.visit(withDrawerParams(url, options.queryParams), drawerVisitOptions(options))
 }
+
+/**
+ * Warm the cache for a record the user is likely to open next — the drawer's
+ * neighbours — with exactly the request a visit would make, so the visit is
+ * served from it. Kept short: a listing is a snapshot, and writes flush it.
+ */
+export const PREFETCH_CACHE_FOR = '10s'
+
+export function prefetchDrawer(url: string, options: VisitDrawerOptions = {}): void {
+  router.prefetch(
+    withDrawerParams(url, options.queryParams),
+    { ...drawerVisitOptions(options), method: 'get' },
+    { cacheFor: PREFETCH_CACHE_FOR },
+  )
+}

@@ -63,6 +63,8 @@
             <div v-if="!item.children">
               <Link
                 :href="item.href"
+                prefetch
+                cache-for="10s"
                 :class="[
                   'group flex h-9 items-center rounded-lg px-3 transition-colors duration-75',
                   isActive(item.href)
@@ -145,6 +147,8 @@
                   v-for="(child, childIndex) in item.children"
                   :key="childIndex"
                   :href="child.href"
+                  prefetch
+                  cache-for="10s"
                   :class="[
                     'group flex items-center px-2 py-2 rounded-lg text-sm transition-all duration-75',
                     isActive(child.href)

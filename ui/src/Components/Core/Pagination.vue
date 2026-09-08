@@ -11,6 +11,8 @@
         v-else
         class="mb-1 mr-1 px-4 py-3 text-sm leading-4 border rounded hover:bg-white focus:border-indigo-500 focus:text-indigo-500"
         :href="link.url"
+        prefetch
+        cache-for="10s"
         v-html="link.label"
       />
     </template>

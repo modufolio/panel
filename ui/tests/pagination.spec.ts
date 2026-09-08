@@ -25,6 +25,10 @@ describe('Pagination Component', () => {
       })
       
       expect(wrapper.exists()).toBe(true)
+      // Page links are prefetched on hover, briefly: a listing is a snapshot.
+      const link = wrapper.find('a[href="/page/3"]')
+      expect(link.attributes()).toHaveProperty('prefetch')
+      expect(link.attributes('cache-for')).toBe('10s')
     })
 
     it('should not render when 3 or fewer links', () => {

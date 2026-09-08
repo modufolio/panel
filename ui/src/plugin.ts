@@ -4,6 +4,7 @@ import { setTeleportTarget } from './Primitives/teleportTarget'
 import { registerIcons } from './Components/Core/iconRegistry'
 import { registerFieldType } from './Components/Fields/useBlueprint'
 import { setMediaEndpoints, type MediaEndpoints } from './Components/Media/mediaEndpoints'
+import { configureHttpErrors, type HttpErrorMessages } from './Components/Notifications/httpErrors'
 
 export interface CreatePanelOptions {
   /** Mount path of the panel backend, e.g. '/panel' or '/admin'. */
@@ -24,6 +25,12 @@ export interface CreatePanelOptions {
    * app serves media under different routes.
    */
   media?: Partial<MediaEndpoints>
+  /**
+   * What a failed request says, per HTTP status: `{ 403: 'Ask an admin.' }`.
+   * `false` leaves a status to whatever else handles it. The defaults cover
+   * 401, 403, 404, 409, 419, 429 and the 5xx range; 422 is the forms'.
+   */
+  errorMessages?: HttpErrorMessages
 }
 
 /**
@@ -43,6 +50,7 @@ export function createPanel(options: CreatePanelOptions = {}) {
   if (options.icons) registerIcons(options.icons)
   if (options.teleportTarget !== undefined) setTeleportTarget(options.teleportTarget)
   setMediaEndpoints(options.media)
+  configureHttpErrors(options.errorMessages)
   for (const [type, loader] of Object.entries(options.fields ?? {})) {
     registerFieldType(type, loader)
   }

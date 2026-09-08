@@ -143,6 +143,8 @@
                   v-else
                   :href="item.href"
                   :method="item.method"
+                  :prefetch="!item.method"
+                  cache-for="10s"
                   :data="item.method === 'post' && item.href === panelUrl('/logout') ? { _csrf_token: String($page.props.logout_csrf ?? '') } : undefined"
                   :as="item.method ? 'button' : 'a'"
                   :class="[

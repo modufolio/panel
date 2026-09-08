@@ -57,12 +57,12 @@
         :user-email="userEmail"
         :user-avatar="userAvatar"
         :menu-items="userMenuItems"
-        :show-search="showSearch"
+        :show-search="showSearch || globalSearch"
         :show-notifications="showNotifications"
         :notification-count="notificationCount"
         :impersonation="impersonation"
         @toggle-mobile-menu="mobileMenuOpen = !mobileMenuOpen"
-        @open-search="$emit('open-search')"
+        @open-search="openSearch"
         @open-notifications="$emit('open-notifications')"
       >
         <template v-if="$slots.breadcrumbs" #breadcrumbs>
@@ -91,6 +91,7 @@
     <slot name="debug" />
 
     <!-- Toast Notifications -->
+    <GlobalSearchDialog v-if="globalSearch" :show="searchOpen" @close="searchOpen = false" />
     <Toast position="bottom-right" />
   </div>
 </template>
@@ -104,8 +105,10 @@ import Sidebar from './Sidebar.vue'
 import type { SidebarEntry } from './Sidebar.vue'
 import TopNavigation from './TopNavigation.vue'
 import Toast from '../../Components/Notifications/Toast.vue'
+import GlobalSearchDialog from '../Search/GlobalSearchDialog.vue'
 import { useToast } from '../../Components/Notifications/useToast'
 import { showToast, type PageToast } from '../../Components/Notifications/pageToasts'
+import { notifyHttpError, notifyNetworkError } from '../../Components/Notifications/httpErrors'
 
 const props = defineProps({
   // Navigation Items
@@ -147,6 +150,14 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
+  /**
+   * The panel's own search across resources: the top-bar button and ⌘K /
+   * Ctrl+K open it. Off, the button emits `open-search` for the app's own.
+   */
+  globalSearch: {
+    type: Boolean,
+    default: false
+  },
   showNotifications: {
     type: Boolean,
     default: false
@@ -171,7 +182,7 @@ const props = defineProps({
 
 })
 
-defineEmits(['open-search', 'open-notifications'])
+const emit = defineEmits(['open-search', 'open-notifications'])
 
 // State
 const sidebarCollapsed = ref(props.initialSidebarCollapsed)
@@ -272,5 +283,56 @@ onMounted(() => {
   if (savedCollapsed !== null) {
     sidebarCollapsed.value = savedCollapsed === '1'
   }
+})
+
+// Links and drawer neighbours are prefetched; a completed write through the
+// router (a form, a delete, a bulk action) makes those snapshots stale.
+const stopFlushingPrefetched = router.on('finish', (event) => {
+  const visit = event.detail.visit
+  if (visit.completed && visit.method !== 'get') {
+    router.flushAll()
+  }
+})
+
+// A response Inertia cannot use — an expired session's 419, a 500 page, a
+// 403 — becomes the sentence configured for its status instead of the raw
+// error modal; a status nobody mapped keeps the modal. A request that never
+// got a status says so too.
+const stopInvalidResponses = router.on('httpException', (event) => {
+  if (notifyHttpError(event.detail.response.status)) {
+    event.preventDefault()
+  }
+})
+
+const searchOpen = ref(false)
+
+function openSearch(): void {
+  if (props.globalSearch) {
+    searchOpen.value = true
+  } else {
+    emit('open-search')
+  }
+}
+
+function onSearchShortcut(event: KeyboardEvent): void {
+  if (!props.globalSearch) return
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault()
+    searchOpen.value = true
+  }
+}
+
+onMounted(() => document.addEventListener('keydown', onSearchShortcut))
+onUnmounted(() => document.removeEventListener('keydown', onSearchShortcut))
+
+const stopExceptions = router.on('networkError', (event) => {
+  notifyNetworkError()
+  event.preventDefault()
+})
+
+onUnmounted(() => {
+  stopFlushingPrefetched()
+  stopInvalidResponses()
+  stopExceptions()
 })
 </script>
