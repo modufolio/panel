@@ -309,6 +309,45 @@ abstract class PanelResource
      * before falling back to the record's own identifier, so a resource only
      * overrides this when neither fits.
      */
+    /**
+     * Whether the panel's search across resources includes this one. Off by
+     * default: a search that touches every table is a cost and a disclosure
+     * the resource must choose, and it is bounded per resource when it does.
+     */
+    public function searchableGlobally(): bool
+    {
+        return false;
+    }
+
+    /**
+     * How a search hit reads, from the presented row: the title or name it
+     * carries, else its id.
+     *
+     * @param array<string, mixed> $row
+     */
+    public function globalSearchTitle(array $row): string
+    {
+        foreach (['title', 'name', 'label', 'email'] as $key) {
+            if (is_string($row[$key] ?? null) && $row[$key] !== '') {
+                return $row[$key];
+            }
+        }
+
+        return (string) ($row['id'] ?? '');
+    }
+
+    /**
+     * A few words beside a hit — a year, a status, a city — from the
+     * presented row. None by default.
+     *
+     * @param  array<string, mixed> $row
+     * @return list<string>
+     */
+    public function globalSearchDetails(array $row): array
+    {
+        return [];
+    }
+
     public function drawerTitle(object $entity): string
     {
         foreach (['getTitle', 'getName'] as $getter) {

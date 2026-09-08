@@ -6,6 +6,7 @@ namespace Modufolio\Panel;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Modufolio\Appkit\Core\AppInterface;
+use Modufolio\Appkit\Core\Kernel;
 use Modufolio\Appkit\DependencyInjection\ServiceConfigurator;
 use Modufolio\Appkit\Module\AbstractModule;
 use Modufolio\Appkit\Security\Token\TokenStorageInterface;
@@ -14,6 +15,8 @@ use Modufolio\Panel\Contracts\ResourceLocatorInterface;
 use Modufolio\Panel\Export\NoExportAdapters;
 use Modufolio\Panel\Form\FormResolver;
 use Modufolio\Panel\Http\ResourceController;
+use Modufolio\Panel\Inspection\PermissionInspector;
+use Modufolio\Panel\Search\GlobalSearch;
 use Modufolio\Panel\Resource\ContainerResourceLocator;
 use Symfony\Component\HttpFoundation\Session\Flash\FlashBagInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -68,12 +71,36 @@ final class PanelModule extends AbstractModule
                 'resources' => ResourceLocatorInterface::class,
                 'forms' => FormResolver::class,
                 'exports' => ExportAdapterProviderInterface::class,
+                'search' => GlobalSearch::class,
             ],
         ];
     }
 
     protected function loadServices(ServiceConfigurator $services, array $config): void
     {
+        // The search across resources reads the resources off the routes, as
+        // the permission inspector does, so it knows exactly what is mounted.
+        $services->set(GlobalSearch::class, static function (AppInterface $app): GlobalSearch {
+            $resources = $app->get(ResourceLocatorInterface::class);
+
+            if (!$resources instanceof ResourceLocatorInterface) {
+                throw new \LogicException(sprintf('The service "%s" must be a resource locator, %s given.', ResourceLocatorInterface::class, get_debug_type($resources)));
+            }
+
+            // The route collection is the kernel's; the interface exposes the
+            // URL generator only, so the concrete kernel is asked for it.
+            if (!$app instanceof Kernel) {
+                throw new \LogicException(sprintf('The panel\'s search needs the kernel\'s router; %s is not a %s.', get_debug_type($app), Kernel::class));
+            }
+
+            return new GlobalSearch(
+                $app->entityManager(),
+                $app->urlGenerator(),
+                $resources,
+                static fn (): array => PermissionInspector::resourceClassesIn($app->router()->getRouteCollection()),
+            );
+        });
+
         $declared = $config['media_entity'] ?? null;
 
         if ($declared !== null && (!is_string($declared) || !class_exists($declared))) {

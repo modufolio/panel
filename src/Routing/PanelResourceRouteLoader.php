@@ -67,6 +67,8 @@ final class PanelResourceRouteLoader extends Loader
         }
 
         $routes = new RouteCollection();
+        /** @var list<string> Any role a resource declared admits to the search. */
+        $searchRoles = [];
 
         foreach ($configurator->buildConfig() as $resourceClass => $options) {
             $instance = $this->resourceFor($resourceClass);
@@ -76,6 +78,7 @@ final class PanelResourceRouteLoader extends Loader
             // enforces them on every route generated below. No database is
             // touched: roles() is a declaration, read at route-build time.
             $roles    = $instance->permissions()->roles();
+            $searchRoles = array_values(array_unique([...$searchRoles, ...$roles]));
 
             // The write trio needs a form to render and validate against; a
             // resource without one stays read-only whatever the options say.
@@ -283,6 +286,12 @@ final class PanelResourceRouteLoader extends Loader
                 $routes->add("{$key}_show", $route);
             }
         }
+
+        // The panel's search across resources, once, beside them: the same
+        // controller, the `search` operation, and admitted by any role a
+        // resource declared — which resources then answer, and for whom, is
+        // decided per resource by GlobalSearch itself.
+        $routes->add('panel_search', $this->createRoute("{$this->prefix}/search", ['GET'], 'search', '', $searchRoles));
 
         return $routes;
     }

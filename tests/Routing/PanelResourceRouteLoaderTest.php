@@ -88,7 +88,7 @@ final class PanelResourceRouteLoaderTest extends TestCase
         $names = array_keys($routes->all());
         sort($names);
 
-        self::assertSame(['events', 'events_export', 'events_show'], $names);
+        self::assertSame(['events', 'events_export', 'events_show', 'panel_search'], $names, 'Read routes, plus the one search route every table gets.');
     }
 
     /**
@@ -209,6 +209,7 @@ final class PanelResourceRouteLoaderTest extends TestCase
             'actors_show'             => ['/panel/actors/{uuid}', ['GET']],
             'actors_store'            => ['/panel/actors', ['POST']],
             'actors_update'           => ['/panel/actors/{uuid}', ['PUT']],
+            'panel_search'            => ['/panel/search', ['GET']],
         ], $actual);
     }
 
