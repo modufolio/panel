@@ -37,7 +37,7 @@ final class Tab
             throw new \InvalidArgumentException('Tab::make(): a tab needs a label.');
         }
 
-        return new self($key ?? Form::slug($label), $label, $icon);
+        return new self($key ?? Form::slug($label, 'tab'), $label, $icon);
     }
 
     /** @param array<int|string, string|\Modufolio\Panel\Blueprint\Separator|Field|Fieldset|array<string, mixed>> $entries */

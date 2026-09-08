@@ -43,12 +43,26 @@ final class SubmissionHandler
      * entity and persist it.
      *
      * @param  array<string, mixed> $body the parsed request body
+     * @param  list<string>|null    $only restrict the write to these fields
      * @return array<string, string> errors by field key, empty on success
      */
-    public function handle(PanelResource $resource, object $entity, array $body, ?object $user = null): array
+    public function handle(PanelResource $resource, object $entity, array $body, ?object $user = null, ?array $only = null): array
     {
         $declared    = $this->forms->fieldsFor($resource);
         $permissions = $resource->permissions();
+
+        // A partial write — one cell edited in a list — names the fields it
+        // carries. Everything else leaves the declaration here, which is what
+        // makes it partial: a field that is not considered is neither defaulted
+        // to null, nor required to be present, nor written back. Without this
+        // the handler would read a one-key body as "every other field is now
+        // empty", because coerceValues() answers for every declared field.
+        if ($only !== null) {
+            $declared = array_values(array_filter(
+                $declared,
+                static fn (array $field): bool => in_array((string) ($field['key'] ?? ''), $only, true),
+            ));
+        }
 
         // A field this user may not write leaves the submission entirely: its
         // value is dropped below, and none of its own rules are left to fail,

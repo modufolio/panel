@@ -94,6 +94,50 @@ final class FormTest extends TestCase
         Form::make()->tabs([Tab::make('Outer')->fields([Tab::make('Inner')->fields(['x'])])]);
     }
 
+    /**
+     * The slug pattern keeps only letters and digits, so a CJK or Cyrillic
+     * heading reduces to nothing. That used to become the key 'section' —
+     * shared by every such tab, which merged their fields into one.
+     */
+    public function testALabelNoKeyCanBeDerivedFromIsRefused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('no key can be derived from the tab label "頁籤一"');
+
+        Tab::make('頁籤一');
+    }
+
+    public function testSuchALabelIsFineOnceItsKeyIsNamed(): void
+    {
+        $form = Form::make()->tabs([Tab::make('頁籤一', key: 'tab-1')->fields(['title'])]);
+
+        self::assertSame([['key' => 'tab-1', 'label' => '頁籤一', 'icon' => null]], $form->layout()['tabs']);
+        self::assertSame([['title', ['group' => 'tab-1']]], $form->entries());
+    }
+
+    public function testTwoTabsSharingAKeyAreRefused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('two tabs share the key "details"');
+
+        // Two labels, one slug: the collision a merged tab used to hide.
+        Form::make()->tabs([
+            Tab::make('Details')->fields(['title']),
+            Tab::make('details!')->fields(['year']),
+        ]);
+    }
+
+    public function testTwoFieldsetsSharingAKeyAreRefused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('two fieldsets share the key "name"');
+
+        Form::make()->fields([
+            Fieldset::make('Name')->fields(['first_name']),
+            Fieldset::make('Name')->fields(['last_name']),
+        ]);
+    }
+
     public function testAFieldsetInsideAFieldsetIsRefused(): void
     {
         $this->expectException(\InvalidArgumentException::class);

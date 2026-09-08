@@ -90,12 +90,36 @@ final class Form
         return ['tabs' => $this->tabs, 'fieldsets' => $this->fieldsets];
     }
 
-    /** 'Billing address' → 'billing-address', for a container declared by label alone. */
-    public static function slug(string $label): string
+    /**
+     * 'Billing address' → 'billing-address', for a container declared by label
+     * alone.
+     *
+     * A key is an *address*, not an identity token: it names the client's slot,
+     * lands on every field under the container as its `group` or `fieldset`,
+     * and is what a sibling reference and a bookmarked tab are written in. So a
+     * label the pattern cannot reduce to anything — a CJK or Cyrillic heading,
+     * an emoji — is refused rather than quietly given a shared fallback. It
+     * used to return 'section', which made two such containers the same
+     * container and silently merged their fields.
+     *
+     * @param string $context what is being named, for the message: 'tab' or 'fieldset'
+     */
+    public static function slug(string $label, string $context = 'container'): string
     {
         $slug = strtolower(trim((string) preg_replace('/[^A-Za-z0-9]+/', '-', $label), '-'));
 
-        return $slug === '' ? 'section' : $slug;
+        if ($slug === '') {
+            throw new \InvalidArgumentException(sprintf(
+                'Form: no key can be derived from the %s label "%s" — it has no letters or digits the slug pattern keeps. '
+                . 'Name one explicitly, e.g. %s::make($label, key: \'%s-1\').',
+                $context,
+                $label,
+                $context === 'fieldset' ? 'Fieldset' : 'Tab',
+                $context === 'fieldset' ? 'fieldset' : 'tab',
+            ));
+        }
+
+        return $slug;
     }
 
     /**
@@ -138,6 +162,8 @@ final class Form
                     throw new \InvalidArgumentException(sprintf('Form: tab "%s" sits inside tab "%s"; tabs do not nest.', $value->key(), $group));
                 }
 
+                self::refuseDuplicate($this->tabs, $value->key(), 'tab');
+
                 $this->tabs[] = $value->toArray();
                 $this->flatten($value->entries(), $value->key(), $fieldset);
 
@@ -148,6 +174,8 @@ final class Form
                 if ($fieldset !== null) {
                     throw new \InvalidArgumentException(sprintf('Form: fieldset "%s" sits inside fieldset "%s"; fieldsets do not nest.', $value->key(), $fieldset));
                 }
+
+                self::refuseDuplicate($this->fieldsets, $value->key(), 'fieldset');
 
                 $this->fieldsets[] = $value->toArray();
                 $this->flatten($value->entries(), $group, $value->key());
@@ -171,6 +199,34 @@ final class Form
                 $this->entries[] = [$value, $placed];
             } else {
                 $this->entries[] = [$key, [...$placed, ...(is_array($value) ? $value : [])]];
+            }
+        }
+    }
+
+    /**
+     * Two containers may not share a key.
+     *
+     * The key is what the client's slot, the field's `group` and a bookmarked
+     * tab are all written in, so a collision does not draw two tabs — it draws
+     * one holding both sets of fields, which reads as fields having gone
+     * missing. Two labels sluggifying to the same thing ('Details' and
+     * 'details!') is the usual way in.
+     *
+     * @param list<array{key: string, label: string, ...}> $declared
+     */
+    private static function refuseDuplicate(array $declared, string $key, string $context): void
+    {
+        foreach ($declared as $existing) {
+            if ($existing['key'] === $key) {
+                throw new \InvalidArgumentException(sprintf(
+                    'Form: two %ss share the key "%s" (labels "%s" and this one). Keys address the client\'s slots, '
+                    . 'so give one an explicit key: %s::make($label, key: \'%s-2\').',
+                    $context,
+                    $key,
+                    $existing['label'],
+                    $context === 'fieldset' ? 'Fieldset' : 'Tab',
+                    $key,
+                ));
             }
         }
     }

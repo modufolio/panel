@@ -34,7 +34,7 @@ final class Fieldset
             throw new \InvalidArgumentException('Fieldset::make(): a fieldset needs a label.');
         }
 
-        return new self($key ?? Form::slug($label), $label, $help);
+        return new self($key ?? Form::slug($label, 'fieldset'), $label, $help);
     }
 
     /** @param array<int|string, string|\Modufolio\Panel\Blueprint\Separator|Field|array<string, mixed>> $entries */
