@@ -6,6 +6,7 @@ namespace Modufolio\Panel\Resource;
 
 use Modufolio\Panel\Blueprint\Separator;
 use Modufolio\Panel\Form\Field;
+use Modufolio\Panel\Table\Column;
 
 /**
  * A section of a resource's drawer.
@@ -34,7 +35,7 @@ final class DrawerTab
 
     private ?string $categoryKey = null;
 
-    /** @var array<string, string|null|array{separator: string}|array{label: ?string, wide: bool}> key => label override, a separator, or a label with a width */
+    /** @var array<string, string|null|array{separator: string}|array{label: ?string, wide: bool, rows?: int, pickTarget?: string, pickLabel?: string}> key => label override, a separator, or a label with a width */
     private array $fields = [];
 
     /** @var list<self|string> */
@@ -54,6 +55,9 @@ final class DrawerTab
     private string $navigation = 'drawer';
 
     private string $variant = 'list';
+
+    /** @var list<Column> A relation shown as a table with these columns instead of a two-line list. */
+    private array $columns = [];
 
     private string $label;
 
@@ -179,9 +183,12 @@ final class DrawerTab
      *     ])
      *
      * A width here is the drawer's, independent of the form's: the grid is
-     * two columns, so `full` spans the row and anything else takes one. Only
-     * `label` and `width` mean something in a drawer; any other Field option
-     * is refused rather than ignored.
+     * two columns, so `full` spans the row and anything else takes one. A
+     * field can also claim rows — `'cover' => ['rows' => 3]` — which is how a
+     * thumbnail sits square beside three fields rather than shrunk into one
+     * cell, the way a contact card puts the photo next to the name, phone and
+     * email. Only `label`, `width` and `rows` mean something in a drawer; any
+     * other Field option is refused rather than ignored.
      *
      * Without a list, the grid follows the resource's form: its fields, in
      * its order, with its separators and widths — and nothing the form does
@@ -192,7 +199,7 @@ final class DrawerTab
      */
     public function fields(array $fields): self
     {
-        /** @var array<string, string|null|array{separator: string}|array{label: ?string, wide: bool}> $normalized */
+        /** @var array<string, string|null|array{separator: string}|array{label: ?string, wide: bool, rows?: int, pickTarget?: string, pickLabel?: string}> $normalized */
         $normalized = [];
         $separators = 0;
 
@@ -222,26 +229,70 @@ final class DrawerTab
 
     /**
      * A field's drawer options as the grid reads them: a bare label, or a
-     * label with the row claimed.
+     * label with the row claimed and/or several rows spanned.
      *
      * @param  array<string, mixed> $options
-     * @return string|null|array{label: ?string, wide: bool}
+     * @return string|null|array{label: ?string, wide: bool, rows?: int, pickTarget?: string, pickLabel?: string}
      */
     private static function entry(string $key, array $options): string|null|array
     {
-        $unknown = array_diff(array_keys($options), ['label', 'width']);
+        $unknown = array_diff(array_keys($options), ['label', 'width', 'rows', 'pickable', 'pickLabel']);
 
         if ($unknown !== []) {
             throw new \InvalidArgumentException(sprintf(
-                'Drawer field "%s": only `label` and `width` mean something in a drawer, not `%s`.',
+                'Drawer field "%s": only `label`, `width`, `rows`, `pickable` and `pickLabel` mean something in a drawer, not `%s`.',
                 $key,
                 implode('`, `', $unknown),
             ));
         }
 
-        $label = is_string($options['label'] ?? null) && $options['label'] !== '' ? $options['label'] : null;
+        if (isset($options['pickLabel']) && !isset($options['pickable'])) {
+            throw new \InvalidArgumentException(sprintf(
+                'Drawer field "%s": `pickLabel` names the empty state\'s wording, which only means something alongside `pickable`.',
+                $key,
+            ));
+        }
 
-        if (($options['width'] ?? null) === 'full') {
+        $label     = is_string($options['label'] ?? null) && $options['label'] !== '' ? $options['label'] : null;
+        $wide      = ($options['width'] ?? null) === 'full';
+        $rows      = $options['rows'] ?? null;
+        $pickable  = is_string($options['pickable'] ?? null) && $options['pickable'] !== '' ? $options['pickable'] : null;
+        $pickLabel = is_string($options['pickLabel'] ?? null) && $options['pickLabel'] !== '' ? $options['pickLabel'] : null;
+
+        if ($rows !== null && (!is_int($rows) || $rows < 2 || $rows > 4)) {
+            throw new \InvalidArgumentException(sprintf(
+                'Drawer field "%s": `rows` spans 2 to 4 grid rows; one row is the default and needs no saying.',
+                $key,
+            ));
+        }
+
+        // A bare label or a bare wide flag stays a string/simple shape until
+        // something else is declared — `pickable` forces the array form the
+        // same way `rows` already does, since a plain label can no longer
+        // say it.
+        if ($rows !== null || $pickable !== null) {
+            $shape = ['label' => $label, 'wide' => $wide];
+
+            if ($rows !== null) {
+                $shape['rows'] = $rows;
+            }
+
+            if ($pickable !== null) {
+                $shape['pickTarget'] = $pickable;
+
+                // Left unset when not given, rather than filled with the
+                // default here: the empty-state wording is a client concern,
+                // and FieldPickUrls/DrawerFieldGrid already fall back to
+                // "Choose image" once — declaring it twice would drift.
+                if ($pickLabel !== null) {
+                    $shape['pickLabel'] = $pickLabel;
+                }
+            }
+
+            return $shape;
+        }
+
+        if ($wide) {
             return ['label' => $label, 'wide' => true];
         }
 
@@ -328,6 +379,37 @@ final class DrawerTab
     }
 
     /** Row's main line. Defaults to the first string value the row carries. */
+    /**
+     * Show the related rows as a table with headers — the task's title, state
+     * and due date side by side — instead of a primary and secondary line.
+     * The same Column objects the listing uses, minus what a drawer has no
+     * place for: a summary needs a query to aggregate, an editable cell a save
+     * path, and a record link is the row itself, which already opens the record.
+     *
+     * @param list<Column> $columns
+     */
+    public function columns(array $columns): self
+    {
+        foreach ($columns as $column) {
+            if ($column->summaries() !== []) {
+                throw new \LogicException(sprintf('Relation tab "%s": column "%s" declares a summary, but a relation has no query to aggregate over.', $this->key, $column->key()));
+            }
+
+            if ($column->isEditable()) {
+                throw new \LogicException(sprintf('Relation tab "%s": column "%s" is editable, but a relation table has no save path.', $this->key, $column->key()));
+            }
+
+            if ($column->toArray(false)['linksToRecord'] ?? false) {
+                throw new \LogicException(sprintf('Relation tab "%s": column "%s" links to the record, but the row already opens it — use recordUrl() on the tab.', $this->key, $column->key()));
+            }
+        }
+
+        $clone = clone $this;
+        $clone->columns = $columns;
+
+        return $clone;
+    }
+
     public function primary(string $key): self
     {
         $clone = clone $this;
@@ -661,6 +743,9 @@ final class DrawerTab
             'recordUrl' => $this->recordUrl,
             'navigation' => $this->navigation,
             'variant'   => $this->variant,
+            'columns'   => $this->columns === []
+                ? null
+                : array_map(static fn (Column $column): array => $column->toArray(false), $this->columns),
             // A zero badge is rendered as no badge, matching what the bespoke
             // drawers already do with `|| null`.
             'badge'     => count($rows) ?: null,

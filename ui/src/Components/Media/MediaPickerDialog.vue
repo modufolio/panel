@@ -174,7 +174,7 @@ import TablePagination from '../../Components/Table/TablePagination.vue'
 import { getMediaEndpoints } from './mediaEndpoints'
 import { apiFetch } from '../../Utils/apiFetch'
 
-interface MediaItem {
+export interface MediaItem {
   id: string
   url: string
   thumbnail_url: string

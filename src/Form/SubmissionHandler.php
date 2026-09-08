@@ -218,14 +218,25 @@ final class SubmissionHandler
 
             $related = $values[$key];
 
-            if (!is_object($related)) {
-                return [$key => 'Choose one.'];
-            }
+            // A to-one association (a BelongsTo, like a record's cover) is set
+            // through its setter, same as a normal submission — and, unlike a
+            // to-many, may be cleared to null. A to-many keeps the append-only
+            // behavior below: adding a row never drops what is already there.
+            $property = Str::camel(str_ends_with($key, '_id') ? substr($key, 0, -3) : $key);
+            $meta     = $this->entityManager->getClassMetadata($entity::class);
 
-            $collection = $this->collectionOf($entity, $key);
+            if ($meta->hasAssociation($property) && !$meta->isCollectionValuedAssociation($property)) {
+                $this->applyValues($entity, [$key => $related], [$field]);
+            } else {
+                if (!is_object($related)) {
+                    return [$key => 'Choose one.'];
+                }
 
-            if (!$collection->contains($related)) {
-                $collection->add($related);
+                $collection = $this->collectionOf($entity, $key);
+
+                if (!$collection->contains($related)) {
+                    $collection->add($related);
+                }
             }
         } else {
             throw new \InvalidArgumentException(sprintf('"%s" is not a relation this can add to.', $key));

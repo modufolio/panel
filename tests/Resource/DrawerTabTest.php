@@ -7,6 +7,7 @@ namespace Modufolio\Panel\Tests\Resource;
 use Modufolio\Panel\Blueprint\Separator;
 use Modufolio\Panel\Form\Field;
 use Modufolio\Panel\Resource\DrawerTab;
+use Modufolio\Panel\Table\Column;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -149,9 +150,65 @@ final class DrawerTabTest extends TestCase
     public function testAFieldOptionTheDrawerCannotUseIsRefused(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('Drawer field "note": only `label` and `width` mean something in a drawer, not `help`.');
+        $this->expectExceptionMessage('Drawer field "note": only `label`, `width`, `rows`, `pickable` and `pickLabel` mean something in a drawer, not `help`.');
 
         DrawerTab::record('details')->fields([Field::make('note')->help('Internal')]);
+    }
+
+    /** A field spanning rows: a thumbnail sitting square beside the fields that follow it. */
+    public function testAFieldCanClaimRows(): void
+    {
+        $tab = DrawerTab::record('details')->fields([
+            'cover' => ['rows' => 3],
+            'title',
+            'poster' => ['label' => 'Poster', 'width' => 'full', 'rows' => 2],
+        ]);
+
+        self::assertSame([
+            'cover'  => ['label' => null, 'wide' => false, 'rows' => 3],
+            'title'  => null,
+            'poster' => ['label' => 'Poster', 'wide' => true, 'rows' => 2],
+        ], $tab->toArray([])['fields']);
+
+        $collected = DrawerTab::collect([$tab], [], [], ['cover' => 'Cover']);
+
+        self::assertSame(['label' => 'Cover', 'wide' => false, 'rows' => 3], $collected[0]['fields']['cover'], 'A spanning entry without a label takes the shared one, like a wide entry does.');
+    }
+
+    public function testRowsOutsideTheGridAreRefused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Drawer field "cover": `rows` spans 2 to 4 grid rows; one row is the default and needs no saying.');
+
+        DrawerTab::record('details')->fields(['cover' => ['rows' => 1]]);
+    }
+
+    /**
+     * `pickable` carries the form field its picker writes to, and an
+     * optional `pickLabel` for the empty state's wording — left unset when
+     * not given, since the client already falls back to "Choose image" and
+     * declaring the default here too would be one more place to drift.
+     */
+    public function testAFieldCanBePickable(): void
+    {
+        $tab = DrawerTab::record('details')->fields([
+            'cover' => ['rows' => 3, 'pickable' => 'cover_media_id'],
+            'badge' => ['pickable' => 'badge_media_id', 'pickLabel' => 'Upload badge'],
+        ]);
+
+        self::assertSame([
+            'cover' => ['label' => null, 'wide' => false, 'rows' => 3, 'pickTarget' => 'cover_media_id'],
+            'badge' => ['label' => null, 'wide' => false, 'pickTarget' => 'badge_media_id', 'pickLabel' => 'Upload badge'],
+        ], $tab->toArray([])['fields']);
+    }
+
+    /** The empty state's wording means nothing without a picker to show it on. */
+    public function testAPickLabelWithoutPickableIsRefused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('Drawer field "cover": `pickLabel` names the empty state\'s wording, which only means something alongside `pickable`.');
+
+        DrawerTab::record('details')->fields(['cover' => ['pickLabel' => 'Upload cover']]);
     }
 
     /** A wide entry with no label of its own is labelled from the shared fields like a bare key. */
@@ -165,6 +222,33 @@ final class DrawerTabTest extends TestCase
     }
 
     /** One argument, the key: the label is humanised from it and a relation reads from it, until told otherwise. */
+    public function testARelationTabMayShowItsRowsAsATable(): void
+    {
+        $tab = DrawerTab::relation('tasks')
+            ->columns([
+                Column::make('title'),
+                Column::make('completed')->type('boolean')->label('Done'),
+                Column::make('due_date')->type('date'),
+            ])
+            ->toArray(['tasks' => [['id' => 1, 'title' => 'Charge batteries', 'completed' => false, 'due_date' => '2026-09-10']]]);
+
+        self::assertSame(['title', 'completed', 'due_date'], array_column($tab['columns'], 'key'));
+        self::assertSame(['Title', 'Done', 'Due date'], array_column($tab['columns'], 'label'));
+        self::assertSame('boolean', $tab['columns'][1]['type']);
+        self::assertFalse($tab['columns'][0]['sortable'], 'Nothing to sort against inside a drawer.');
+        self::assertSame(1, $tab['badge']);
+
+        self::assertNull(DrawerTab::relation('tasks')->toArray([])['columns'], 'Absent until declared: the list stays the default.');
+    }
+
+    public function testARelationTableRefusesWhatADrawerCannotHonour(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('links to the record');
+
+        DrawerTab::relation('tasks')->columns([Column::make('title')->linksToRecord()]);
+    }
+
     public function testATabIsNamedByItsKeyUntilToldOtherwise(): void
     {
         self::assertSame('Connected contacts', DrawerTab::relation('connected_contacts')->toArray([])['label']);

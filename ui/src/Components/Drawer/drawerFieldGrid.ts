@@ -13,6 +13,12 @@ export interface DrawerField {
   /** Claim the full row rather than one column. */
   wide?: boolean
   /**
+   * Span this many grid rows (2–4). Auto-placement fills the rows beside it
+   * with the fields that follow, so a thumbnail declared with `rows: 3`
+   * sits square next to three fields instead of shrinking into one cell.
+   */
+  rows?: number
+  /**
    * Where this value points, when it is a reference the presenter gave an
    * `href`. Rendered as a DrawerLink so the target stacks over the current
    * frame instead of replacing it.
@@ -34,4 +40,14 @@ export interface DrawerField {
    * the full row, the same breaks the form declares between its fields.
    */
   separator?: 'line' | 'space'
+  /**
+   * Where this field's picker posts a chosen image — server-stamped, present
+   * only when the viewer may write `pickTarget`. Absent, the field's empty
+   * state is a plain, non-interactive placeholder.
+   */
+  pickUrl?: string | null
+  /** The form field key the picker's selection is posted as. */
+  pickTarget?: string | null
+  /** The empty state's wording, when the resource declared one; otherwise "Choose image". */
+  pickLabel?: string | null
 }

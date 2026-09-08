@@ -891,4 +891,58 @@ final class SubmissionHandlerTest extends DoctrineTestCase
 
         $this->handler()->append(new MovieResource(), $movie, 'title', ['title' => 'Renamed']);
     }
+
+    /**
+     * `append()` on a to-one association (a BelongsTo, like a record's
+     * studio) sets it through the setter — same as a normal submission —
+     * rather than treating it as a to-many and trying to `add()` onto a
+     * collection that does not exist for it. The drawer's inline image
+     * picker is the motivating case: a cover is one relation, not a list.
+     */
+    public function testAppendSetsAToOneAssociationThroughItsSetter(): void
+    {
+        $warner = $this->studio('Warner Bros.');
+        $amblin = $this->studio('Amblin');
+        $movie  = $this->movie('Heat', $warner);
+
+        $errors = $this->handler()->append(new MovieResource(), $movie, 'studio_id', ['studio_id' => $amblin->getUuid()->toString()]);
+
+        self::assertSame([], $errors);
+        self::assertSame('Amblin', $this->reload($movie)->getStudio()?->getName());
+    }
+
+    /** Unlike a to-many `append()`, a to-one may be cleared to null. */
+    public function testAppendClearsAToOneAssociationWhenSubmittedBlank(): void
+    {
+        $studio = $this->studio('Warner Bros.');
+        $movie  = $this->movie('Heat', $studio);
+
+        $errors = $this->handler()->append(new MovieResource(), $movie, 'studio_id', ['studio_id' => '']);
+
+        self::assertSame([], $errors);
+        self::assertNull($this->reload($movie)->getStudio());
+    }
+
+    /** An identifier naming nothing is rejected on the field, same as a to-many. */
+    public function testAppendRejectsAnUnknownStudio(): void
+    {
+        $studio = $this->studio('Warner Bros.');
+        $movie  = $this->movie('Heat', $studio);
+
+        $errors = $this->handler()->append(new MovieResource(), $movie, 'studio_id', ['studio_id' => Uuid::uuid4()->toString()]);
+
+        self::assertSame(['studio_id' => 'Studio is invalid.'], $errors);
+        self::assertSame('Warner Bros.', $this->reload($movie)->getStudio()?->getName());
+    }
+
+    /** Existing to-many `append()` behavior — a collection, `add()`, not a setter — is unaffected. */
+    public function testAppendStillAddsToAToManyCollectionNotThroughASetter(): void
+    {
+        $studio = $this->studio('Warner Bros.');
+        $crime  = $this->tag('Crime');
+        $movie  = $this->movie('Heat', $studio);
+
+        self::assertSame([], $this->handler()->append(new MovieResource(), $movie, 'tags', ['tags' => $crime->getUuid()->toString()]));
+        self::assertSame(['Crime'], $this->tagNamesOf($this->reload($movie)));
+    }
 }

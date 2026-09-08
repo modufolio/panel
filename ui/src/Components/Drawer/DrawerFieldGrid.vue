@@ -3,7 +3,11 @@
     <div
       v-for="field in resolvedFields"
       :key="field.key"
-      :class="field.wide ? spanClass : undefined"
+      :class="[
+        field.wide ? spanClass : undefined,
+        field.rows ? ROW_SPAN_CLASSES[field.rows] : undefined,
+        field.rows ? 'flex flex-col' : undefined,
+      ]"
     >
       <!-- A break between runs of fields: nothing to label, nothing to show. -->
       <div
@@ -15,14 +19,76 @@
       />
       <template v-else>
       <dt class="text-sm font-medium text-gray-500">{{ field.label }}</dt>
-      <dd class="mt-1 text-sm text-gray-900 whitespace-pre-line">
+      <dd
+        class="mt-1 text-sm text-gray-900 whitespace-pre-line"
+        :class="field.rows ? 'relative flex-1 min-h-0' : undefined"
+      >
         <slot :name="`field-${field.key}`" :field="field" :value="field.raw">
+          <!--
+            A spanning image fills the height of the rows it claims and stays
+            square, cropped rather than stretched. Positioned absolutely so
+            the rows are sized by the fields beside it, not by the image: the
+            square follows the neighbours' height instead of pushing them.
+            With no cover to show, the square stays as a blank, so the layout
+            reads the same for every record.
+          -->
+          <template v-if="field.rows">
+            <button
+              v-if="field.image && field.pickUrl"
+              type="button"
+              class="group absolute inset-y-0 left-0 h-full max-w-full aspect-square overflow-hidden rounded-lg ring-1 ring-gray-200 hover:ring-2 hover:ring-primary-500 transition-all"
+              :aria-label="`Choose ${field.label}`"
+              @click="emit('pick-image', field)"
+            >
+              <img :src="field.image" :alt="field.label" class="h-full w-full object-cover" />
+            </button>
+            <img
+              v-else-if="field.image"
+              :src="field.image"
+              :alt="field.label"
+              class="absolute inset-y-0 left-0 h-full max-w-full aspect-square rounded-lg object-cover bg-gray-100"
+            />
+            <button
+              v-else-if="field.pickUrl"
+              type="button"
+              class="group absolute inset-y-0 left-0 h-full max-w-full aspect-square flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100 transition-colors"
+              :aria-label="`Choose ${field.label}`"
+              @click="emit('pick-image', field)"
+            >
+              <Icon name="photo" class="h-8 w-8 text-gray-400 group-hover:text-gray-500" />
+              <span class="text-sm text-gray-500 group-hover:text-gray-600">{{ field.pickLabel ?? 'Choose image' }}</span>
+            </button>
+            <div
+              v-else
+              class="absolute inset-y-0 left-0 h-full max-w-full aspect-square rounded-lg bg-gray-100"
+              aria-hidden="true"
+            />
+          </template>
+          <button
+            v-else-if="field.image && field.pickUrl"
+            type="button"
+            class="group w-24 aspect-square overflow-hidden rounded-lg ring-1 ring-gray-200 hover:ring-2 hover:ring-primary-500 transition-all"
+            :aria-label="`Choose ${field.label}`"
+            @click="emit('pick-image', field)"
+          >
+            <img :src="field.image" :alt="field.label" class="h-full w-full object-cover" />
+          </button>
           <img
-            v-if="field.image"
+            v-else-if="field.image"
             :src="field.image"
             :alt="field.label"
             class="w-24 aspect-square rounded-lg object-cover bg-gray-100"
           />
+          <button
+            v-else-if="field.pickUrl"
+            type="button"
+            class="group w-24 aspect-square flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100 transition-colors"
+            :aria-label="`Choose ${field.label}`"
+            @click="emit('pick-image', field)"
+          >
+            <Icon name="photo" class="h-6 w-6 text-gray-400 group-hover:text-gray-500" />
+            <span class="text-xs text-gray-500 group-hover:text-gray-600">{{ field.pickLabel ?? 'Choose image' }}</span>
+          </button>
           <!--
             A reference the presenter gave an `href` — another record worth
             opening. DrawerLink stacks it over this one rather than navigating
@@ -46,6 +112,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import DrawerLink from './DrawerLink.vue'
+import Icon from '../Core/Icon.vue'
 
 /**
  * The two-column definition grid every drawer's "details" view is built from.
@@ -82,7 +149,7 @@ const props = withDefaults(defineProps<{
    * only these are shown — that is what lets one record be split across two
    * grids. Omitted, every eligible key is shown, in the record's own order.
    */
-  include?: Record<string, string | null | { separator: 'line' | 'space' } | { label?: string | null; wide?: boolean }>
+  include?: Record<string, string | null | { separator: 'line' | 'space' } | { label?: string | null; wide?: boolean; rows?: number; pickUrl?: string | null; pickTarget?: string | null; pickLabel?: string | null }>
   /** Characters after which a derived value claims the full row. */
   wideThreshold?: number
 }>(), {
@@ -93,6 +160,8 @@ const props = withDefaults(defineProps<{
   include: undefined,
   wideThreshold: 60,
 })
+
+const emit = defineEmits<{ (e: 'pick-image', field: DrawerField): void }>()
 
 /**
  * Written out rather than interpolated: Tailwind scans source files for
@@ -110,6 +179,13 @@ const SPAN_CLASSES: Record<number, string> = {
   2: 'col-span-2',
   3: 'col-span-3',
   4: 'col-span-4',
+}
+
+/** Rows a field may span; one row is the default and has no class. */
+const ROW_SPAN_CLASSES: Record<number, string> = {
+  2: 'row-span-2',
+  3: 'row-span-3',
+  4: 'row-span-4',
 }
 
 const gridClass = computed(() => GRID_CLASSES[props.columns] ?? GRID_CLASSES[2])
@@ -212,6 +288,12 @@ const resolvedFields = computed<DrawerField[]>(() => {
     // A label with a width, from a form that laid this field out full-row.
     const declaredLabel = typeof declared === 'object' && declared !== null ? declared.label : declared
     const declaredWide = typeof declared === 'object' && declared !== null ? declared.wide === true : false
+    const declaredRows = typeof declared === 'object' && declared !== null && typeof declared.rows === 'number' && declared.rows in ROW_SPAN_CLASSES
+      ? declared.rows
+      : undefined
+    const declaredPickUrl = typeof declared === 'object' && declared !== null ? declared.pickUrl : undefined
+    const declaredPickTarget = typeof declared === 'object' && declared !== null ? declared.pickTarget : undefined
+    const declaredPickLabel = typeof declared === 'object' && declared !== null ? declared.pickLabel : undefined
 
     const image = imageUrl(value)
     const reference = image ? undefined : referenceLabel(value)
@@ -235,10 +317,14 @@ const resolvedFields = computed<DrawerField[]>(() => {
       label: (typeof declaredLabel === 'string' ? declaredLabel : undefined) ?? humanize(key),
       value: image ? '' : text,
       wide: declaredWide || (!image && !href && text.length > props.wideThreshold),
+      rows: declaredRows,
       raw: value,
       image,
       href,
       navigation,
+      pickUrl: declaredPickUrl,
+      pickTarget: declaredPickTarget,
+      pickLabel: declaredPickLabel,
     }
   })
 })
