@@ -156,7 +156,7 @@ final class ResourceListing
         if ($schema !== null) {
             $schema = $this->resolveLabels($schema);
             $schema = $this->resolveRecordUrl($schema, $key);
-            $schema = $this->resolveFilterOptions($schema);
+            $schema = $this->resolveFilterOptions($schema, $params['filters']);
             $schema = $this->resolveActions($schema, $key);
         }
 
@@ -185,6 +185,10 @@ final class ResourceListing
                     [
                         'summaries' => $this->summaries($query, $alias, $params),
                         'can'       => $this->verdicts($entities, $rows),
+                        // Only for refusals the resource can explain: an
+                        // action with a reason shows disabled, with the
+                        // sentence as its tooltip, instead of vanishing.
+                        ...(($why = $this->reasons($entities, $rows)) === [] ? [] : ['why' => $why]),
                     ],
                 ),
                 'stack' => $this->stack,
@@ -766,13 +770,49 @@ final class ResourceListing
     }
 
     /**
-     * What this viewer may do with each record on the page, keyed by the
-     * presented id: the same {@see Permissions} questions the write endpoints
-     * ask, asked here with the record in hand so a rule about *this* record
-     * (an undeletable super admin, a locked invoice) hides the action instead
-     * of refusing the click. Rows and entities pair by position — present()
-     * keeps the order — and a presenter that returns a different count gets
-     * no verdicts rather than wrong ones.
+     * The refusals {@see verdicts()} explains, keyed like them: only records
+     * with at least one refused ability that carries a reason appear.
+     *
+     * @param  array<int, object>                              $entities
+     * @param  array<int, array<string, mixed>>                $rows
+     * @return array<string, array<string, string>>
+     */
+    private function reasons(array $entities, array $rows): array
+    {
+        if ($entities === [] || count($entities) !== count($rows)) {
+            return [];
+        }
+
+        $permissions = $this->resource->permissions();
+        $reasons     = [];
+
+        foreach (array_values($entities) as $index => $entity) {
+            $id = (string) ($rows[$index]['id'] ?? '');
+
+            if ($id === '') {
+                continue;
+            }
+
+            foreach (['edit', 'delete'] as $ability) {
+                if ($permissions->{$ability}($entity, $this->user)) {
+                    continue;
+                }
+
+                $reason = $permissions->reason($ability, $entity, $this->user);
+
+                if ($reason !== null) {
+                    $reasons[$id][$ability] = $reason;
+                }
+            }
+        }
+
+        return $reasons;
+    }
+
+    /**
+     * What this viewer may do with each record, keyed by the presented id:
+     * the same {@see Permissions} questions the write endpoints ask, asked
+     * with the record in hand. Rows and entities pair by position.
      *
      * @param  array<int, object>                                  $entities
      * @param  array<int, array<string, mixed>>                    $rows
@@ -833,9 +873,47 @@ final class ResourceListing
         }
     }
 
-    private function resolveFilterOptions(TableSchema $schema): TableSchema
+    /**
+     * The selected values a truncated option list left out, fetched with
+     * their labels so the selection is never shown as a bare id.
+     *
+     * @param  list<array{value: mixed, label: mixed}> $rows
+     * @return list<array{value: mixed, label: mixed}>
+     */
+    private function selectedBeyondTheCut(RelationOptions $relation, mixed $selected, array $rows): array
     {
-        $filters = array_map(function (Filter $filter): Filter {
+        $wanted = array_values(array_filter(
+            array_map(static fn (mixed $v): string => is_scalar($v) ? (string) $v : '', is_array($selected) ? $selected : [$selected]),
+            static fn (string $v): bool => $v !== '',
+        ));
+        $have = array_map(static fn (array $row): string => (string) $row['value'], $rows);
+        $missing = array_values(array_diff($wanted, $have));
+
+        if ($missing === []) {
+            return [];
+        }
+
+        /** @var list<array{value: mixed, label: mixed}> $found */
+        $found = $this->entityManager->createQueryBuilder()
+            ->select(sprintf('r.%s AS value, r.%s AS label', $relation->valueField, $relation->labelField))
+            ->from($relation->entityClass, 'r')
+            ->where(sprintf('r.%s IN (:selected)', $relation->valueField))
+            ->setParameter('selected', $missing)
+            ->orderBy(sprintf('r.%s', $relation->labelField), 'ASC')
+            ->getQuery()
+            ->getArrayResult();
+
+        return $found;
+    }
+
+    /**
+     * @param array<string, mixed> $values the filter values in force, so a
+     *                                     selected option is labelled even when
+     *                                     the option list had to be cut short
+     */
+    private function resolveFilterOptions(TableSchema $schema, array $values = []): TableSchema
+    {
+        $filters = array_map(function (Filter $filter) use ($values): Filter {
             // The trashed control's default is the resource's decision, not
             // the schema's: a resource listing deleted rows by default hands
             // the client that value so it shows without counting as a
@@ -860,6 +938,7 @@ final class ResourceListing
             // to tell "exactly full" from "there are more" — the overflow is
             // reported rather than silently trimmed, per the panel's rule that
             // a bound it imposes must be visible.
+            /** @var list<array{value: mixed, label: mixed}> $rows */
             $rows = $this->entityManager->createQueryBuilder()
                 ->select(sprintf('r.%s AS value, r.%s AS label', $relation->valueField, $relation->labelField))
                 ->from($relation->entityClass, 'r')
@@ -872,15 +951,20 @@ final class ResourceListing
 
             if ($truncated) {
                 $rows = array_slice($rows, 0, RelationOptions::AUTO_SEARCH_THRESHOLD);
+
+                // The value in force must still read as a name — in the
+                // control and in the chip above the table — even when it
+                // fell beyond the cut, so it is fetched on its own.
+                $rows = [...$rows, ...$this->selectedBeyondTheCut($relation, $values[$filter->key()] ?? null, $rows)];
             }
 
-            return $filter->withResolvedOptions(array_values(array_map(
+            return $filter->withResolvedOptions(array_map(
                 static fn (array $row): array => [
                     'value' => (string)$row['value'],
                     'label' => (string)$row['label'],
                 ],
                 $rows
-            )), $truncated);
+            ), $truncated);
         }, $schema->declaredFilters());
 
         return $schema->withFilters($filters);

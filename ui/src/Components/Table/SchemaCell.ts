@@ -9,6 +9,7 @@ import IconColumn from '../Columns/IconColumn.vue'
 import ColorColumn from '../Columns/ColorColumn.vue'
 import SelectColumn from '../Columns/SelectColumn.vue'
 import ToggleColumn from '../Columns/ToggleColumn.vue'
+import ToggleIconColumn from '../Columns/ToggleIconColumn.vue'
 import CopyButton from '../Columns/CopyButton.vue'
 import { resolveColumnComponent } from '../Columns/columnRegistry'
 import {
@@ -43,6 +44,7 @@ const componentForType: Record<string, Component> = {
 const textEditor: Component = TextInputColumn
 const selectEditor: Component = SelectColumn
 const toggleEditor: Component = ToggleColumn
+const toggleIconEditor: Component = ToggleIconColumn
 
 /** A column flag resolved against the row it is rendered for. */
 function flag(record: TableRecord, key: string | undefined): boolean {
@@ -124,7 +126,15 @@ export default defineComponent({
       // A select keeps rendering when empty so the control stays usable, and
       // an image renders its own placeholder — a dash where a thumbnail is
       // expected breaks the row's rhythm.
-      if (empty && column.type !== 'boolean' && column.type !== 'select' && column.type !== 'image') {
+      // A toggle icon joins them: `false` is not empty, but `null` on a
+      // never-set flag is, and the cell is still the control you click.
+      if (
+        empty &&
+        column.type !== 'boolean' &&
+        column.type !== 'select' &&
+        column.type !== 'image' &&
+        column.type !== 'toggleIcon'
+      ) {
         return h(TextColumn, { label: column.placeholder ?? '—' })
       }
 
@@ -145,6 +155,22 @@ export default defineComponent({
             options: column.options ?? [],
           })
         }
+
+        case 'toggleIcon':
+          // One clickable glyph rather than a switch, saved through the same
+          // handler every other in-place edit uses. `readOnlyWhen` drops the
+          // button and keeps the icon; `disabledWhen` keeps it but inert.
+          return h(toggleIconEditor, {
+            ...editorProps(column, record, handler),
+            value: value as boolean,
+            readOnly: !column.editable || flag(record, column.readOnlyWhen),
+            onIcon: column.onIcon,
+            offIcon: column.offIcon,
+            onColor: column.onColor,
+            offColor: column.offColor,
+            onLabel: column.onLabel,
+            offLabel: column.offLabel,
+          })
 
         case 'date':
           return h(component, {

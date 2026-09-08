@@ -2,9 +2,12 @@
   <button
     type="button"
     role="menuitem"
+    :disabled="disabled"
+    :title="title || undefined"
+    :aria-disabled="disabled || undefined"
     @click="handleClick"
-    class="ui-action-group-item w-full flex items-center gap-3 px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors"
-    :class="itemClasses"
+    class="ui-action-group-item w-full flex items-center gap-3 px-4 py-2 text-sm text-left text-gray-700 transition-colors"
+    :class="[itemClasses, disabled ? 'cursor-not-allowed opacity-50' : 'hover:bg-gray-100']"
   >
     <!-- Icon (string name or component) -->
     <template v-if="icon">
@@ -37,6 +40,15 @@ const props = defineProps({
     default: 'gray',
     validator: (value: string) => ['primary', 'success', 'danger', 'warning', 'info', 'gray'].includes(value),
   },
+  /** Offered but refused: shown, not clickable, with `title` saying why. */
+  disabled: {
+    type: Boolean,
+    default: false,
+  },
+  title: {
+    type: String,
+    default: '',
+  },
 })
 
 const emit = defineEmits(['click'])
@@ -61,6 +73,7 @@ const iconColorClass = computed(() => {
 })
 
 function handleClick() {
+  if (props.disabled) return
   emit('click')
 }
 </script>

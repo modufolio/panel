@@ -407,10 +407,18 @@ function cellValue(record: TableRecord, column: TableColumn): unknown {
   return name ? getPath(record, name) : undefined
 }
 
+/**
+ * A header click walks ascending → descending → unsorted, so the third
+ * click returns the list to the resource's default order instead of
+ * trapping it in the last direction chosen.
+ */
 function handleSort(name: string | undefined): void {
-  const direction = props.sortColumn === name && props.sortDirection === 'asc' ? 'desc' : 'asc'
+  if (props.sortColumn !== name) {
+    emit('sort', { column: name, direction: 'asc' })
+    return
+  }
 
-  emit('sort', { column: name, direction })
+  emit('sort', { column: name, direction: props.sortDirection === 'asc' ? 'desc' : null })
 }
 
 function onTableKeyDown(event: KeyboardEvent): void {

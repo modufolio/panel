@@ -130,6 +130,38 @@ final class ColumnTest extends TestCase
         Column::make('status')->options(\stdClass::class);
     }
 
+    public function testAToggleIconColumnIsEditableWithoutSayingSo(): void
+    {
+        // The icon *is* the control — a toggle nobody can click would just be
+        // a boolean column with a nicer glyph.
+        $column = Column::make('featured')
+            ->toggleIcon()
+            ->onIcon('star')
+            ->offIcon('star')
+            ->onColor('warning')
+            ->offColor('gray')
+            ->onLabel('Featured — click to unfeature')
+            ->offLabel('Not featured — click to feature')
+            ->toArray(false);
+
+        self::assertSame('toggleIcon', $column['type']);
+        self::assertTrue($column['editable']);
+        self::assertSame('star', $column['onIcon']);
+        self::assertSame('star', $column['offIcon']);
+        self::assertSame('warning', $column['onColor']);
+        self::assertSame('gray', $column['offColor']);
+        self::assertSame('Featured — click to unfeature', $column['onLabel']);
+        self::assertSame('Not featured — click to feature', $column['offLabel']);
+    }
+
+    public function testAToggleIconColumnLeavesItsIconsToTheClientWhenUndeclared(): void
+    {
+        $column = Column::make('featured')->toggleIcon()->toArray(false);
+
+        self::assertArrayNotHasKey('onIcon', $column);
+        self::assertArrayNotHasKey('offColor', $column);
+    }
+
     public function testSummariesAreSerialisedWithTheColumn(): void
     {
         $column = Column::make('total')->summarize(Summary::count('Rows'))->toArray(false);

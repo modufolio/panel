@@ -37,6 +37,15 @@ describe('per-record verdicts on row actions', () => {
     expect(names).toEqual(['view', 'archive'])
   })
 
+  it('keeps a refused action on the menu, disabled, when the server said why', () => {
+    const shown = visibleRowActions(actions, record, { edit: true, delete: false }, { delete: 'Admins cannot be deleted' })
+
+    expect(shown.map((a) => a.name)).toEqual(['view', 'edit', 'delete', 'restore', 'archive'])
+    expect(shown.find((a) => a.name === 'delete')).toMatchObject({ disabled: true, disabledReason: 'Admins cannot be deleted' })
+    expect(shown.find((a) => a.name === 'restore')).toMatchObject({ disabled: true })
+    expect(shown.find((a) => a.name === 'edit')?.disabled).toBeUndefined()
+  })
+
   it('still honours the schema\'s own visibility fields alongside a verdict', () => {
     const gated: SchemaRowAction[] = [
       { name: 'edit', behaviour: 'visit', label: 'Edit', hiddenWhen: 'locked' },

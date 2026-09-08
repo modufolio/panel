@@ -83,6 +83,18 @@ class Permissions
     }
 
     /** Downloading the list is reading the list, unless a resource says otherwise. */
+    /**
+     * Why an ability is refused, when the resource can say: "Admins cannot
+     * be deleted", "Closed invoices are read-only". Asked only after the
+     * verb itself answered no; null keeps the action hidden, a sentence
+     * shows it disabled with the sentence as its tooltip, and a bulk action
+     * reports it — "3 skipped: admins cannot be deleted".
+     */
+    public function reason(string $ability, ?object $record, ?object $user): ?string
+    {
+        return null;
+    }
+
     public function export(?object $user): bool
     {
         return $this->view(null, $user);

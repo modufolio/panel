@@ -84,7 +84,7 @@ interface SchemaColumn {
   name: string
   label: string
   type: 'text' | 'select' | 'money' | 'numeric' | 'badge' | 'date'
-      | 'boolean' | 'image' | 'icon' | 'color'
+      | 'boolean' | 'toggleIcon' | 'image' | 'icon' | 'color'
   sortable: boolean            // resolved server-side; never hand-declared
   valueKey?: string            // dot path, e.g. 'organization.name'
   descriptionKey?: string      // second line, read from another field
@@ -98,6 +98,12 @@ interface SchemaColumn {
   align?: 'left' | 'center' | 'right'
   color?: string
   icon?: string
+  onIcon?: string              // type: 'toggleIcon', true state; default 'check-circle'
+  offIcon?: string             // type: 'toggleIcon', false state; default 'x-circle'
+  onColor?: string             // type: 'toggleIcon'; default 'success'
+  offColor?: string            // type: 'toggleIcon'; default 'gray'
+  onLabel?: string             // type: 'toggleIcon', accessible name; default 'On'
+  offLabel?: string            // type: 'toggleIcon'; default 'Off'
   limit?: number
   copyable?: boolean
   size?: string                // type: 'image': 'sm' | 'md' | 'lg' | 'xl'
@@ -356,6 +362,34 @@ attached rather than making the user retype it from memory.
 
 The page supplies the *how*, as it already does for editable selects and
 toggles — a save closure cannot cross the schema's JSON boundary.
+
+## Toggle icon columns
+
+A boolean that reads better as one glyph than as a switch — featured, pinned,
+enabled — is a `toggleIcon`:
+
+```php
+Column::make('featured')
+    ->toggleIcon()
+    ->onIcon('star')->offIcon('star')
+    ->onColor('warning')->offColor('gray')
+    ->onLabel('Featured — click to unfeature')
+    ->offLabel('Not featured — click to feature')
+    ->disabledWhen('deleted_at')
+```
+
+`toggleIcon()` marks the column editable on its own: the icon *is* the control,
+and one nobody can click is `boolean()` with a nicer glyph. Clicking calls the
+page's handler for that column key with the flipped value, like every other
+in-place edit. The labels are the button's accessible name and tooltip — an
+icon alone does not say what clicking it does. `disabledWhen` keeps the icon
+but makes it inert; `readOnlyWhen`
+drops the button entirely and leaves the icon as a plain indicator.
+
+Icon names are the panel's registered ones, so an app icon registered through
+`registerIcons()` works here as well.
+
+---
 
 ## Custom column types
 

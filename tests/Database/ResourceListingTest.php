@@ -7,14 +7,16 @@ namespace Modufolio\Panel\Tests\Database;
 use Modufolio\Appkit\Security\User\UserInterface;
 use Doctrine\ORM\Query\QueryException;
 use Doctrine\ORM\QueryBuilder;
-use Modufolio\Panel\Resource\Permissions;
 use Modufolio\Panel\Form\Field;
+use Modufolio\Panel\Resource\Permissions;
 use Modufolio\Panel\Table\BulkAction;
 use Modufolio\Panel\Table\Column;
 use Modufolio\Panel\Table\RowAction;
 use Modufolio\Panel\Table\TableSchema;
 use Modufolio\Panel\Tests\Case\DoctrineTestCase;
 use Modufolio\Panel\Tests\Fixture\Entity\Movie;
+use Modufolio\Panel\Tests\Fixture\DerivedMovieResource;
+use Modufolio\Panel\Tests\Fixture\ExplainingMovieResource;
 use Modufolio\Panel\Tests\Fixture\Entity\Studio;
 use Modufolio\Panel\Tests\Fixture\MovieResource;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -472,6 +474,36 @@ final class ResourceListingTest extends DoctrineTestCase
     }
 
     /** JSON:API's `filter[search]` is accepted alongside the bare key. */
+    public function testEveryWordOfASearchMustMatchSomewhere(): void
+    {
+        $this->seed();
+
+        // DerivedMovieResource searches the title and the studio's name.
+
+        self::assertSame(['Jurassic Park'], $this->titles($this->renderProps($this->listing(new DerivedMovieResource(), ['search' => 'park amblin']))), 'Title in one column, studio in another.');
+        self::assertSame([], $this->titles($this->renderProps($this->listing(new DerivedMovieResource(), ['search' => 'park warner']))), 'Both words, or nothing.');
+        self::assertSame(['Jurassic Park'], $this->titles($this->renderProps($this->listing(new DerivedMovieResource(), ['search' => '"jurassic park"']))), 'A quoted phrase is one word.');
+        self::assertSame([], $this->titles($this->renderProps($this->listing(new DerivedMovieResource(), ['search' => '"park jurassic"']))));
+    }
+
+    public function testARefusalTheResourceCanExplainRidesBesideTheVerdict(): void
+    {
+        $this->seed();
+
+        $resource = new ExplainingMovieResource();
+
+        $meta = $this->renderProps($this->listing($resource))['movies']['meta'];
+        $heat = (string) $this->movie('Heat')->getId();
+        $jaws = (string) $this->movie('Jaws')->getId();
+
+        self::assertSame(['edit' => true, 'delete' => false], $meta['can'][$heat]);
+        self::assertSame(['delete' => 'Classics cannot be deleted'], $meta['why'][$heat], 'The refusal it can explain.');
+        self::assertSame(['edit' => false, 'delete' => true], $meta['can'][$jaws]);
+        self::assertArrayNotHasKey($jaws, $meta['why'], 'A refusal without a reason is not listed: the action simply is not offered.');
+
+        self::assertArrayNotHasKey('why', $this->renderProps($this->listing(new MovieResource()))['movies']['meta'], 'Absent when nothing is refused.');
+    }
+
     public function testSearchMayArriveUnderTheJsonApiFilterKey(): void
     {
         $this->seed();
@@ -921,6 +953,27 @@ final class ResourceListingTest extends DoctrineTestCase
         self::assertSame('Studio 001', $filters['studio']['options'][0]['label']);
         self::assertSame('Studio 100', $filters['studio']['options'][99]['label']);
         self::assertTrue($filters['studio']['optionsTruncated']);
+    }
+
+    public function testASelectedOptionBeyondTheCutIsStillLabelled(): void
+    {
+        $studios = [];
+
+        for ($i = 1; $i <= 101; ++$i) {
+            $studios[] = (new Studio())->setName(sprintf('Studio %03d', $i));
+        }
+
+        $this->persist(...$studios);
+        $last = $studios[100]->getUuid()->toString();
+        $this->clear();
+
+        $props   = $this->renderProps($this->listing(new MovieResource(), ['studio' => $last]));
+        $filters = array_column($props['table']['filters'], null, 'key');
+
+        self::assertCount(101, $filters['studio']['options'], 'The hundred, plus the one in force.');
+        self::assertSame(['value' => $last, 'label' => 'Studio 101'], $filters['studio']['options'][100]);
+        self::assertTrue($filters['studio']['optionsTruncated'], 'Still cut: the extra entry is the selection, not more of the list.');
+        self::assertSame($last, $props['filters']['studio']);
     }
 
     // ── Row and bulk actions ─────────────────────────────────────────────────

@@ -7,7 +7,8 @@ namespace Modufolio\Panel\Query;
 use Doctrine\ORM\QueryBuilder;
 
 /**
- * A case-insensitive `LIKE` across the given paths, OR-ed.
+ * A case-insensitive `LIKE` across the given paths, OR-ed — once per word
+ * of the search, AND-ed, so every word has to be found somewhere.
  *
  * A path is an entity property (`title`) or one step into a to-one relation
  * (`studio.name`), which is left-joined under a stable alias so the listing
@@ -30,23 +31,59 @@ final class SearchQuery extends AbstractQuery
 
     public function apply(QueryBuilder $qb): QueryBuilder
     {
-        $term = trim((string) $this->term);
+        $terms = self::terms((string) $this->term);
 
-        if ($term === '' || $this->paths === []) {
+        if ($terms === [] || $this->paths === []) {
             return $qb;
         }
 
         $alias = $this->getRootAlias($qb);
-        $or    = $qb->expr()->orX();
 
-        foreach ($this->paths as $path) {
-            $or->add($qb->expr()->like('LOWER(' . $this->column($qb, $alias, $path) . ')', ':search'));
+        // Every word must match somewhere, in any column: "john smith" finds
+        // a first name in one column and a last name in another. A quoted
+        // phrase stays one term.
+        foreach ($terms as $index => $term) {
+            $or = $qb->expr()->orX();
+
+            foreach ($this->paths as $path) {
+                $or->add($qb->expr()->like('LOWER(' . $this->column($qb, $alias, $path) . ')', ':search_' . $index));
+            }
+
+            $qb->andWhere($or)->setParameter('search_' . $index, '%' . mb_strtolower($term) . '%');
         }
 
-        return $qb->andWhere($or)->setParameter('search', '%' . mb_strtolower($term) . '%');
+        return $qb;
     }
 
-    /** The DQL column for a path, joining the relation it crosses once. */
+    /**
+     * The words of a search, lower-cased and de-duplicated; a phrase in
+     * double quotes is one word. Shared with anything else that searches
+     * the way the listing does.
+     *
+     * @return list<string>
+     */
+    public static function terms(string $search): array
+    {
+        $search = trim($search);
+
+        if ($search === '') {
+            return [];
+        }
+
+        $words = str_getcsv($search, ' ', '"', '\\');
+        $terms = [];
+
+        foreach ($words as $word) {
+            $word = trim((string) $word);
+
+            if ($word !== '' && !in_array($word, $terms, true)) {
+                $terms[] = $word;
+            }
+        }
+
+        return $terms;
+    }
+
     private function column(QueryBuilder $qb, string $alias, string $path): string
     {
         $segments = explode('.', $path);

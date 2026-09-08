@@ -1,6 +1,7 @@
-import { computed, ref, useAttrs, type Ref } from 'vue'
+import { computed, ref, useAttrs, type Ref, watch } from 'vue'
 import type { TableSchema } from '../Components/Table/tableSchema'
-import { filterDefaults, visibleColumnDefaults } from '../Components/Table/tableSchema'
+import { filterDefaults } from '../Components/Table/tableSchema'
+import { columnPreferencesFor, loadColumnPreferences, reconcileColumnPreferences, saveColumnPreferences } from './columnPreferences'
 import type { BoardPayload, ResourceViewOption } from '../Components/Board/boardTypes'
 import { useDrawerStack, type StackItem } from '../Components/Drawer/useDrawerStack'
 import { useListFilters } from './useListFilters'
@@ -85,6 +86,8 @@ export interface ResourceRecords {
     summaries?: Record<string, Array<{ type: string; label: string; value: number | null }>>
     /** Per-record verdicts keyed by id — beside the rows, never inside them. */
     can?: Record<string, RowVerdicts>
+    /** The refusals in `can` the server explained, keyed like it: `{7: {delete: 'Admins cannot be deleted'}}`. */
+    why?: Record<string, Partial<Record<'edit' | 'delete', string>>>
   }
 }
 
@@ -132,11 +135,21 @@ export function useResourceListing(props: ResourceListingProps) {
   })
 
   /**
-   * Which columns are on. Seeded from the schema, so a resource marking a
-   * column `hiddenByDefault` starts with it off — held on the client because
-   * hiding a column changes nothing about the query.
+   * Which columns are on. Seeded from what this browser remembers for the
+   * resource, else from the schema, so a column marked `hiddenByDefault`
+   * starts off — held on the client because hiding a column changes nothing
+   * about the query.
    */
-  const visibleColumns: Ref<string[]> = ref(visibleColumnDefaults(props.table))
+  const visibleColumns: Ref<string[]> = ref(
+    reconcileColumnPreferences(loadColumnPreferences(props.resource.key), props.table),
+  )
+
+  // Remembered per resource, as what the viewer turned off; reconciled
+  // against the schema above, so a renamed or removed column cannot leave
+  // a stale preference behind.
+  watch(visibleColumns, (visible) => {
+    saveColumnPreferences(props.resource.key, columnPreferencesFor(visible, props.table))
+  }, { deep: true })
 
   /**
    * Which drawer tab is open. Held per page rather than per frame so drilling

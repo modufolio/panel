@@ -68,6 +68,8 @@
           :icon="action.icon"
           :label="action.label"
           :color="action.color"
+          :disabled="action.disabled ?? false"
+          :title="action.disabledReason ?? ''"
           @click="runRowAction(action, asRecord(record))"
         />
       </ActionGroup>
@@ -150,6 +152,22 @@
     @close="deletion.close"
   />
 
+  <ActionFormDialog
+    v-if="pendingForm"
+    :action="pendingForm.action"
+    :url="pendingForm.url"
+    @close="pendingForm = null"
+  />
+
+  <ActionFormDialog
+    v-if="pendingBulkForm && pendingBulkForm.action.url"
+    :action="pendingBulkForm.action"
+    :url="pendingBulkForm.action.url"
+    :extra="{ ids: pendingBulkForm.records.map(recordId) }"
+    :count="pendingBulkForm.records.length"
+    @close="pendingBulkForm = null"
+  />
+
   <ConfirmDialog
     v-if="pendingBulk"
     :is-open="true"
@@ -164,6 +182,7 @@
 <script setup lang="ts">
 import { computed, useSlots, type PropType } from 'vue'
 import Table from './Table.vue'
+import { recordId } from './tableTypes'
 import ChildTable from './ChildTable.vue'
 import SchemaCell from './SchemaCell'
 import SchemaFilterPanel from './SchemaFilterPanel.vue'
@@ -171,6 +190,7 @@ import Action from '../Actions/Action.vue'
 import ActionGroup from '../Actions/ActionGroup.vue'
 import ActionGroupItem from '../Actions/ActionGroupItem.vue'
 import ConfirmDialog from '../Dialogs/ConfirmDialog.vue'
+import ActionFormDialog from '../Dialogs/ActionFormDialog.vue'
 import DeleteConfirmDialog from '../Dialogs/DeleteConfirmDialog.vue'
 import DrawerLink from '../Drawer/DrawerLink.vue'
 import CellActions from '../Columns/CellActions.vue'
@@ -300,6 +320,11 @@ const props = defineProps({
     type: Object as PropType<Record<string, { edit: boolean; delete: boolean }>>,
     default: () => ({}),
   },
+  /** The refusals in `can` the server explained, from `meta.why`: those actions show disabled with the reason. */
+  why: {
+    type: Object as PropType<Record<string, Partial<Record<'edit' | 'delete', string>>>>,
+    default: () => ({}),
+  },
 })
 
 const emit = defineEmits(['update:search', 'sort', 'rowClick', 'update:filter', 'resetFilters'])
@@ -390,9 +415,12 @@ const {
   pendingBulk,
   bulkMessage,
   confirmBulk,
+  pendingForm,
+  pendingBulkForm,
 } = useSchemaActions({
   schema: () => props.schema,
   can: () => props.can,
+  why: () => props.why,
   queryParams: () => props.queryParams,
   recordLabel: () => props.drawerType,
   rowActionHandlers: () => props.rowActionHandlers,

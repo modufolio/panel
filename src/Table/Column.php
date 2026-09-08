@@ -64,6 +64,13 @@ final class Column
 
     private ?string $imageSize = null;
 
+    private ?string $onIcon = null;
+    private ?string $offIcon = null;
+    private ?string $onColor = null;
+    private ?string $offColor = null;
+    private ?string $onLabel = null;
+    private ?string $offLabel = null;
+
     private ?string $imageRounded = null;
 
     /** Whether label() was called — a humanised key is a fallback, not a declaration. */
@@ -390,6 +397,76 @@ final class Column
     }
 
     /**
+     * Render a boolean as a single clickable icon that flips the value in
+     * place — a star, a heart, a lock — rather than as a switch.
+     *
+     * Editable by definition: an icon nobody can click is
+     * {@see boolean()} with a nicer glyph, which {@see icon()} already covers.
+     * The save goes through the same `cellHandlers` entry an editable select
+     * uses, so the page persists it exactly as it persists any other in-place
+     * edit; {@see disabledWhen()} and {@see readOnlyWhen()} apply here too,
+     * the latter dropping the button for a static icon.
+     */
+    public function toggleIcon(): self
+    {
+        $this->type     = 'toggleIcon';
+        $this->editable = true;
+
+        return $this;
+    }
+
+    /** Icon shown while the value is true. Defaults to a tick on the client. */
+    public function onIcon(string $icon): self
+    {
+        $this->onIcon = $icon;
+
+        return $this;
+    }
+
+    /** Icon shown while the value is false. Defaults to a cross. */
+    public function offIcon(string $icon): self
+    {
+        $this->offIcon = $icon;
+
+        return $this;
+    }
+
+    /** Colour token for the true state. Defaults to success. */
+    public function onColor(string $color): self
+    {
+        $this->onColor = $color;
+
+        return $this;
+    }
+
+    /** Colour token for the false state. Defaults to gray. */
+    public function offColor(string $color): self
+    {
+        $this->offColor = $color;
+
+        return $this;
+    }
+
+    /**
+     * Accessible name and tooltip for the true state — what the icon means,
+     * and what clicking it would do. Defaults to "On".
+     */
+    public function onLabel(string $label): self
+    {
+        $this->onLabel = $label;
+
+        return $this;
+    }
+
+    /** The same for the false state. Defaults to "Off". */
+    public function offLabel(string $label): self
+    {
+        $this->offLabel = $label;
+
+        return $this;
+    }
+
+    /**
      * Value → colour map for badges and read-only selects.
      *
      * Accepts a literal map or a backed enum class-string —
@@ -553,6 +630,12 @@ final class Column
             'align'           => $this->align,
             'color'           => $this->color,
             'icon'            => $this->icon,
+            'onIcon'          => $this->onIcon,
+            'offIcon'         => $this->offIcon,
+            'onColor'         => $this->onColor,
+            'offColor'        => $this->offColor,
+            'onLabel'         => $this->onLabel,
+            'offLabel'        => $this->offLabel,
             'size'            => $this->imageSize,
             'rounded'         => $this->imageRounded,
             'limit'           => $this->limit,

@@ -29,7 +29,7 @@ export interface ListFiltersOptions<T extends FilterValues = FilterValues> {
 
 export interface SortPayload {
   column: string
-  direction: 'asc' | 'desc'
+  direction: 'asc' | 'desc' | null
 }
 
 /** '' , null/undefined, [] and objects whose values are all empty (e.g. a blank date range). */
@@ -111,6 +111,12 @@ export function useListFilters<T extends FilterValues = FilterValues>(
   }
 
   function handleSort({ column, direction }: SortPayload) {
+    // No direction: back to the resource's default order.
+    if (!direction || !column) {
+      form.sort = ''
+      return
+    }
+
     form.sort = direction === 'desc' ? `-${column}` : column
   }
 

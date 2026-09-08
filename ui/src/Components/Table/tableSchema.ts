@@ -6,6 +6,7 @@
  * cannot export type declarations).
  */
 
+import type { FieldSpec } from '../Fields/fieldsFromSpec'
 import type { TableRecord } from './tableTypes'
 
 export type SchemaColumnType =
@@ -16,6 +17,7 @@ export type SchemaColumnType =
   | 'badge'
   | 'date'
   | 'boolean'
+  | 'toggleIcon'
   | 'image'
   | 'icon'
   | 'color'
@@ -90,6 +92,18 @@ export interface SchemaColumn {
   color?: string
   /** Registered icon name rendered before the value. */
   icon?: string
+  /** Icon shown for the true state of `type: 'toggleIcon'`. */
+  onIcon?: string
+  /** Icon shown for the false state of `type: 'toggleIcon'`. */
+  offIcon?: string
+  /** Colour token for the true state of `type: 'toggleIcon'`. */
+  onColor?: string
+  /** Colour token for the false state of `type: 'toggleIcon'`. */
+  offColor?: string
+  /** Accessible name for the true state of `type: 'toggleIcon'`. */
+  onLabel?: string
+  /** Accessible name for the false state of `type: 'toggleIcon'`. */
+  offLabel?: string
   /** Truncate after N characters, keeping the full value in the title. */
   limit?: number
   /** Offer click-to-copy on the cell. */
@@ -295,6 +309,14 @@ export interface SchemaRowAction {
   visibleWhen?: string
   confirm?: boolean
   confirmMessage?: string
+  /** Refused for this record, with a reason the server gave: shown disabled, the reason as tooltip. */
+  disabled?: boolean
+  disabledReason?: string
+  /** `form` behaviour: what the dialog asks for before posting; none means a confirmation only. */
+  fields?: FieldSpec[]
+  /** The method the dialog submits with; post when absent. */
+  method?: string
+  submitLabel?: string
 }
 
 /** One action offered on a selection, from `schema.bulkActionItems`. */
@@ -309,6 +331,10 @@ export interface SchemaBulkAction {
   url?: string
   confirm?: boolean
   confirmMessage?: string
+  /** What a dialog asks for before the selection is posted; the values travel beside `ids`. */
+  fields?: FieldSpec[]
+  method?: string
+  submitLabel?: string
 }
 
 /**
@@ -376,16 +402,28 @@ export function visibleRowActions(
   actions: SchemaRowAction[] | undefined,
   record: TableRecord,
   can?: { edit: boolean; delete: boolean },
+  why?: Partial<Record<'edit' | 'delete', string>>,
 ): SchemaRowAction[] {
-  return (actions ?? []).filter((action) => {
-    if (action.hiddenWhen && getPath(record, action.hiddenWhen)) return false
-    if (action.visibleWhen && !getPath(record, action.visibleWhen)) return false
+  const visible: SchemaRowAction[] = []
+
+  for (const action of actions ?? []) {
+    if (action.hiddenWhen && getPath(record, action.hiddenWhen)) continue
+    if (action.visibleWhen && !getPath(record, action.visibleWhen)) continue
 
     const verdict = verdictFor(action)
-    if (can && verdict && !can[verdict]) return false
 
-    return true
-  })
+    if (can && verdict && !can[verdict]) {
+      // A refusal the server explained stays on the menu, greyed out, with
+      // the sentence as its tooltip; one it did not explain is not offered.
+      const reason = why?.[verdict]
+      if (reason) visible.push({ ...action, disabled: true, disabledReason: reason })
+      continue
+    }
+
+    visible.push(action)
+  }
+
+  return visible
 }
 
 export function visibleCellActions(

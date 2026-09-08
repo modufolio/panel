@@ -1,10 +1,9 @@
 <template>
   <div class="ui-table-header-ctn border-b border-gray-200">
     <div class="ui-table-header flex items-center justify-between gap-3 p-4">
-      <div class="flex-1">
+      <div class="flex flex-1 items-center gap-3">
         <slot name="header" />
-      </div>
-      <div class="flex items-center gap-3">
+
         <div v-if="searchable" class="ui-table-search">
           <div class="relative">
             <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -22,7 +21,9 @@
             />
           </div>
         </div>
+      </div>
 
+      <div class="flex items-center gap-3">
         <slot name="filters" />
 
         <!-- Only once there is a hierarchy to collapse -->
