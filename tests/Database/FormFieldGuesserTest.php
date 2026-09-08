@@ -7,6 +7,7 @@ namespace Modufolio\Panel\Tests\Database;
 use Modufolio\Panel\Blueprint\FormFieldGuesser;
 use Modufolio\Panel\Blueprint\Separator;
 use Modufolio\Panel\Field\ComputedType;
+use Modufolio\Panel\Field\TextType;
 use Modufolio\Panel\Field\TextareaType;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Table\RelationOptions;
@@ -14,6 +15,7 @@ use Modufolio\Panel\Tests\Case\DoctrineTestCase;
 use Modufolio\Panel\Tests\Fixture\Entity\Actor;
 use Modufolio\Panel\Tests\Fixture\Entity\CastMember;
 use Modufolio\Panel\Tests\Fixture\Entity\Credit;
+use Modufolio\Panel\Tests\Fixture\Entity\Genre;
 use Modufolio\Panel\Tests\Fixture\Entity\Distributor;
 use Modufolio\Panel\Tests\Fixture\Entity\Movie;
 use Modufolio\Panel\Tests\Fixture\Entity\Studio;
@@ -45,14 +47,14 @@ final class FormFieldGuesserTest extends DoctrineTestCase
      * can hand the guesser exactly the declaration it wants to exercise.
      *
      * @param class-string                                            $entityClass
-     * @param array<int|string, string|Separator|array<string, mixed>>|null $keys
+     * @param array<int|string, string|Separator|Field|array<string, mixed>>|null $keys
      */
     private function resourceFor(string $entityClass, ?array $keys): PanelResource
     {
         return new class ($entityClass, $keys) extends PanelResource {
             /**
              * @param class-string                                        $entityClass
-             * @param array<int|string, string|Separator|array<string, mixed>>|null $keys
+             * @param array<int|string, string|Separator|Field|array<string, mixed>>|null $keys
              */
             public function __construct(
                 private readonly string $entityClass,
@@ -90,7 +92,7 @@ final class FormFieldGuesserTest extends DoctrineTestCase
     /**
      * Guess the Movie form with the given keys and return the fields by key.
      *
-     * @param array<int|string, string|Separator|array<string, mixed>> $keys
+     * @param array<int|string, string|Separator|Field|array<string, mixed>> $keys
      *
      * @return array<string, array<string, mixed>>
      */
@@ -243,6 +245,44 @@ final class FormFieldGuesserTest extends DoctrineTestCase
         $fields = $this->guessMovie(['genre' => ['options' => [['value' => 'drama', 'label' => 'Only drama']]]]);
 
         self::assertSame([['value' => 'drama', 'label' => 'Only drama']], $fields['genre']['options']);
+    }
+
+    /**
+     * A column the mapping does not declare as an enum can still be one: the
+     * entry names the enum and the cases are expanded here, as they are for a
+     * filter's options or a column's colours. `Field::options()` has always
+     * been typed for it; the builder saw the class name and refused.
+     */
+    public function testOptionsMayNameAnEnumInsteadOfListingItsCases(): void
+    {
+        $fields = $this->guessMovie([Field::make('rating')->select()->options(Genre::class)]);
+
+        self::assertSame('select', $fields['rating']['type']);
+        self::assertSame(
+            [['value' => 'drama', 'label' => 'Drama'], ['value' => 'sci_fi', 'label' => 'Science fiction'], ['value' => 'comedy', 'label' => 'Comedy']],
+            $fields['rating']['options'],
+        );
+    }
+
+    /**
+     * A short string column named for a colour is a picker: `#6366f1` is not
+     * something to type into a text input, and the mapping says as much
+     * without the resource repeating it.
+     */
+    public function testAShortColourColumnBecomesAPicker(): void
+    {
+        $fields = $this->guessMovie(['poster_colour', 'certificate']);
+
+        self::assertSame('color', $fields['poster_colour']['type']);
+        self::assertSame('text', $fields['certificate']['type'], 'As short, but not named for a colour.');
+    }
+
+    /** The guess is last in line: a declared type still wins. */
+    public function testADeclaredTypeWinsOverTheColourGuess(): void
+    {
+        $fields = $this->guessMovie(['poster_colour' => ['type' => TextType::class]]);
+
+        self::assertSame('text', $fields['poster_colour']['type']);
     }
 
     public function testAStringColumnsLengthBecomesTheMaxRule(): void

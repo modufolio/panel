@@ -76,6 +76,9 @@ final class Column
     /** Whether label() was called — a humanised key is a fallback, not a declaration. */
     private bool $labelDeclared = false;
 
+    /** Whether type() was called — `text` is the starting point, not a declaration. */
+    private bool $typeDeclared = false;
+
     private bool $searchable = false;
 
     private function __construct(private readonly string $key)
@@ -107,9 +110,32 @@ final class Column
      */
     public function type(string $type): self
     {
-        $this->type = $type;
+        $this->type         = $type;
+        $this->typeDeclared = true;
 
         return $this;
+    }
+
+    /**
+     * Whether a type was written down. `text` is where a column starts, not
+     * something it said — which is what lets the mapping fill in a date or an
+     * enum's badge without ever overruling a declaration.
+     */
+    public function hasDeclaredType(): bool
+    {
+        return $this->typeDeclared;
+    }
+
+    /** Whether choices were declared, literal or from an enum. */
+    public function hasOptions(): bool
+    {
+        return $this->options !== null;
+    }
+
+    /** Whether a value → colour map was declared. */
+    public function hasColors(): bool
+    {
+        return $this->colors !== null;
     }
 
     /**
@@ -373,7 +399,8 @@ final class Column
      */
     public function money(string $currency = 'EUR'): self
     {
-        $this->type     = 'money';
+        $this->type         = 'money';
+        $this->typeDeclared = true;
         $this->currency = $currency;
 
         return $this;
@@ -382,8 +409,9 @@ final class Column
     /** Render as a fixed-precision number. */
     public function numeric(int $decimals = 0): self
     {
-        $this->type     = 'numeric';
-        $this->decimals = $decimals;
+        $this->type         = 'numeric';
+        $this->typeDeclared = true;
+        $this->decimals     = $decimals;
 
         return $this;
     }
@@ -391,7 +419,8 @@ final class Column
     /** Render as a tick/cross. */
     public function boolean(): self
     {
-        $this->type = 'boolean';
+        $this->type         = 'boolean';
+        $this->typeDeclared = true;
 
         return $this;
     }
@@ -409,8 +438,9 @@ final class Column
      */
     public function toggleIcon(): self
     {
-        $this->type     = 'toggleIcon';
-        $this->editable = true;
+        $this->type         = 'toggleIcon';
+        $this->typeDeclared = true;
+        $this->editable     = true;
 
         return $this;
     }
