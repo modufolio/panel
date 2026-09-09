@@ -103,10 +103,13 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue'])
 
+// `??`, not `||`: zero is a value a number filter is asked for — "seats > 0",
+// a range starting at 0 — and `||` blanked the input it arrived in, while the
+// watch below kept it. The two now agree.
 const operator = ref(props.modelValue?.operator || '=')
-const value = ref(props.modelValue?.value || null)
-const rangeMin = ref(props.modelValue?.rangeMin || null)
-const rangeMax = ref(props.modelValue?.rangeMax || null)
+const value = ref(props.modelValue?.value ?? null)
+const rangeMin = ref(props.modelValue?.rangeMin ?? null)
+const rangeMax = ref(props.modelValue?.rangeMax ?? null)
 
 const hasValue = computed(() => {
   if (operator.value === 'between') {

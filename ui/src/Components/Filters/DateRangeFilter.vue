@@ -122,59 +122,66 @@ function clear() {
   emitUpdate()
 }
 
-function applyPreset(preset: DatePreset) {
+/**
+ * A calendar day as `YYYY-MM-DD`, read in the viewer's own timezone.
+ *
+ * Not `toISOString()`: that formats in UTC, and the month presets build their
+ * dates at local midnight — so anywhere east of UTC "This month" began on the
+ * last day of the previous one, and "Today" flipped to yesterday for anyone
+ * filtering before their offset had elapsed.
+ */
+function isoDate(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${date.getFullYear()}-${month}-${day}`
+}
+
+/**
+ * The range a preset stands for, today. One definition rather than two:
+ * applying a preset and recognising the one in force used to compute the same
+ * four dates separately, which is two places for a boundary to drift.
+ */
+function rangeFor(preset: DatePreset): { start: string; end: string } {
   const today = new Date()
-  const todayStr = today.toISOString().split('T')[0]
+  const todayStr = isoDate(today)
 
   if (preset.type === 'month') {
-    // This month
-    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
-    start.value = monthStart.toISOString().split('T')[0]
-    end.value = todayStr
-  } else if (preset.type === 'last_month') {
-    // Last month
-    const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1)
-    const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0)
-    start.value = lastMonthStart.toISOString().split('T')[0]
-    end.value = lastMonthEnd.toISOString().split('T')[0]
-  } else if (preset.days === 0) {
-    // Today
-    start.value = todayStr
-    end.value = todayStr
-  } else {
-    // Last X days
-    const pastDate = new Date(today)
-    pastDate.setDate(pastDate.getDate() - preset.days! + 1)
-    start.value = pastDate.toISOString().split('T')[0]
-    end.value = todayStr
+    return { start: isoDate(new Date(today.getFullYear(), today.getMonth(), 1)), end: todayStr }
   }
+
+  if (preset.type === 'last_month') {
+    // Day 0 of this month is the last day of the previous one.
+    return {
+      start: isoDate(new Date(today.getFullYear(), today.getMonth() - 1, 1)),
+      end: isoDate(new Date(today.getFullYear(), today.getMonth(), 0)),
+    }
+  }
+
+  if (preset.days === 0) {
+    return { start: todayStr, end: todayStr }
+  }
+
+  // Today counts as one of the N, so "Last 7 days" reaches back six.
+  const from = new Date(today)
+  from.setDate(from.getDate() - preset.days! + 1)
+
+  return { start: isoDate(from), end: todayStr }
+}
+
+function applyPreset(preset: DatePreset) {
+  const range = rangeFor(preset)
+
+  start.value = range.start
+  end.value = range.end
 
   emitUpdate()
 }
 
 function isActivePreset(preset: DatePreset) {
-  const today = new Date()
-  const todayStr = today.toISOString().split('T')[0]
+  const range = rangeFor(preset)
 
-  if (preset.type === 'month') {
-    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
-    const monthStartStr = monthStart.toISOString().split('T')[0]
-    return start.value === monthStartStr && end.value === todayStr
-  } else if (preset.type === 'last_month') {
-    const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1)
-    const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0)
-    return (
-      start.value === lastMonthStart.toISOString().split('T')[0] &&
-      end.value === lastMonthEnd.toISOString().split('T')[0]
-    )
-  } else if (preset.days === 0) {
-    return start.value === todayStr && end.value === todayStr
-  } else {
-    const pastDate = new Date(today)
-    pastDate.setDate(pastDate.getDate() - preset.days! + 1)
-    const pastDateStr = pastDate.toISOString().split('T')[0]
-    return start.value === pastDateStr && end.value === todayStr
-  }
+  return start.value === range.start && end.value === range.end
 }
 
 watch(
