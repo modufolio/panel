@@ -46,6 +46,28 @@ final class MetricCalculatorTest extends DoctrineTestCase
     }
 
     /**
+     * Extra rows for one year, so a partition has sizes to order *by*.
+     *
+     * `seed()` gives one movie per year, which is three tied slices — enough
+     * to check that a partition groups, and useless for checking that it
+     * orders.
+     */
+    private function seedYear(int $year, int $extra): void
+    {
+        $movies = [];
+
+        for ($i = 0; $i < $extra; $i++) {
+            $movies[] = (new Movie())
+                ->setTitle(sprintf('Filler %d/%d', $year, $i))
+                ->setYear($year)
+                ->setCreatedAt(new \DateTimeImmutable('-2 days 12:00'));
+        }
+
+        $this->persist(...$movies);
+        $this->clear();
+    }
+
+    /**
      * @param  list<Metric>              $metrics
      * @return list<array<string, mixed>>
      */
@@ -148,21 +170,50 @@ final class MetricCalculatorTest extends DoctrineTestCase
     public function testAPartitionGroupsAndOrdersBySize(): void
     {
         $this->seed();
+        // 1979 → 3, 1995 → 2, 1975 → 1: three distinct sizes, so the assertion
+        // below is about ordering rather than about whatever order the engine
+        // returned.
+        $this->seedYear(1979, 2);
+        $this->seedYear(1995, 1);
 
         [$metric] = $this->compute([Metric::partition('year')->count()]);
 
         self::assertSame('partition', $metric['type']);
         self::assertCount(3, $metric['slices'], 'One slice per year still standing.');
+        self::assertSame(['1979', '1995', '1975'], array_column($metric['slices'], 'label'));
+        self::assertSame([3, 2, 1], array_column($metric['slices'], 'value'));
+    }
+
+    /**
+     * The case that broke the build: three slices of one each.
+     *
+     * The query groups without ordering, so equal counts arrive in whatever
+     * order the engine chose — and it chose differently on MySQL than on
+     * PostgreSQL and SQL Server. The label is the tie-break, so every engine
+     * now agrees.
+     */
+    public function testTiedSlicesAreOrderedByLabel(): void
+    {
+        $this->seed();
+
+        [$metric] = $this->compute([Metric::partition('year')->count()]);
+
+        self::assertSame([1, 1, 1], array_column($metric['slices'], 'value'), 'All tied.');
         self::assertSame(['1975', '1979', '1995'], array_column($metric['slices'], 'label'));
     }
 
     public function testAPartitionKeepsTheLargestSlicesAndSumsTheRest(): void
     {
         $this->seed();
+        // Which two survive has to be a fact about size, not about the order
+        // the engine happened to return equal counts in.
+        $this->seedYear(1979, 2);
+        $this->seedYear(1995, 1);
 
         [$metric] = $this->compute([Metric::partition('year')->count()->limit(2)]);
 
         self::assertCount(3, $metric['slices'], 'Two slices, plus what they left over.');
+        self::assertSame(['1979', '1995'], array_column(array_slice($metric['slices'], 0, 2), 'label'));
         self::assertSame('Other', $metric['slices'][2]['label']);
         self::assertSame(1, $metric['slices'][2]['value']);
     }

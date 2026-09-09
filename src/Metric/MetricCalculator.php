@@ -217,7 +217,18 @@ final class MetricCalculator
             ], static fn (mixed $item): bool => $item !== null);
         }
 
-        usort($slices, static fn (array $a, array $b): int => $b['value'] <=> $a['value']);
+        // Largest first, ties broken by label. The tie-break is not cosmetic:
+        // the query groups without ordering, so equal counts come back in
+        // whatever order the engine chose — MySQL, PostgreSQL and SQL Server
+        // each chose differently for the same rows — and a stable sort then
+        // preserves that difference. Without a total order the slice order
+        // varies by engine, and under a `limit()` so does *which* slices
+        // survive and which are summed into "Other".
+        usort(
+            $slices,
+            static fn (array $a, array $b): int
+                => [$b['value'], $a['label']] <=> [$a['value'], $b['label']],
+        );
 
         return ['slices' => $this->capped($slices, $metric->slices())];
     }
