@@ -21,15 +21,19 @@ final class DrawerTest extends TestCase
         self::assertSame([], Drawer::make()->declaredTabs());
     }
 
-    /** A listed key with no label of its own takes the resource's; one with a label keeps it. */
+    /**
+     * A listed key with no label of its own takes the resource's; one with
+     * a label keeps it; one nobody labelled is humanised here, so the grid
+     * never has to.
+     */
     public function testCollectLabelsListedKeysFromTheSharedFields(): void
     {
-        $tabs = [DrawerTab::record('details')->fields(['title', 'starts_at', 'contact' => 'Who'])];
+        $tabs = [DrawerTab::record('details')->fields(['title', 'starts_at', 'contact' => 'Who', 'ticket_count'])];
 
         $collected = DrawerTab::collect($tabs, ['title' => 'Gala'], [], ['starts_at' => 'When', 'contact' => 'Contact']);
 
         self::assertSame(
-            ['title' => null, 'starts_at' => 'When', 'contact' => 'Who'],
+            ['title' => 'Title', 'starts_at' => 'When', 'contact' => 'Who', 'ticket_count' => 'Ticket count'],
             $collected[0]['fields'],
         );
     }

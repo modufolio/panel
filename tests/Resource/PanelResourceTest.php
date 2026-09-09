@@ -73,7 +73,7 @@ final class PanelResourceTest extends TestCase
 
         $tabs = $resource->drawerTabsFor(['title' => 'Gala', 'starts_at' => '2026-09-05']);
 
-        self::assertSame(['title' => null, 'starts_at' => 'When'], $tabs[0]['fields']);
+        self::assertSame(['title' => 'Title', 'starts_at' => 'When'], $tabs[0]['fields']);
         self::assertSame(['starts_at' => 'When'], $resource->fieldLabels());
     }
 

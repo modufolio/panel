@@ -31,6 +31,8 @@ describe('ResourcePage saved views', () => {
     key: 'screenings',
     baseUrl: '/panel/screenings',
     drawerType: 'screening',
+    title: 'Screenings',
+    label: 'Screening',
   }
 
   const screenings = { data: [], meta: { current_page: 1, last_page: 1, total: 0, from: 0, to: 0, per_page: 25 } }

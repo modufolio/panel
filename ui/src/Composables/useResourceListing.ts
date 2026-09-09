@@ -4,7 +4,6 @@ import { filterDefaults } from '../Components/Table/tableSchema'
 import { columnPreferencesFor, loadColumnPreferences, reconcileColumnPreferences, saveColumnPreferences } from './columnPreferences'
 import type { BoardPayload, ResourceViewOption } from '../Components/Board/boardTypes'
 import { useDrawerStack, type StackItem } from '../Components/Drawer/useDrawerStack'
-import { titleLabel } from '../Utils/labels'
 import { useListFilters } from './useListFilters'
 
 /**
@@ -52,6 +51,10 @@ export interface ResourceMeta {
    */
   urls?: ResourceUrls
   drawerType: string
+  /** The heading, plural: 'Movies'. The server's `PanelResource::title()`. */
+  title: string
+  /** One record, as a button reads it: 'Movie'. The server's `PanelResource::label()`. */
+  label: string
   canCreate?: boolean
   canEdit?: boolean
   canDelete?: boolean
@@ -129,13 +132,10 @@ export function useResourceListing(props: ResourceListingProps) {
     () => (attrs[props.resource.key] as ResourceRecords | undefined) ?? { data: [] },
   )
 
-  const title = computed(() => titleLabel(props.resource.key))
-
-  /** 'movies' → 'Movie' — matches the server's drawerType-derived label. */
-  const singularLabel = computed(() => {
-    const type = props.resource.drawerType
-    return type.charAt(0).toUpperCase() + type.slice(1)
-  })
+  // Both said by the server: a label is the resource's to decide, and a
+  // client humanising the key on its own could not see an override.
+  const title = computed(() => props.resource.title)
+  const singularLabel = computed(() => props.resource.label)
 
   /**
    * Which columns are on. Seeded from what this browser remembers for the

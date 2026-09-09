@@ -32,6 +32,8 @@ describe('ResourcePage picking an image for a drawer field', () => {
     key: 'movies',
     baseUrl: '/movies',
     drawerType: 'movie',
+    title: 'Movies',
+    label: 'Movie',
     canCreate: true,
     views: [{ key: 'table', label: 'Table', icon: 'table', type: 'table' }],
     view: 'table',

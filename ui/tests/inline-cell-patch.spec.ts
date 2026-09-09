@@ -39,6 +39,8 @@ describe('ResourcePage inline cell edits', () => {
     key: 'screenings',
     baseUrl: '/screenings',
     drawerType: 'screening',
+    title: 'Screenings',
+    label: 'Screening',
     urls: { patch: '/panel/screenings/{id}' },
   }
 

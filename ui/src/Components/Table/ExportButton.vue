@@ -121,6 +121,15 @@ const props = defineProps({
     type: String,
     default: 'export',
   },
+  /**
+   * The heading a printed table carries. The generated pages pass the
+   * server's resource title; a page that passes none gets the filename
+   * humanised.
+   */
+  title: {
+    type: String,
+    default: null,
+  },
   disabled: {
     type: Boolean,
     default: false,
@@ -307,7 +316,7 @@ async function exportViaBackend(format: string, filename: string) {
 function handlePrint() {
   isOpen.value = false
 
-  const title = titleLabel(props.filename)
+  const title = props.title ?? titleLabel(props.filename)
   const dataToExport = recordsToExport.value
   printTable(dataToExport, props.columns, title)
 

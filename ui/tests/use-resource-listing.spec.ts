@@ -21,6 +21,8 @@ const resource = {
   key: 'events',
   baseUrl: '/events',
   drawerType: 'event',
+  title: 'Events',
+  label: 'Event',
   canCreate: false,
   canEdit: false,
   canDelete: false,
@@ -64,11 +66,11 @@ describe('useResourceListing', () => {
     expect(mountWith().records.value).toEqual({ data: [] })
   })
 
-  it('derives the page title and singular label from the resource', () => {
-    const listing = mountWith()
+  it('reads the page title and singular label the server sent, humanising nothing', () => {
+    const listing = mountWith({}, { title: 'Bookings', label: 'Booking' })
 
-    expect(listing.title.value).toBe('Events')
-    expect(listing.singularLabel.value).toBe('Event')
+    expect(listing.title.value).toBe('Bookings')
+    expect(listing.singularLabel.value).toBe('Booking')
   })
 
 

@@ -602,7 +602,9 @@ final class DrawerTab
     }
 
     /**
-     * A listed key with no label of its own takes the resource's.
+     * A listed key with no label of its own takes the resource's, and one
+     * the resource never labelled either is humanised here — so every key
+     * the server lists arrives labelled, and the grid never has to guess.
      *
      * @param  array<string, mixed>  $declaration
      * @param  array<string, string> $labels
@@ -610,15 +612,17 @@ final class DrawerTab
      */
     private static function labelled(array $declaration, array $labels): array
     {
-        if ($labels === [] || !is_array($declaration['fields'] ?? null)) {
+        if (!is_array($declaration['fields'] ?? null)) {
             return $declaration;
         }
 
         foreach ($declaration['fields'] as $key => $entry) {
-            if ($entry === null && isset($labels[$key])) {
-                $declaration['fields'][$key] = $labels[$key];
-            } elseif (is_array($entry) && array_key_exists('wide', $entry) && $entry['label'] === null && isset($labels[$key])) {
-                $declaration['fields'][$key]['label'] = $labels[$key];
+            $label = $labels[$key] ?? Label::sentence((string) $key);
+
+            if ($entry === null) {
+                $declaration['fields'][$key] = $label;
+            } elseif (is_array($entry) && array_key_exists('wide', $entry) && $entry['label'] === null) {
+                $declaration['fields'][$key]['label'] = $label;
             }
         }
 

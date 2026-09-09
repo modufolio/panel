@@ -111,6 +111,7 @@
           :data="records.data"
           :columns="table.columns"
           :filename="resource.key"
+          :title="title"
           :export-url="resource.exportUrl"
           :selected-records="selectedRecords"
         />

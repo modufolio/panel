@@ -10,6 +10,7 @@ use Modufolio\Panel\Metric\Metric;
 use Modufolio\Panel\Query\DerivedListQuery;
 use Modufolio\Panel\Query\ListQueryInterface;
 use Modufolio\Panel\Query\QueryInterface;
+use Modufolio\Panel\Support\Label;
 use Modufolio\Panel\Table\TableSchema;
 use Modufolio\JsonApi\JsonApiSerializer;
 
@@ -324,6 +325,29 @@ abstract class PanelResource
         $key = $this->key();
 
         return str_ends_with($key, 's') ? substr($key, 0, -1) : $key;
+    }
+
+    /**
+     * The resource in the plural, as a page heading reads it: 'Movies',
+     * 'Form Submissions'. Humanised from {@see key()} until a resource says
+     * otherwise.
+     *
+     * Sent to the client rather than derived there: the label of a thing is
+     * the server's to decide, and a client humanising the key on its own is
+     * a second implementation of this method that cannot see an override.
+     */
+    public function title(): string
+    {
+        return Label::title($this->key());
+    }
+
+    /**
+     * One record, as a button reads it: 'Movie', 'New Form Submission'.
+     * Humanised from {@see drawerType()} until a resource says otherwise.
+     */
+    public function label(): string
+    {
+        return Label::title($this->drawerType());
     }
 
     /**

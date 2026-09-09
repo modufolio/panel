@@ -37,6 +37,8 @@ describe('ResourcePage', () => {
     key: 'movies',
     baseUrl: '/movies',
     drawerType: 'movie',
+    title: 'Movies',
+    label: 'Movie',
     canCreate: true,
     views: [tableView],
     view: 'table',

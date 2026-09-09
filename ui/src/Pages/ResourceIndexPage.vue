@@ -1,6 +1,6 @@
 <template>
   <div>
-    <Head :title="titleLabel(resource.key)" />
+    <Head :title="resource.title" />
 
     <!--
       Everything a generated listing shows comes from ResourcePage, fed the
@@ -18,7 +18,6 @@ import { computed, useAttrs, type PropType } from 'vue'
 import { Head } from '@inertiajs/vue3'
 import ResourcePage from '../Components/Resource/ResourcePage.vue'
 import { type ResourceMeta } from '../Composables/useResourceListing'
-import { titleLabel } from '../Utils/labels'
 
 defineOptions({ inheritAttrs: false })
 
