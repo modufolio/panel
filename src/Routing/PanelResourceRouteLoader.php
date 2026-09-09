@@ -52,6 +52,14 @@ final class PanelResourceRouteLoader extends Loader
         private readonly ResourceLocatorInterface|\Closure $resources,
         private readonly string $controllerClass = ResourceController::class,
         private readonly string $prefix = '/panel',
+        /**
+         * Who may read the permission page. It enumerates the whole permission
+         * model — which roles reach what, and which fields each may write — so
+         * it defaults to the most privileged role rather than to the panel's.
+         *
+         * @var list<string>
+         */
+        private readonly array $permissionsRoles = ['ROLE_SUPER_ADMIN'],
     ) {
         parent::__construct();
     }
@@ -311,6 +319,16 @@ final class PanelResourceRouteLoader extends Loader
         // resource declared — which resources then answer, and for whom, is
         // decided per resource by GlobalSearch itself.
         $routes->add('panel_search', $this->createRoute("{$this->prefix}/search", ['GET'], 'search', '', $searchRoles));
+
+        // The permission inspector as a page, beside the resources it reports
+        // on. Always generated, like the search: whether it answers depends on
+        // the host having wired a report, which is a container question rather
+        // than a routing one. Underscored so it cannot collide with a resource
+        // key — `/panel/permissions` is a listing someone may well want.
+        $routes->add(
+            'panel_permissions',
+            $this->createRoute("{$this->prefix}/_permissions", ['GET'], 'permissions', '', $this->permissionsRoles),
+        );
 
         return $routes;
     }

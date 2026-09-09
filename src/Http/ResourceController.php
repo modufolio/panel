@@ -9,6 +9,7 @@ use Modufolio\Appkit\Inertia\Inertia;
 use Modufolio\Appkit\Security\Token\TokenStorageInterface;
 use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Contracts\ExportAdapterProviderInterface;
+use Modufolio\Panel\Contracts\PermissionReportProviderInterface;
 use Modufolio\Panel\Contracts\ResourceLocatorInterface;
 use Modufolio\Panel\Delete\Collector;
 use Modufolio\Panel\Delete\PlanExecutor;
@@ -79,6 +80,7 @@ final class ResourceController
         ?FormResolver $forms = null,
         private readonly ?ExportAdapterProviderInterface $exports = null,
         private readonly ?GlobalSearch $search = null,
+        private readonly ?PermissionReportProviderInterface $permissions = null,
     ) {
         // A host without a media library gets the plain resolver.
         $this->forms = $forms ?? new FormResolver($entityManager);
@@ -92,9 +94,13 @@ final class ResourceController
         ?string $uuid = null,
         ?string $field = null,
     ): ResponseInterface|Inertia {
-        // The one operation that spans resources instead of naming one.
+        // The operations that span resources instead of naming one.
         if ($operation === 'search') {
             return $this->search($request);
+        }
+
+        if ($operation === 'permissions') {
+            return $this->permissions();
         }
 
         $resource = $this->resource($resourceClass);
@@ -173,14 +179,11 @@ final class ResourceController
             'previousRecordUrl' => $navigation['previous'],
             // What the viewer may do with this record and where, so the
             // frame's footer offers exactly what the endpoints would accept.
-            'can'               => [
-                'edit'   => $resource->permissions()->edit($entity, $this->user()),
-                'delete' => $resource->permissions()->delete($entity, $this->user()),
-            ],
-            'why'               => $this->reasons($resource, $entity),
+            'can'               => $this->verdicts($resource)->can($entity),
+            'why'               => $this->verdicts($resource)->why($entity),
             'urls'              => [
-                'edit'    => $this->routeUrl($resource->key() . '_edit', $resource->recordRouteParams($entity)),
-                'destroy' => $this->routeUrl($resource->key() . '_destroy', $resource->recordRouteParams($entity)),
+                'edit'    => RouteUrls::url($this->urlGenerator, $resource->key() . '_edit', $resource->recordRouteParams($entity)),
+                'destroy' => RouteUrls::url($this->urlGenerator, $resource->key() . '_destroy', $resource->recordRouteParams($entity)),
             ],
             // Badges count the rows the record already carries, so declaring
             // a tab costs no query. The resolved form comes along so an
@@ -658,30 +661,32 @@ final class ResourceController
     }
 
     /**
-     * The refusals a resource can explain for one record, for a frame's
-     * footer: `{delete: "Admins cannot be deleted"}`, empty when every
-     * ability is allowed or no reason is given.
+     * `GET {prefix}/_permissions`: the permission inspector as a page — what
+     * each role may do on every resource, and where two layers disagree.
      *
-     * @return array<string, string>
+     * The report is the application's to build (its routes, its roles, its
+     * idea of a user), so the panel asks a provider for it and renders what
+     * comes back. Without one there is nothing to show, and saying so is more
+     * use than an empty grid.
      */
-    private function reasons(PanelResource $resource, object $entity): array
+    private function permissions(): ResponseInterface|Inertia
     {
-        $permissions = $resource->permissions();
-        $reasons     = [];
+        $report = $this->permissions?->report();
 
-        foreach (['edit', 'delete'] as $ability) {
-            if ($permissions->{$ability}($entity, $this->user())) {
-                continue;
-            }
-
-            $reason = $permissions->reason($ability, $entity, $this->user());
-
-            if ($reason !== null) {
-                $reasons[$ability] = $reason;
-            }
+        if ($report === null) {
+            return $this->json([
+                'message' => 'The permission inspector is not wired: register a '
+                    . PermissionReportProviderInterface::class . ' to enable this page.',
+            ], 404);
         }
 
-        return $reasons;
+        return $this->page('Resource/Permissions', ['report' => $report->toArray()]);
+    }
+
+    /** This viewer's record-level verdicts, for the resource's own rules. */
+    private function verdicts(PanelResource $resource): RecordVerdicts
+    {
+        return new RecordVerdicts($resource->permissions(), $this->user());
     }
 
     /**

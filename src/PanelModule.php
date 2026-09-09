@@ -11,10 +11,12 @@ use Modufolio\Appkit\DependencyInjection\ServiceConfigurator;
 use Modufolio\Appkit\Module\AbstractModule;
 use Modufolio\Appkit\Security\Token\TokenStorageInterface;
 use Modufolio\Panel\Contracts\ExportAdapterProviderInterface;
+use Modufolio\Panel\Contracts\PermissionReportProviderInterface;
 use Modufolio\Panel\Contracts\ResourceLocatorInterface;
 use Modufolio\Panel\Export\NoExportAdapters;
 use Modufolio\Panel\Form\FormResolver;
 use Modufolio\Panel\Http\ResourceController;
+use Modufolio\Panel\Inspection\NoPermissionReport;
 use Modufolio\Panel\Inspection\PermissionInspector;
 use Modufolio\Panel\Search\GlobalSearch;
 use Modufolio\Panel\Resource\ContainerResourceLocator;
@@ -72,6 +74,7 @@ final class PanelModule extends AbstractModule
                 'forms' => FormResolver::class,
                 'exports' => ExportAdapterProviderInterface::class,
                 'search' => GlobalSearch::class,
+                'permissions' => PermissionReportProviderInterface::class,
             ],
         ];
     }
@@ -115,6 +118,9 @@ final class PanelModule extends AbstractModule
         $services
             ->set(ResourceLocatorInterface::class, fn (AppInterface $app) => new ContainerResourceLocator($app))
             ->set(FormResolver::class, fn (AppInterface $app) => new FormResolver($app->entityManager(), $mediaEntity))
-            ->set(ExportAdapterProviderInterface::class, fn () => new NoExportAdapters());
+            ->set(ExportAdapterProviderInterface::class, fn () => new NoExportAdapters())
+            // No report until a host wires one: only the application knows its
+            // roles and what a user carrying one looks like.
+            ->set(PermissionReportProviderInterface::class, fn () => new NoPermissionReport());
     }
 }

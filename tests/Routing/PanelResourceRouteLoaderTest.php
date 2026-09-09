@@ -48,12 +48,14 @@ final class PanelResourceRouteLoaderTest extends TestCase
      * Writes a real config file, because that is what the loader consumes —
      * `include`-ing a closure that configures a PanelResourceConfigurator.
      */
-    private function load(string $body, string $prefix = '/panel'): RouteCollection
+    /** @param list<string> $permissionsRoles */
+    private function load(string $body, string $prefix = '/panel', array $permissionsRoles = ['ROLE_SUPER_ADMIN']): RouteCollection
     {
-        return $this->loadWith($body, self::resolver(), $prefix);
+        return $this->loadWith($body, self::resolver(), $prefix, $permissionsRoles);
     }
 
-    private function loadWith(string $body, \Closure $resolver, string $prefix = '/panel'): RouteCollection
+    /** @param list<string> $permissionsRoles */
+    private function loadWith(string $body, \Closure $resolver, string $prefix = '/panel', array $permissionsRoles = ['ROLE_SUPER_ADMIN']): RouteCollection
     {
         $file = tempnam(sys_get_temp_dir(), 'panel_resources_') . '.php';
         file_put_contents($file, "<?php\n\nuse " . PanelResourceConfigurator::class . ";\n\nreturn {$body};\n");
@@ -68,7 +70,7 @@ final class PanelResourceRouteLoaderTest extends TestCase
             }
         };
 
-        return (new PanelResourceRouteLoader($locator, $resolver, FixtureController::class, $prefix))
+        return (new PanelResourceRouteLoader($locator, $resolver, FixtureController::class, $prefix, $permissionsRoles))
             ->load($file, 'panel_resource');
     }
 
@@ -88,7 +90,11 @@ final class PanelResourceRouteLoaderTest extends TestCase
         $names = array_keys($routes->all());
         sort($names);
 
-        self::assertSame(['events', 'events_export', 'events_show', 'panel_search'], $names, 'Read routes, plus the one search route every table gets.');
+        self::assertSame(
+            ['events', 'events_export', 'events_show', 'panel_permissions', 'panel_search'],
+            $names,
+            'Read routes, plus the two panel-wide routes every table gets: search, and the permission page.',
+        );
     }
 
     /**
@@ -210,6 +216,7 @@ final class PanelResourceRouteLoaderTest extends TestCase
             'actors_show'             => ['/panel/actors/{uuid}', ['GET']],
             'actors_store'            => ['/panel/actors', ['POST']],
             'actors_update'           => ['/panel/actors/{uuid}', ['PUT']],
+            'panel_permissions'       => ['/panel/_permissions', ['GET']],
             'panel_search'            => ['/panel/search', ['GET']],
         ], $actual);
     }
@@ -251,12 +258,27 @@ final class PanelResourceRouteLoaderTest extends TestCase
         }');
 
         foreach ($routes->all() as $name => $route) {
+            // The permission page is not one resource's: it reports on all of
+            // them, so it carries the role configured for the page itself.
+            $expected = $name === 'panel_permissions' ? [['ROLE_SUPER_ADMIN']] : [['ROLE_ADMIN']];
+
             self::assertSame(
-                [['ROLE_ADMIN']],
+                $expected,
                 $route->getDefault('_is_granted_roles'),
                 $name . ' must carry the declared roles',
             );
         }
+    }
+
+    /** Who may read the permission page is the host's call, not the resources'. */
+    public function testThePermissionPagesRolesAreConfigurable(): void
+    {
+        $routes = $this->load($this->readOnlyConfig(), permissionsRoles: ['ROLE_OWNER']);
+
+        self::assertSame(
+            [['ROLE_OWNER']],
+            $routes->get('panel_permissions')?->getDefault('_is_granted_roles'),
+        );
     }
 
     /** The resource's own menu() rides the index route alone: that is what it links to, and the export shares its roles anyway. */

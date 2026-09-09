@@ -11,6 +11,8 @@ use Modufolio\Panel\Http\ResourceController;
 use Modufolio\Panel\Resource\ContainerResourceLocator;
 use Psr\Container\ContainerInterface;
 use Modufolio\Panel\Resource\PanelResource;
+use Modufolio\Panel\Contracts\PermissionReportProviderInterface;
+use Modufolio\Panel\Inspection\PermissionReport;
 use Modufolio\Panel\Resource\Permissions;
 use Modufolio\Panel\Table\Column;
 use Modufolio\Panel\Table\TableSchema;
@@ -64,7 +66,11 @@ final class ResourceControllerTest extends DoctrineTestCase
         return $result;
     }
 
-    private function controller(PanelResource $resource, ?UrlGeneratorInterface $urls = null): ResourceController
+    private function controller(
+        PanelResource $resource,
+        ?UrlGeneratorInterface $urls = null,
+        ?PermissionReportProviderInterface $permissions = null,
+    ): ResourceController
     {
         $this->flash = new FlashBag();
 
@@ -81,6 +87,7 @@ final class ResourceControllerTest extends DoctrineTestCase
             tokenStorage: $this->createStub(TokenStorageInterface::class),
             flashBag: $this->flash,
             resources: new ContainerResourceLocator($container),
+            permissions: $permissions,
         );
 
         return $controller;
@@ -481,6 +488,73 @@ final class ResourceControllerTest extends DoctrineTestCase
 
         $this->clear();
         self::assertSame('Heat', self::em()->getRepository(Movie::class)->findOneBy(['uuid' => $uuid])?->getTitle());
+    }
+
+    // ── The permission page ───────────────────────────────────────────────
+
+    /**
+     * The report is the application's to build — its routes, its roles, its
+     * idea of a user — so the panel asks a provider and renders the answer.
+     */
+    public function testThePermissionPageRendersTheReportTheHostProvides(): void
+    {
+        $report = new PermissionReport(
+            roles: ['ROLE_ADMIN'],
+            resources: [
+                'movies' => [
+                    'key'         => 'movies',
+                    'class'       => DerivedMovieResource::class,
+                    'permissions' => Permissions::class,
+                    'prefix'      => '/panel',
+                    'routes'      => ['movies'],
+                    'overrides'   => [
+                        'view' => false, 'create' => false, 'edit' => false, 'delete' => false,
+                        'scope' => false, 'readable' => false, 'writable' => false, 'move' => false,
+                    ],
+                    'roles'       => [
+                        'ROLE_ADMIN' => [
+                            'routes' => ['movies' => true],
+                            'can'    => ['view' => true, 'create' => true, 'edit' => true, 'delete' => true],
+                            'fields' => ['readable' => ['title'], 'readDenied' => [], 'writeDenied' => []],
+                        ],
+                    ],
+                ],
+            ],
+            notes: [],
+        );
+
+        $provider = new class ($report) implements PermissionReportProviderInterface {
+            public function __construct(private readonly PermissionReport $report) {}
+
+            public function report(): PermissionReport
+            {
+                return $this->report;
+            }
+        };
+
+        $page = $this->page($this->controller(new DerivedMovieResource(), permissions: $provider)->handle(
+            $this->http('GET', '/panel/_permissions'),
+            // The operation spans every resource, so the class on the route is
+            // not read; the signature still wants one.
+            DerivedMovieResource::class,
+            'permissions',
+        ));
+
+        self::assertSame('Resource/Permissions', $page->component());
+        self::assertSame(['ROLE_ADMIN'], $page->props()['report']['roles']);
+    }
+
+    /** Without a provider there is nothing to show, and saying so beats an empty grid. */
+    public function testThePermissionPageIs404WithoutAnInspector(): void
+    {
+        $response = $this->response($this->controller(new DerivedMovieResource())->handle(
+            $this->http('GET', '/panel/_permissions'),
+            DerivedMovieResource::class,
+            'permissions',
+        ));
+
+        self::assertSame(404, $response->getStatusCode());
+        self::assertStringContainsString('not wired', (string) $response->getBody());
     }
 
     /** A resource whose title column is editable in place. */
