@@ -105,6 +105,12 @@ final class Column
         return $this->labelDeclared;
     }
 
+    /** The label as it stands — declared, taken from `fields()`, or humanised from the key. */
+    public function currentLabel(): string
+    {
+        return $this->label;
+    }
+
     /**
      * Render with a specific column component: text, badge, date, boolean,
      * image, icon, color. Unknown types fall back to text on the client.
@@ -125,6 +131,12 @@ final class Column
     public function hasDeclaredType(): bool
     {
         return $this->typeDeclared;
+    }
+
+    /** The type as it stands — declared, guessed, or the `text` a column starts as. */
+    public function currentType(): string
+    {
+        return $this->type;
     }
 
     /** Whether choices were declared, literal or from an enum. */
