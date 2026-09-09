@@ -10,16 +10,12 @@ use Modufolio\Panel\Query\ChainedListQuery;
 use Modufolio\Panel\Query\DerivedListQuery;
 use Modufolio\Panel\Query\ListQueryInterface;
 use Modufolio\Panel\Routing\ResourceBaseUrl;
-use Modufolio\Panel\Routing\RouteUrls;
 use Modufolio\Panel\Routing\Uuid;
-use Modufolio\Panel\Table\BulkAction;
 use Modufolio\Panel\Table\Column;
 use Modufolio\Panel\Table\ColumnGuesser;
 use Modufolio\Panel\Table\Constraint;
 use Modufolio\Panel\Table\Filter;
 use Modufolio\Panel\Table\Group;
-use Modufolio\Panel\Table\RowAction;
-use Modufolio\Panel\Table\RelationOptions;
 use Modufolio\Panel\Table\Summary;
 use Modufolio\Panel\Metric\MetricCalculator;
 use Modufolio\Panel\Table\TableSchema;
@@ -58,7 +54,7 @@ final class ResourceListing
     /** @var array<string, mixed> Parsed params in scope during navigationUrls(). */
     private array $navigationParams = [];
 
-    private ?RecordVerdicts $recordVerdicts = null;
+    private ?ResourceCapabilities $capabilities = null;
 
     public function __construct(
         private readonly PanelResource $resource,
@@ -155,20 +151,20 @@ final class ResourceListing
             ->getQuery()
             ->getSingleScalarResult();
 
-        $key         = $this->resource->key();
-        $permissions = $this->resource->permissions();
+        $key = $this->resource->key();
+
+        $capabilities = $this->capabilities();
+        $resolver     = new SchemaResolver(
+            $capabilities,
+            new ColumnGuesser($this->entityManager),
+            new FilterOptionResolver($this->entityManager),
+        );
 
         if ($schema !== null) {
-            $schema = $this->resolveLabels($schema);
-            // What the mapping already knows: a date column reads as a date,
-            // an enum column as its case's label — a badge where the enum
-            // carries colours. Before anything else touches the schema, and
-            // never over a declaration.
-            (new ColumnGuesser($this->entityManager))->apply($schema, $this->resource->entityClass());
-            $schema = $this->resolveRecordUrl($schema, $key);
-            $schema = $this->resolveFilterOptions($schema, $params['filters']);
-            $schema = $this->resolveActions($schema, $key);
+            $schema = $resolver->resolve($schema, $params['filters']);
         }
+
+        $verdicts = $capabilities->verdicts()->verdictsEach($entities, $rows = $this->resource->present($entities));
 
         return Inertia::render(
             $this->resource->indexComponent(),
@@ -183,7 +179,7 @@ final class ResourceListing
                     ...$this->resource->filterProps($params),
                 ],
                 $key    => $this->wrapWithJsonApiPagination(
-                    $rows = $this->resource->present($entities),
+                    $rows,
                     $totalCount,
                     $pagination['page'],
                     $pagination['perPage'],
@@ -194,11 +190,11 @@ final class ResourceListing
                     // stays exactly what present() returned.
                     [
                         'summaries' => $this->summaries($query, $alias, $params),
-                        'can'       => $this->verdicts()->canEach($entities, $rows),
+                        'can'       => $verdicts['can'],
                         // Only for refusals the resource can explain: an
                         // action with a reason shows disabled, with the
                         // sentence as its tooltip, instead of vanishing.
-                        ...(($why = $this->verdicts()->whyEach($entities, $rows)) === [] ? [] : ['why' => $why]),
+                        ...($verdicts['why'] === [] ? [] : ['why' => $verdicts['why']]),
                     ],
                 ),
                 'stack' => $this->stack,
@@ -223,21 +219,23 @@ final class ResourceListing
                     // Every URL the client would otherwise assemble from
                     // baseUrl, asked of the router instead: null where the
                     // route was not generated. Templates carry `{id}`.
-                    'urls'       => $this->resourceUrls($key),
+                    'urls'       => $capabilities->urls(),
                     'drawerType' => $this->resource->drawerType(),
+                    // The heading and the singular, from the resource: what
+                    // the client used to humanise from the key on its own.
+                    'title'      => $this->resource->title(),
+                    'label'      => $this->resource->label(),
                     // Both must hold: the route has to exist *and* this user
                     // has to be allowed. Route existence alone told the client
                     // what the resource supports, not what the viewer may do.
-                    'canCreate'  => $this->routeExists($key . '_create')
-                        && $permissions->create($this->user),
-                    'canEdit'    => $this->routeExists($key . '_edit')
-                        && $permissions->edit(null, $this->user),
-                    'canDelete'  => $this->routeExists($key . '_destroy')
-                        && $permissions->delete(null, $this->user),
+                    // {@see ResourceCapabilities} asks the pair.
+                    'canCreate'  => $capabilities->create(),
+                    'canEdit'    => $capabilities->edit(),
+                    'canDelete'  => $capabilities->delete(),
                     // Null when the resource has no generated export route, in
                     // which case ExportButton falls back to its client-side
                     // path — which can only ever see the loaded page.
-                    'exportUrl'  => $this->exportUrl($key),
+                    'exportUrl'  => $capabilities->url('export'),
                     // The switcher's options and which one is showing. A
                     // resource declaring only the table sends a single entry,
                     // and the client renders no switcher for one option.
@@ -247,17 +245,11 @@ final class ResourceListing
                     ),
                     'view'       => $view->key(),
                     // Whether cards on a board can be dragged. Deliberately
-                    // NOT `canEdit`: that one also requires the edit *form*
-                    // route, and a board is a way of reading records that
-                    // groups them by a field they already have — a resource
-                    // can have one without ever declaring a form. What it does
-                    // require is the move route and the edit permission, which
-                    // is exactly what the endpoint itself checks.
-                    'canMove'    => $this->routeExists($key . '_board_move')
-                        && $permissions->edit(null, $this->user),
+                    // not `canEdit` — see {@see ResourceCapabilities::move()}.
+                    'canMove'    => $capabilities->move(),
                 ],
                 ...($board !== null ? ['board' => $board] : []),
-                ...($schema !== null ? ['table' => $this->serialise($schema, $query)] : []),
+                ...($schema !== null ? ['table' => $resolver->serialise($schema, $query)] : []),
                 ...$this->extraProps,
             ],
         );
@@ -390,7 +382,7 @@ final class ResourceListing
                 'moves' => $this->quickMoves($view, $column['value'], $cards, $presented),
                 // Same shape as a table page's meta.can: what this viewer may
                 // do with each card, keyed by id, beside the cards.
-                'can'   => $this->verdicts()->canEach($cards, $presented),
+                'can'   => $this->capabilities()->verdicts()->canEach($cards, $presented),
             ];
         }
 
@@ -565,343 +557,6 @@ final class ResourceListing
     }
 
     /**
-     * Turn relationship-backed filter choices into a flat option list.
-     *
-     * Done here rather than in the schema because it needs the database, and
-     * a TableSchema is meant to stay a pure value object.
-     */
-    /**
-     * Decide which row and bulk actions this viewer is actually offered.
-     *
-     * A resource that declares none gets the standard trio, derived from
-     * whether the routes exist — the same rule the generic Resource/Index
-     * page applied in markup, moved to where the routes and the permissions
-     * both live. A resource that declares its own keeps them, minus the ones
-     * this viewer may not perform: gating in the schema means a page cannot
-     * offer what the server would refuse.
-     */
-    private function resolveActions(TableSchema $schema, string $key): TableSchema
-    {
-        $permissions = $this->resource->permissions();
-        $mayEdit     = $permissions->edit(null, $this->user);
-        $mayDelete   = $permissions->delete(null, $this->user);
-
-        $actions = $schema->declaredActions();
-
-        if ($actions === []) {
-            // Nothing declared: derive the trio from the routes that exist.
-            // Route existence is the resource's answer to "what can be done
-            // here" only when it has given no other answer.
-            $actions = $this->defaultRowActions(
-                $key,
-                $mayEdit && $this->routeExists($key . '_edit'),
-                $mayDelete && $this->routeExists($key . '_destroy'),
-            );
-        } else {
-            // A declared action names its own URL, so the route behind it is
-            // the resource's business — gating on a `{key}_destroy` name here
-            // silently dropped Delete from every listing whose controller
-            // named it something else. Permission is the only question left.
-            $canEdit   = $mayEdit;
-            $canDelete = $mayDelete;
-
-            $actions = array_values(array_filter(
-                $actions,
-                static fn (RowAction $action): bool => match ($action->name()) {
-                    'edit' => $canEdit,
-                    // Restore rides the delete permission: both govern the
-                    // same trash lifecycle, and offering one without the
-                    // other strands a record where the viewer put it.
-                    'delete', 'restore' => $canDelete,
-                    default => true,
-                },
-            ));
-        }
-
-        $bulkActions = $schema->declaredBulkActions();
-
-        if ($bulkActions === [] && $mayDelete && ($bulkUrl = $this->routeUrl($key . '_bulk_destroy')) !== null) {
-            $bulkActions = [BulkAction::delete($bulkUrl)];
-        }
-
-        return $schema->withActions($actions, $bulkActions);
-    }
-
-    /**
-     * The table for the client. When the rows come from the default presenter
-     * a `value()` path has already been resolved into the column's own key,
-     * so `valueKey` is withheld — the client would otherwise look for
-     * `studio.name` on a row that carries `studio`.
-     *
-     * @return array<string, mixed>
-     */
-    private function serialise(TableSchema $schema, ListQueryInterface $query): array
-    {
-        $table = $schema->toArray($query);
-
-        if ($this->resource->presentsItself()) {
-            foreach ($table['columns'] as &$column) {
-                unset($column['valueKey']);
-            }
-        }
-
-        return $table;
-    }
-
-    /**
-     * A column with no label of its own takes the one the resource's
-     * fields() declares for its key — the same label the form and the drawer
-     * show, said once.
-     */
-    private function resolveLabels(TableSchema $schema): TableSchema
-    {
-        $labels = $this->resource->fieldLabels();
-
-        if ($labels === []) {
-            return $schema;
-        }
-
-        foreach ($schema->declaredColumns() as $column) {
-            if (!$column->hasDeclaredLabel() && isset($labels[$column->key()])) {
-                $column->label($labels[$column->key()]);
-            }
-        }
-
-        return $schema;
-    }
-
-    /**
-     * Where a linked cell goes.
-     *
-     * A resource with a show route has a record URL whether or not its schema
-     * spells one out: the route's own template, `{id}` where the uuid goes.
-     * A declared `->recordUrl()` still wins, for a listing whose rows open
-     * something other than their own drawer. What is refused is a column
-     * that links to the record while nothing says where — that used to
-     * render as a row that looked clickable and did nothing, with no error
-     * anywhere. Child tables have no route to derive from, so they are only
-     * checked.
-     */
-    private function resolveRecordUrl(TableSchema $schema, string $key): TableSchema
-    {
-        if ($schema->declaredRecordUrl() === null && ($template = $this->routeTemplate($key . '_show')) !== null) {
-            $schema = $schema->withRecordUrl($template);
-        }
-
-        if ($schema->declaredRecordUrl() === null) {
-            $this->assertNoRecordLinks($schema->declaredColumns(), sprintf(
-                '%s\'s table has no record URL: generate its show route, or declare ->recordUrl() on the TableSchema.',
-                $this->resource::class,
-            ));
-        }
-
-        foreach ($schema->declaredChildren() as $child) {
-            if ($child->declaredRecordUrl() === null) {
-                $this->assertNoRecordLinks($child->declaredColumns(), sprintf(
-                    'child table "%s" has no record URL: declare ->recordUrl() on the ChildTable.',
-                    $child->key(),
-                ));
-            }
-        }
-
-        return $schema;
-    }
-
-    /**
-     * @param list<Column> $columns
-     */
-    private function assertNoRecordLinks(array $columns, string $remedy): void
-    {
-        $linking = array_values(array_filter(
-            $columns,
-            static fn (Column $column): bool => $column->wantsRecordLink(),
-        ));
-
-        if ($linking === []) {
-            return;
-        }
-
-        throw new \LogicException(sprintf(
-            'Column "%s" links to the record, but %s',
-            implode('", "', array_map(static fn (Column $column): string => $column->key(), $linking)),
-            $remedy,
-        ));
-    }
-
-    /**
-     * View / Edit / Delete, each only when its route exists.
-     *
-     * @return list<RowAction>
-     */
-    private function defaultRowActions(string $key, bool $canEdit, bool $canDelete): array
-    {
-        $actions = [];
-
-        if ($this->routeExists($key . '_show')) {
-            $actions[] = RowAction::view();
-        }
-
-        if ($canEdit && ($edit = $this->routeTemplate($key . '_edit')) !== null) {
-            $actions[] = RowAction::edit($edit);
-        }
-
-        if ($canDelete && ($destroy = $this->routeTemplate($key . '_destroy')) !== null) {
-            $delete = RowAction::delete($destroy);
-
-            // Consequences instead of a blind guarantee, when the resource has
-            // somewhere to ask.
-            if (($preview = $this->routeTemplate($key . '_delete_preview')) !== null) {
-                $delete = $delete->previewUrl($preview);
-            }
-
-            $actions[] = $delete;
-        }
-
-        return $actions;
-    }
-
-    /**
-     * The generated routes of this resource, by operation: a plain URL for
-     * the ones without a record, an `{id}` template for the ones with. Null
-     * where the resource opted out of the operation, so the client can hide
-     * what it cannot reach without knowing the route names.
-     *
-     * @return array<string, string|null>
-     */
-    private function resourceUrls(string $key): array
-    {
-        return [
-            'index'         => $this->routeUrl($key),
-            'create'        => $this->routeUrl($key . '_create'),
-            'store'         => $this->routeUrl($key . '_store'),
-            'show'          => $this->routeTemplate($key . '_show'),
-            'edit'          => $this->routeTemplate($key . '_edit'),
-            'update'        => $this->routeTemplate($key . '_update'),
-            'patch'         => $this->routeTemplate($key . '_patch'),
-            'destroy'       => $this->routeTemplate($key . '_destroy'),
-            'deletePreview' => $this->routeTemplate($key . '_delete_preview'),
-            'bulkDestroy'   => $this->routeUrl($key . '_bulk_destroy'),
-            'export'        => $this->routeUrl($key . '_export'),
-            'boardMove'     => $this->routeTemplate($key . '_board_move'),
-        ];
-    }
-
-    /**
-     * A route as a URL template with `{id}` where its uuid goes.
-     *
-     * Generated with a sentinel and substituted rather than string-built: the
-     * router is the authority on where a route lives, and a hand-built path
-     * was already wrong once for `users_export`.
-     */
-    private function routeTemplate(string $name): ?string
-    {
-        return RouteUrls::template($this->urlGenerator, $name);
-    }
-
-    /** A route with no parameters, or null when it does not exist. */
-    private function routeUrl(string $name): ?string
-    {
-        return RouteUrls::url($this->urlGenerator, $name);
-    }
-
-    /**
-     * The selected values a truncated option list left out, fetched with
-     * their labels so the selection is never shown as a bare id.
-     *
-     * @param  list<array{value: mixed, label: mixed}> $rows
-     * @return list<array{value: mixed, label: mixed}>
-     */
-    private function selectedBeyondTheCut(RelationOptions $relation, mixed $selected, array $rows): array
-    {
-        $wanted = array_values(array_filter(
-            array_map(static fn (mixed $v): string => is_scalar($v) ? (string) $v : '', is_array($selected) ? $selected : [$selected]),
-            static fn (string $v): bool => $v !== '',
-        ));
-        $have = array_map(static fn (array $row): string => (string) $row['value'], $rows);
-        $missing = array_values(array_diff($wanted, $have));
-
-        if ($missing === []) {
-            return [];
-        }
-
-        /** @var list<array{value: mixed, label: mixed}> $found */
-        $found = $this->entityManager->createQueryBuilder()
-            ->select(sprintf('r.%s AS value, r.%s AS label', $relation->valueField, $relation->labelField))
-            ->from($relation->entityClass, 'r')
-            ->where(sprintf('r.%s IN (:selected)', $relation->valueField))
-            ->setParameter('selected', $missing)
-            ->orderBy(sprintf('r.%s', $relation->labelField), 'ASC')
-            ->getQuery()
-            ->getArrayResult();
-
-        return $found;
-    }
-
-    /**
-     * @param array<string, mixed> $values the filter values in force, so a
-     *                                     selected option is labelled even when
-     *                                     the option list had to be cut short
-     */
-    private function resolveFilterOptions(TableSchema $schema, array $values = []): TableSchema
-    {
-        $filters = array_map(function (Filter $filter) use ($values): Filter {
-            // The trashed control's default is the resource's decision, not
-            // the schema's: a resource listing deleted rows by default hands
-            // the client that value so it shows without counting as a
-            // filter the viewer applied, and a reset returns to it.
-            if ($filter->type() === Filter::TRASHED && $filter->defaultValue() === null) {
-                $default = $this->resource->defaultTrashed();
-
-                if ($default !== null) {
-                    return $filter->withDefault($default);
-                }
-            }
-
-            $relation = $filter->relation();
-
-            if ($relation === null) {
-                return $filter;
-            }
-
-            // Bounded, the same way form relations are: a dropdown shipped the
-            // whole table before this, so a large related table made every
-            // listing page carry it. One row beyond the threshold is fetched
-            // to tell "exactly full" from "there are more" — the overflow is
-            // reported rather than silently trimmed, per the panel's rule that
-            // a bound it imposes must be visible.
-            /** @var list<array{value: mixed, label: mixed}> $rows */
-            $rows = $this->entityManager->createQueryBuilder()
-                ->select(sprintf('r.%s AS value, r.%s AS label', $relation->valueField, $relation->labelField))
-                ->from($relation->entityClass, 'r')
-                ->orderBy(sprintf('r.%s', $relation->labelField), 'ASC')
-                ->setMaxResults(RelationOptions::AUTO_SEARCH_THRESHOLD + 1)
-                ->getQuery()
-                ->getArrayResult();
-
-            $truncated = count($rows) > RelationOptions::AUTO_SEARCH_THRESHOLD;
-
-            if ($truncated) {
-                $rows = array_slice($rows, 0, RelationOptions::AUTO_SEARCH_THRESHOLD);
-
-                // The value in force must still read as a name — in the
-                // control and in the chip above the table — even when it
-                // fell beyond the cut, so it is fetched on its own.
-                $rows = [...$rows, ...$this->selectedBeyondTheCut($relation, $values[$filter->key()] ?? null, $rows)];
-            }
-
-            return $filter->withResolvedOptions(array_map(
-                static fn (array $row): array => [
-                    'value' => (string)$row['value'],
-                    'label' => (string)$row['label'],
-                ],
-                $rows
-            ), $truncated);
-        }, $schema->declaredFilters());
-
-        return $schema->withFilters($filters);
-    }
-
-    /**
      * Break ties on the primary key, in the same direction as the sort.
      *
      * Without this the listing's order is undefined whenever the sort field
@@ -1032,21 +687,6 @@ final class ResourceListing
     }
 
     /**
-     * Where this list's export lives, asked of the router rather than built
-     * from the key — `users_export` sits at `/panel/export/users`, so a
-     * string-built path was simply wrong for it.
-     */
-    private function exportUrl(string $key): ?string
-    {
-        return RouteUrls::url($this->urlGenerator, $key . '_export');
-    }
-
-    private function routeExists(string $name): bool
-    {
-        return RouteUrls::exists($this->urlGenerator, $name);
-    }
-
-    /**
      * @param  array<string, mixed> $params
      * @return array<string, list<array{type: string, label: string, value: float|null}>>
      */
@@ -1127,9 +767,14 @@ final class ResourceListing
         return (new MetricCalculator($this->entityManager))->compute($this->resource, $this->user);
     }
 
-    private function verdicts(): RecordVerdicts
+    /**
+     * What this viewer may do with the resource and where, asked once per
+     * listing: the router's answers are memoised in it, and every button
+     * the props offer reads from the same object.
+     */
+    public function capabilities(): ResourceCapabilities
     {
-        return $this->recordVerdicts ??= new RecordVerdicts($this->resource->permissions(), $this->user);
+        return $this->capabilities ??= new ResourceCapabilities($this->resource, $this->urlGenerator, $this->user);
     }
 
     /** @return EntityRepository<object> */

@@ -358,6 +358,10 @@ final class ResourceListingTest extends DoctrineTestCase
                 'boardMove'     => null,
             ],
             'drawerType' => 'movie',
+            // The heading and the singular, said by the server so the
+            // client never humanises the key on its own.
+            'title'      => 'Movies',
+            'label'      => 'Movie',
             'canCreate'  => true,
             'canEdit'    => true,
             'canDelete'  => true,
