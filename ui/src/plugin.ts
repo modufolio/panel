@@ -26,9 +26,15 @@ export interface CreatePanelOptions {
    */
   media?: Partial<MediaEndpoints>
   /**
-   * What a failed request says, per HTTP status: `{ 403: 'Ask an admin.' }`.
-   * `false` leaves a status to whatever else handles it. The defaults cover
-   * 401, 403, 404, 409, 419, 429 and the 5xx range; 422 is the forms'.
+   * What a failed request says, per HTTP status, and how it is said:
+   * `{ 403: 'Ask an admin.' }` for a toast, `{ 409: { as: 'modal', title:
+   * 'Out of date', message: 'Reload and try again.' } }` for a dialog the
+   * viewer must dismiss. `false` leaves a status to whatever else handles it.
+   *
+   * The defaults cover 401, 403, 404, 409, 419, 429 and the 5xx range (422 is
+   * the forms'), and show 401, 403 and 5xx as modals — those end whatever the
+   * user was doing, so a toast fading on its own timer would be missed. Pass
+   * a plain sentence for one of those to get a toast back.
    */
   errorMessages?: HttpErrorMessages
 }

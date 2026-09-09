@@ -56,7 +56,7 @@
         :user-last-name="userLastName"
         :user-email="userEmail"
         :user-avatar="userAvatar"
-        :menu-items="userMenuItems"
+        :menu-items="menuItems"
         :show-search="showSearch || globalSearch"
         :show-notifications="showNotifications"
         :notification-count="notificationCount"
@@ -90,15 +90,18 @@
     <!-- App-supplied dev tooling (debug bar, profiler, …) -->
     <slot name="debug" />
 
-    <!-- Toast Notifications -->
+    <!-- Toast Notifications, and the modal for the failures a toast would
+         let slip past (see createPanel({ errorMessages })) -->
     <GlobalSearchDialog v-if="globalSearch" :show="searchOpen" @close="searchOpen = false" />
     <Toast position="bottom-right" />
+    <ErrorModal />
+    <ChangePasswordDialog v-model:is-open="changePasswordOpen" />
   </div>
 </template>
 
 <script setup lang="ts">
 import type { MenuItem } from '../../types/menu'
-import { ref, onMounted, onUnmounted, provide, watch, type PropType } from 'vue'
+import { computed, ref, onMounted, onUnmounted, provide, watch, type PropType } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import { SidebarCollapsedKey } from '../../injectionKeys'
 import Sidebar from './Sidebar.vue'
@@ -106,9 +109,12 @@ import type { SidebarEntry } from './Sidebar.vue'
 import TopNavigation from './TopNavigation.vue'
 import Toast from '../../Components/Notifications/Toast.vue'
 import GlobalSearchDialog from '../Search/GlobalSearchDialog.vue'
+import ErrorModal from '../Dialogs/ErrorModal.vue'
+import ChangePasswordDialog from '../Dialogs/ChangePasswordDialog.vue'
+import { panelUrl } from '../../Utils/url'
 import { useToast } from '../../Components/Notifications/useToast'
 import { showToast, type PageToast } from '../../Components/Notifications/pageToasts'
-import { notifyHttpError, notifyNetworkError, notifyPrefetchedError } from '../../Components/Notifications/httpErrors'
+import { notifyHttpError, notifyNetworkError, notifyPrefetchedError, type ServerError } from '../../Components/Notifications/httpErrors'
 
 const props = defineProps({
   // Navigation Items
@@ -139,7 +145,11 @@ const props = defineProps({
     default: ''
   },
 
-  // User Menu Items
+  /**
+   * The dropdown behind the avatar. Left empty, the panel's own four —
+   * profile, two-factor, change password, log out — are used, since every
+   * panel has the same four routes; pass a list to replace them wholesale.
+   */
   userMenuItems: {
     type: Array as () => MenuItem[],
     default: (): MenuItem[] => []
@@ -294,12 +304,23 @@ const stopFlushingPrefetched = router.on('finish', (event) => {
   }
 })
 
+/**
+ * The first error object of a JSON:API body, when the response carried one.
+ * The server has already redacted its `detail` outside dev, so whatever is
+ * there is what is safe to show — the client needs no environment check.
+ */
+function serverErrorIn(response: unknown): ServerError | undefined {
+  const errors = (response as { data?: { errors?: unknown } } | undefined)?.data?.errors
+
+  return Array.isArray(errors) ? (errors[0] as ServerError | undefined) : undefined
+}
+
 // A response Inertia cannot use — an expired session's 419, a 500 page, a
-// 403 — becomes the sentence configured for its status instead of the raw
-// error modal; a status nobody mapped keeps the modal. A request that never
+// 403 — is reported as its status is configured to be, instead of the raw
+// error modal; a status nobody mapped keeps that modal. A request that never
 // got a status says so too.
 const stopInvalidResponses = router.on('httpException', (event) => {
-  if (notifyHttpError(event.detail.response.status)) {
+  if (notifyHttpError(event.detail.response.status, serverErrorIn(event.detail.response))) {
     event.preventDefault()
   }
 })
@@ -307,7 +328,26 @@ const stopInvalidResponses = router.on('httpException', (event) => {
 // A prefetch that fails never reaches `httpException` — Inertia keeps it for
 // the click that replays it. Say so now instead; the event is not cancelable.
 const stopFailedPrefetches = router.on('prefetched', (event) => {
-  notifyPrefetchedError(event.detail.response?.status)
+  notifyPrefetchedError(event.detail.response?.status, serverErrorIn(event.detail.response))
+})
+
+const changePasswordOpen = ref(false)
+
+/**
+ * The default user menu. Every panel serves these four routes, so an app that
+ * says nothing gets them rather than an empty dropdown; the change-password
+ * entry opens the dialog this layout already mounts, which is why the list is
+ * built here and not exported as a constant.
+ */
+const menuItems = computed<MenuItem[]>(() => {
+  if (props.userMenuItems.length > 0) return props.userMenuItems
+
+  return [
+    { label: 'My Profile', href: panelUrl('/profile'), icon: 'user' },
+    { label: 'Two-Factor Auth', href: panelUrl('/settings/two-factor'), icon: 'shield' },
+    { label: 'Change Password', icon: 'lock-closed', action: () => { changePasswordOpen.value = true } },
+    { label: 'Log out', href: panelUrl('/logout'), icon: 'logout', divider: true, method: 'post' },
+  ]
 })
 
 const searchOpen = ref(false)
