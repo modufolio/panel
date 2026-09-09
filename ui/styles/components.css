@@ -1,0 +1,265 @@
+/**
+ * Component styles for @modufolio/panel.
+ *
+ * The `ui-*` classes below are the markup hooks the package's own components
+ * emit (PageHeader, Table, the column renderers, BelongsToSelect,
+ * RelationManager, StatsWidget, Wizard); without this file those components
+ * render unstyled. Import inside the components layer — `styles/index.css`
+ * already does — and override any rule from your own stylesheet after it.
+ */
+
+/* Sidebar nav icons — override Heroicons' default stroke-width="1.5" */
+.nav-icon path,
+.nav-icon circle,
+.nav-icon rect,
+.nav-icon polyline,
+.nav-icon line {
+  stroke-width: 2;
+}
+
+/* PageHeader */
+.ui-page-header {
+  @apply mb-6;
+}
+
+.ui-page-header-content {
+  @apply flex items-center justify-between gap-4 flex-wrap;
+}
+
+.ui-page-header-heading {
+  @apply flex items-center flex-1 min-w-0;
+}
+
+.ui-page-header-title {
+  @apply sm:text-3xl;
+}
+
+.ui-page-header-actions {
+  @apply flex items-center gap-3 flex-shrink-0;
+}
+
+.ui-page-header-tabs {
+  @apply -mb-px;
+}
+
+/* Breadcrumbs */
+.ui-breadcrumbs {
+  @apply px-0 py-0;
+}
+
+.ui-breadcrumbs-list {
+  @apply flex-wrap;
+}
+
+.ui-breadcrumb-item {
+  @apply inline-flex items-center;
+}
+
+.ui-breadcrumb-link {
+  @apply inline-flex items-center max-w-xs truncate;
+}
+
+.ui-breadcrumb-separator {
+  @apply flex-shrink-0;
+}
+
+/* Table */
+.ui-table-wrapper {
+  @apply bg-white rounded-xl shadow-sm ring-1 ring-gray-950/5;
+}
+
+.ui-table-header-ctn {
+  @apply border-b border-gray-200;
+}
+
+.ui-table-header {
+  @apply bg-white;
+}
+
+.ui-table-search input {
+  @apply min-w-[250px];
+}
+
+/* .ui-table-bulk-actions is a markup hook only — deliberately no entrance
+   animation. Sliding it in pushed the table down mid-transition, so the rows
+   the user had just clicked appeared to jump. It now appears instantly. */
+
+.ui-table-content {
+  @apply relative;
+}
+
+.ui-table {
+  @apply text-sm;
+}
+
+.ui-table-header-cell {
+  @apply select-none;
+}
+
+.ui-table-row {
+  @apply cursor-default;
+}
+
+.ui-table-row:focus {
+  @apply outline-none;
+}
+
+.ui-table-row:focus-visible {
+  @apply outline-none;
+}
+
+.ui-table-cell {
+  @apply whitespace-nowrap;
+}
+
+.ui-table-sort-btn {
+  @apply transition-colors;
+}
+
+.ui-table-footer {
+  @apply flex items-center justify-between;
+}
+
+.ui-table-sticky-header {
+  @apply sticky top-0 z-10;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+}
+
+.ui-table-expand-btn {
+  @apply transition-transform duration-200;
+}
+
+.ui-table-expanded-row {
+  @apply transition-all duration-200;
+}
+
+.ui-table-expanded-content {
+  animation: ui-reveal-from-top 200ms ease-out;
+}
+
+/* Columns */
+.ui-color-column {
+  @apply inline-flex;
+}
+
+.ui-color-swatch {
+  @apply relative rounded border-2 border-gray-300 flex-shrink-0;
+  @apply shadow-sm;
+}
+
+.ui-color-swatch-border {
+  @apply absolute inset-0 rounded border border-black/10;
+  pointer-events: none;
+}
+
+.ui-color-label {
+  @apply font-mono;
+}
+
+.ui-color-copy-btn {
+  @apply flex-shrink-0;
+}
+
+.ui-image-column {
+  @apply flex items-center;
+}
+
+.ui-image-column-placeholder {
+  @apply flex items-center justify-center bg-gray-100;
+}
+
+.ui-text-column {
+  @apply min-w-0;
+}
+
+.ui-text-column-content {
+  @apply min-w-0 flex-1;
+}
+
+.ui-text-column-label {
+  @apply break-words;
+}
+
+/* BelongsToSelect */
+.ui-belongs-to-select {
+  @apply relative;
+}
+
+.ui-belongs-to-input {
+  @apply text-sm;
+}
+
+.ui-belongs-to-dropdown {
+  animation: ui-reveal-from-top 200ms ease-out;
+}
+
+.ui-belongs-to-option {
+  @apply transition-colors duration-150;
+}
+
+.ui-field-label {
+  @apply select-none;
+}
+
+/* RelationManager */
+.ui-relation-manager {
+  @apply bg-white rounded-xl shadow-sm ring-1 ring-gray-950/5 overflow-hidden;
+}
+
+.ui-relation-header {
+  @apply border-b border-gray-200;
+}
+
+.ui-relation-table .ui-table-wrapper {
+  @apply shadow-none ring-0;
+}
+
+/* StatsWidget */
+.ui-stats-widget {
+  @apply w-full;
+}
+
+/* Wizard */
+.ui-wizard-header-step {
+  @apply pb-4;
+}
+
+.ui-wizard-header-step:not(:last-child) {
+  @apply pr-10;
+}
+
+.ui-wizard-header-step-btn:disabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
+.ui-wizard-header-step-btn:not(:disabled):hover .ui-wizard-header-step-icon-ctn {
+  @apply border-primary-600;
+}
+
+.ui-wizard-header-step-btn:not(:disabled):hover .ui-wizard-header-step-label {
+  @apply text-primary-600;
+}
+
+/*
+ * Entrance for the expanded table row and the BelongsToSelect dropdown.
+ * Written out rather than `@apply animate-in fade-in slide-in-from-top-2`
+ * so the package needs no Tailwind plugin; `prefers-reduced-motion` drops
+ * the movement, which the plugin's utilities do not.
+ */
+@keyframes ui-reveal-from-top {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-table-expanded-content,
+  .ui-belongs-to-dropdown {
+    animation: none;
+  }
+}
