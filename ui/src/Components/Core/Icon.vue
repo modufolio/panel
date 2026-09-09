@@ -6,10 +6,12 @@
 import { computed, ref, onMounted, watch } from 'vue'
 import {
   ArchiveBoxIcon,
+  ArrowRightOnRectangleIcon,
   ArrowTopRightOnSquareIcon,
   ArrowUpTrayIcon,
   Bars3Icon,
   BellIcon,
+  BookmarkIcon,
   BookOpenIcon,
   BuildingOfficeIcon,
   CalendarIcon,
@@ -95,12 +97,14 @@ const iconMap: Record<string, unknown> = {
   'plus': PlusIcon,
   'edit': PencilIcon,
   'trash': TrashIcon,
+  'bookmark': BookmarkIcon,
   'eye': EyeIcon,
   'eye-off': EyeSlashIcon,
   'search': MagnifyingGlassIcon,
   'upload': ArrowUpTrayIcon,
   'link': LinkIcon,
   'external-link': ArrowTopRightOnSquareIcon,
+  'logout': ArrowRightOnRectangleIcon,
   'x': XMarkIcon,
 
   // Status
