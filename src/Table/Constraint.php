@@ -10,6 +10,7 @@ use Modufolio\Panel\Field\FilterableFieldInterface;
 use Modufolio\Panel\Field\NumberType;
 use Modufolio\Panel\Field\TextType;
 use Modufolio\Panel\Field\ToggleType;
+use Modufolio\Panel\Support\Label;
 
 /**
  * One field a user may build an ad-hoc condition against.
@@ -75,7 +76,7 @@ final class Constraint
         private readonly string $key,
         private readonly string $field,
     ) {
-        $this->label = ucfirst(trim(preg_replace('/[_\-]+/', ' ', $key) ?? $key));
+        $this->label = Label::sentence($key);
     }
 
     public static function text(string $key, ?string $field = null): self

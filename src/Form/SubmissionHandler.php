@@ -12,6 +12,7 @@ use Modufolio\Panel\Blueprint\Defaults;
 use Modufolio\Panel\Blueprint\FieldAccess;
 use Modufolio\Panel\Blueprint\FieldValidator;
 use Modufolio\Panel\Resource\PanelResource;
+use Modufolio\Panel\Support\Label;
 use Modufolio\Panel\Table\RelationOptions;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
@@ -640,7 +641,7 @@ final class SubmissionHandler
             if ($other !== null && $other !== $entity) {
                 $errors[$key] = sprintf(
                     '%s is already in use.',
-                    (string) ($field['label'] ?? ucwords(str_replace('_', ' ', $key))),
+                    (string) ($field['label'] ?? Label::title($key)),
                 );
             }
         }

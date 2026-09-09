@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modufolio\Panel\Table;
 
 use Modufolio\Panel\Contracts\HasColorInterface;
+use Modufolio\Panel\Support\Label;
 
 /**
  * One column in a {@see TableSchema}.
@@ -83,7 +84,7 @@ final class Column
 
     private function __construct(private readonly string $key)
     {
-        $this->label = self::humanize($key);
+        $this->label = Label::sentence($key);
     }
 
     public static function make(string $key): self
@@ -683,10 +684,5 @@ final class Column
                 ? null
                 : array_map(static fn(ColumnAction $a): array => $a->toArray(), $this->actions),
         ], static fn(mixed $value): bool => $value !== null);
-    }
-
-    private static function humanize(string $key): string
-    {
-        return ucfirst(trim(preg_replace('/[_\-]+/', ' ', $key) ?? $key));
     }
 }

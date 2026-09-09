@@ -7,6 +7,7 @@ namespace Modufolio\Panel\Table;
 use Modufolio\Panel\Blueprint\BlueprintBuilder;
 use Modufolio\Panel\Field\TextType;
 use Modufolio\Panel\Form\Field;
+use Modufolio\Panel\Support\Label;
 /**
  * One action offered on a row, declared by the resource rather than written
  * into every listing's `#actions` slot.
@@ -82,7 +83,7 @@ final class RowAction
         private readonly string $name,
         private readonly string $behaviour,
     ) {
-        $this->label = self::humanize($name);
+        $this->label = Label::sentence($name);
     }
 
     /** Open the record's drawer — the row's own URL, so it needs no template. */
@@ -310,10 +311,5 @@ final class RowAction
             'method'         => $this->fields === [] && $this->method === 'post' ? null : $this->method,
             'submitLabel'    => $this->submitLabel,
         ], static fn (mixed $value): bool => $value !== null);
-    }
-
-    private static function humanize(string $key): string
-    {
-        return ucfirst(trim(preg_replace('/[_\-]+/', ' ', $key) ?? $key));
     }
 }

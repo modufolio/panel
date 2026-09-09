@@ -20,9 +20,11 @@ use Modufolio\Panel\Resource\BoardMover;
 use Modufolio\Panel\Resource\FieldPickUrls;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\RecordLocator;
+use Modufolio\Panel\Resource\RecordVerdicts;
 use Modufolio\Panel\Resource\RelationAddUrls;
 use Modufolio\Panel\Resource\RelationOptionResolver;
 use Modufolio\Panel\Resource\ResourceListing;
+use Modufolio\Panel\Routing\RouteUrls;
 use Modufolio\Panel\Search\GlobalSearch;
 use Modufolio\Psr7\Http\Response;
 use Psr\Http\Message\ResponseInterface;
@@ -966,20 +968,6 @@ final class ResourceController
     private function indexUrl(PanelResource $resource): string
     {
         return $this->urlGenerator->generate($resource->key());
-    }
-
-    /**
-     * A generated route's URL, or null when the resource opted out of it.
-     *
-     * @param array<string, mixed> $params
-     */
-    private function routeUrl(string $name, array $params = []): ?string
-    {
-        try {
-            return $this->urlGenerator->generate($name, $params);
-        } catch (\Throwable) {
-            return null;
-        }
     }
 
     /**

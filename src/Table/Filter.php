@@ -6,6 +6,7 @@ namespace Modufolio\Panel\Table;
 
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\QueryBuilder;
+use Modufolio\Panel\Support\Label;
 
 /**
  * A declarative table filter.
@@ -63,7 +64,7 @@ final class Filter
         private readonly string $key,
         private ?string $field = null,
     ) {
-        $this->label = ucfirst(trim(preg_replace('/[_\-]+/', ' ', $key) ?? $key));
+        $this->label = Label::sentence($key);
         $this->field ??= $key;
     }
 

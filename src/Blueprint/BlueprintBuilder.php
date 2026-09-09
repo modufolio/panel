@@ -6,6 +6,7 @@ namespace Modufolio\Panel\Blueprint;
 
 use Modufolio\Panel\Field\FieldTypeInterface;
 use Modufolio\Panel\Field\SeparatorType;
+use Modufolio\Panel\Support\Label;
 use Symfony\Component\OptionsResolver\Exception\ExceptionInterface as OptionsException;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
@@ -101,7 +102,7 @@ final class BlueprintBuilder
         $field = [
             'key'   => $key,
             'type'  => $type::component(),
-            'label' => $resolved['label'] ?? self::humanize($key),
+            'label' => $resolved['label'] ?? Label::title($key),
             // props and rules merge key-by-key rather than being replaced, so
             // adding one rule to an EmailType does not silently drop the email
             // check the type brought with it.
@@ -252,10 +253,5 @@ final class BlueprintBuilder
         $resolver->setAllowedValues('width', ['1/4', '1/3', '1/2', '2/3', '3/4', 'full']);
 
         return $resolver;
-    }
-
-    private static function humanize(string $key): string
-    {
-        return ucwords(str_replace('_', ' ', $key));
     }
 }

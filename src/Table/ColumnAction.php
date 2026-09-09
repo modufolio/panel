@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Table;
 
+use Modufolio\Panel\Support\Label;
+
 /**
  * One action button rendered inside every cell of a {@see Column}.
  *
@@ -30,7 +32,7 @@ final class ColumnAction
 
     private function __construct(private readonly string $name)
     {
-        $this->label = self::humanize($name);
+        $this->label = Label::sentence($name);
     }
 
     /**
@@ -115,10 +117,5 @@ final class ColumnAction
             'confirm'        => $this->confirm ?: null,
             'confirmMessage' => $this->confirmMessage,
         ], static fn(mixed $value): bool => $value !== null);
-    }
-
-    private static function humanize(string $key): string
-    {
-        return ucfirst(trim(preg_replace('/[_\-]+/', ' ', $key) ?? $key));
     }
 }

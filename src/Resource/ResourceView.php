@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Resource;
 
+use Modufolio\Panel\Support\Label;
+
 /**
  * One way of looking at a resource's records.
  *
@@ -135,7 +137,7 @@ final class ResourceView
 
             $columns[] = [
                 'value' => $value,
-                'label' => (string) ($entry['label'] ?? ucfirst(str_replace(['_', '-'], ' ', $value))),
+                'label' => (string) ($entry['label'] ?? Label::sentence($value)),
                 'color' => isset($entry['color']) ? (string) $entry['color'] : null,
             ];
         }
@@ -389,7 +391,7 @@ final class ResourceView
             $labels[(string) $case->value] = match (true) {
                 method_exists($case, 'getLabel') => (string) $case->getLabel(),
                 method_exists($case, 'label')    => (string) $case->label(),
-                default => ucfirst(str_replace(['_', '-'], ' ', (string) $case->value)),
+                default => Label::sentence((string) $case->value),
             };
         }
 

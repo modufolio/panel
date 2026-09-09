@@ -9,6 +9,7 @@ use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Contracts\ResourceLocatorInterface;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\ResourceListing;
+use Modufolio\Panel\Support\Label;
 use Modufolio\Psr7\Http\ServerRequest;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -100,7 +101,7 @@ final class GlobalSearch
 
         return [
             'key'   => $key,
-            'label' => ucfirst(str_replace(['_', '-'], ' ', $key)),
+            'label' => Label::sentence($key),
             'total' => (int) ($collection['meta']['total'] ?? count($items)),
             'items' => $items,
         ];

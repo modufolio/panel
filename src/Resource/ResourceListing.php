@@ -10,6 +10,7 @@ use Modufolio\Panel\Query\ChainedListQuery;
 use Modufolio\Panel\Query\DerivedListQuery;
 use Modufolio\Panel\Query\ListQueryInterface;
 use Modufolio\Panel\Routing\ResourceBaseUrl;
+use Modufolio\Panel\Routing\RouteUrls;
 use Modufolio\Panel\Routing\Uuid;
 use Modufolio\Panel\Table\BulkAction;
 use Modufolio\Panel\Table\Column;
@@ -56,6 +57,8 @@ final class ResourceListing
 
     /** @var array<string, mixed> Parsed params in scope during navigationUrls(). */
     private array $navigationParams = [];
+
+    private ?RecordVerdicts $recordVerdicts = null;
 
     public function __construct(
         private readonly PanelResource $resource,
@@ -387,7 +390,7 @@ final class ResourceListing
                 'moves' => $this->quickMoves($view, $column['value'], $cards, $presented),
                 // Same shape as a table page's meta.can: what this viewer may
                 // do with each card, keyed by id, beside the cards.
-                'can'   => $this->verdicts($cards, $presented),
+                'can'   => $this->verdicts()->canEach($cards, $presented),
             ];
         }
 
@@ -784,80 +787,6 @@ final class ResourceListing
     }
 
     /**
-     * The refusals {@see verdicts()} explains, keyed like them: only records
-     * with at least one refused ability that carries a reason appear.
-     *
-     * @param  array<int, object>                              $entities
-     * @param  array<int, array<string, mixed>>                $rows
-     * @return array<string, array<string, string>>
-     */
-    private function reasons(array $entities, array $rows): array
-    {
-        if ($entities === [] || count($entities) !== count($rows)) {
-            return [];
-        }
-
-        $permissions = $this->resource->permissions();
-        $reasons     = [];
-
-        foreach (array_values($entities) as $index => $entity) {
-            $id = (string) ($rows[$index]['id'] ?? '');
-
-            if ($id === '') {
-                continue;
-            }
-
-            foreach (['edit', 'delete'] as $ability) {
-                if ($permissions->{$ability}($entity, $this->user)) {
-                    continue;
-                }
-
-                $reason = $permissions->reason($ability, $entity, $this->user);
-
-                if ($reason !== null) {
-                    $reasons[$id][$ability] = $reason;
-                }
-            }
-        }
-
-        return $reasons;
-    }
-
-    /**
-     * What this viewer may do with each record, keyed by the presented id:
-     * the same {@see Permissions} questions the write endpoints ask, asked
-     * with the record in hand. Rows and entities pair by position.
-     *
-     * @param  array<int, object>                                  $entities
-     * @param  array<int, array<string, mixed>>                    $rows
-     * @return array<string, array{edit: bool, delete: bool}>
-     */
-    private function verdicts(array $entities, array $rows): array
-    {
-        if ($entities === [] || count($entities) !== count($rows)) {
-            return [];
-        }
-
-        $permissions = $this->resource->permissions();
-        $verdicts    = [];
-
-        foreach (array_values($entities) as $index => $entity) {
-            $id = (string) ($rows[$index]['id'] ?? '');
-
-            if ($id === '') {
-                continue;
-            }
-
-            $verdicts[$id] = [
-                'edit'   => $permissions->edit($entity, $this->user),
-                'delete' => $permissions->delete($entity, $this->user),
-            ];
-        }
-
-        return $verdicts;
-    }
-
-    /**
      * A route as a URL template with `{id}` where its uuid goes.
      *
      * Generated with a sentinel and substituted rather than string-built: the
@@ -866,25 +795,13 @@ final class ResourceListing
      */
     private function routeTemplate(string $name): ?string
     {
-        $sentinel = '00000000-0000-4000-8000-000000000000';
-
-        try {
-            $url = $this->urlGenerator->generate($name, ['uuid' => $sentinel]);
-        } catch (\Throwable) {
-            return null;
-        }
-
-        return str_replace($sentinel, '{id}', $url);
+        return RouteUrls::template($this->urlGenerator, $name);
     }
 
     /** A route with no parameters, or null when it does not exist. */
     private function routeUrl(string $name): ?string
     {
-        try {
-            return $this->urlGenerator->generate($name);
-        } catch (\Throwable) {
-            return null;
-        }
+        return RouteUrls::url($this->urlGenerator, $name);
     }
 
     /**
@@ -1121,22 +1038,12 @@ final class ResourceListing
      */
     private function exportUrl(string $key): ?string
     {
-        try {
-            return $this->urlGenerator->generate($key . '_export');
-        } catch (\Throwable) {
-            return null;
-        }
+        return RouteUrls::url($this->urlGenerator, $key . '_export');
     }
 
     private function routeExists(string $name): bool
     {
-        try {
-            $this->urlGenerator->generate($name, ['uuid' => '00000000-0000-4000-8000-000000000000']);
-
-            return true;
-        } catch (\Throwable) {
-            return false;
-        }
+        return RouteUrls::exists($this->urlGenerator, $name);
     }
 
     /**

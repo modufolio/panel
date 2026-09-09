@@ -9,6 +9,7 @@ use Modufolio\Panel\Blueprint\FieldAccess;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\RelationOptionResolver;
 use Modufolio\Panel\Routing\ResourceBaseUrl;
+use Modufolio\Panel\Routing\RouteUrls;
 use Modufolio\Panel\Table\RelationOptions;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -54,7 +55,7 @@ final class FormPresenter
                 // The route must exist *and* this viewer must be allowed to
                 // delete this record — the same question the destroy endpoint
                 // asks, so the button and the refusal cannot disagree.
-                'canDelete'  => $this->routeExists($resource->key() . '_destroy')
+                'canDelete'  => RouteUrls::exists($this->urlGenerator, $resource->key() . '_destroy')
                     && $resource->permissions()->delete($record, $user),
             ],
             'fields' => $this->fields($resource, $record, $user),
@@ -238,21 +239,6 @@ final class FormPresenter
      */
     private function url(string $name, array $params = []): ?string
     {
-        try {
-            return $this->urlGenerator->generate($name, $params);
-        } catch (\Throwable) {
-            return null;
-        }
-    }
-
-    private function routeExists(string $name): bool
-    {
-        try {
-            $this->urlGenerator->generate($name, ['uuid' => '00000000-0000-4000-8000-000000000000']);
-
-            return true;
-        } catch (\Throwable) {
-            return false;
-        }
+        return RouteUrls::url($this->urlGenerator, $name, $params);
     }
 }

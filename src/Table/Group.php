@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Table;
 
+use Modufolio\Panel\Support\Label;
+
 /**
  * A grouping the user can switch the table into.
  *
@@ -18,7 +20,7 @@ final class Group
         private readonly string $key,
         private readonly string $field,
     ) {
-        $this->label = ucfirst(trim(preg_replace('/[_\-]+/', ' ', $key) ?? $key));
+        $this->label = Label::sentence($key);
     }
 
     public static function make(string $key, ?string $field = null): self

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Blueprint;
 
+use Modufolio\Panel\Support\Label;
+
 /**
  * A backed enum's cases as select options.
  *
@@ -31,7 +33,7 @@ final class EnumOptions
                 'value' => (string) $case->value,
                 'label' => method_exists($case, 'getLabel')
                     ? (string) $case->getLabel()
-                    : ucfirst(str_replace(['_', '-'], ' ', (string) $case->value)),
+                    : Label::sentence((string) $case->value),
             ];
         }
 

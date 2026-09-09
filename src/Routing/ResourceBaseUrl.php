@@ -17,8 +17,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  */
 final class ResourceBaseUrl
 {
-    /** A well-formed UUID no record has: enough to make `{uuid}` routes generate. */
-    private const SENTINEL = '00000000-0000-4000-8000-000000000000';
+    private const SENTINEL = RouteUrls::SENTINEL;
 
     /**
      * The index route is the base itself, and the store route shares its path.

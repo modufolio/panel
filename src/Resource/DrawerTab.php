@@ -6,6 +6,7 @@ namespace Modufolio\Panel\Resource;
 
 use Modufolio\Panel\Blueprint\Separator;
 use Modufolio\Panel\Form\Field;
+use Modufolio\Panel\Support\Label;
 use Modufolio\Panel\Table\Column;
 
 /**
@@ -73,7 +74,7 @@ final class DrawerTab
         private readonly string $key,
         private readonly string $type,
     ) {
-        $this->label  = self::humanize($key);
+        $this->label  = Label::sentence($key);
         $this->source = null;
     }
 
@@ -156,12 +157,6 @@ final class DrawerTab
         $clone->source = $source;
 
         return $clone;
-    }
-
-    /** 'first_name' → 'First name': the label a key gets until one is declared. */
-    private static function humanize(string $key): string
-    {
-        return ucfirst(str_replace(['_', '-'], ' ', $key));
     }
 
     /**

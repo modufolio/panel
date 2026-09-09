@@ -7,6 +7,7 @@ namespace Modufolio\Panel\Table;
 use Modufolio\Panel\Blueprint\BlueprintBuilder;
 use Modufolio\Panel\Field\TextType;
 use Modufolio\Panel\Form\Field;
+use Modufolio\Panel\Support\Label;
 /**
  * One action offered on a selection of rows.
  *
@@ -51,7 +52,7 @@ final class BulkAction
         private readonly string $name,
         private readonly string $behaviour,
     ) {
-        $this->label = self::humanize($name);
+        $this->label = Label::sentence($name);
     }
 
     /**
@@ -214,10 +215,5 @@ final class BulkAction
             'method'         => $this->fields === [] && $this->method === 'post' ? null : $this->method,
             'submitLabel'    => $this->submitLabel,
         ], static fn (mixed $value): bool => $value !== null);
-    }
-
-    private static function humanize(string $key): string
-    {
-        return ucfirst(trim(preg_replace('/[_\-]+/', ' ', $key) ?? $key));
     }
 }
