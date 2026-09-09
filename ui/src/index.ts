@@ -17,7 +17,15 @@ export * from './Utils/tagsChanged'
 export { escapeHtml, sanitizeUrl, normalizeUrl, panelUrl, setPanelBaseUrl, getPanelBaseUrl } from './Utils/url'
 export { getCsrfToken, setCsrfToken } from './Utils/csrf'
 export { showToast, showToastsIn, type PageToast } from './Components/Notifications/pageToasts'
+export {
+  useErrorModal,
+  showErrorModal,
+  closeErrorModal,
+  type ErrorModalState,
+  type ErrorModalOptions,
+} from './Components/Notifications/errorModal'
 export * from './Utils/dates'
+export { titleLabel, sentenceLabel, titleLabel as humanize } from './Utils/labels'
 
 // Overlay + keyboard primitives
 export { useId } from './Primitives/useId'
@@ -49,7 +57,6 @@ export * from './Composables/useQuery'
 export * from './Composables/useAsyncData'
 export * from './Composables/useFieldSaver'
 export * from './Composables/useFocusTrap'
-export * from './Composables/useDragReorder'
 export * from './Composables/useLocalStoragePersistence'
 export * from './Composables/useUnsavedChangesWarning'
 export * from './Composables/useNestedDrawerForm'
@@ -105,6 +112,17 @@ export {
 } from './Components/Table/tableSchema'
 export { default as TablePagination } from './Components/Table/TablePagination.vue'
 export { default as ColumnToggle } from './Components/Table/ColumnToggle.vue'
+export { default as SavedViews } from './Components/Resource/SavedViews.vue'
+export {
+  loadSavedViews,
+  saveSavedViews,
+  upsertSavedView,
+  removeSavedView,
+  savedViewFilters,
+  savedViewMatches,
+  activeSavedView,
+  type SavedView,
+} from './Composables/savedViews'
 export { default as BoardView } from './Components/Board/BoardView.vue'
 export { default as ViewSwitcher } from './Components/Board/ViewSwitcher.vue'
 export type {
@@ -200,6 +218,7 @@ export {
   rulesFromSpec,
   type ValidationRule,
 } from './Components/Fields/validation'
+export { useFieldRules, type FieldRuleSpec } from './Components/Fields/useFieldRules'
 
 // Field Components (app-specific types — writer, rich-text, block-editor —
 // are registered by applications via registerFieldType())
@@ -223,6 +242,22 @@ export { default as RepeaterField } from './Components/Fields/RepeaterField.vue'
 
 // Section Components
 export { default as Section } from './Components/Sections/Section.vue'
+export { default as PermissionsMatrix } from './Components/Permissions/PermissionsMatrix.vue'
+
+// Metrics
+export { default as MetricRow } from './Components/Metrics/MetricRow.vue'
+export { default as MetricCard } from './Components/Metrics/MetricCard.vue'
+export { default as MetricTrend } from './Components/Metrics/MetricTrend.vue'
+export { default as MetricPartition } from './Components/Metrics/MetricPartition.vue'
+export {
+  formatMetricValue,
+  formatBucketLabel,
+  barHeights,
+  type Metric,
+  type MetricSeriesPoint,
+  type MetricSlice,
+} from './Components/Metrics/metrics'
+export type { PermissionReport } from './Components/Permissions/PermissionsMatrix.vue'
 export { default as FormSection } from './Components/Sections/FormSection.vue'
 export { default as FieldsSection } from './Components/Sections/FieldsSection.vue'
 export { default as InfoSection } from './Components/Sections/InfoSection.vue'
@@ -231,6 +266,8 @@ export { default as FilesSection } from './Components/Sections/FilesSection.vue'
 // Dialog Components
 export { default as Dialog } from './Components/Dialogs/Dialog.vue'
 export { default as ConfirmDialog } from './Components/Dialogs/ConfirmDialog.vue'
+export { default as ChangePasswordDialog } from './Components/Dialogs/ChangePasswordDialog.vue'
+export { default as ErrorModal } from './Components/Dialogs/ErrorModal.vue'
 export { default as DeleteConfirmDialog } from './Components/Dialogs/DeleteConfirmDialog.vue'
 
 // Drawer Components (Hierarchical overlay navigation)
@@ -244,7 +281,17 @@ export { default as DrawerFieldGrid } from './Components/Drawer/DrawerFieldGrid.
 export type { DrawerField } from './Components/Drawer/drawerFieldGrid'
 export { default as DrawerRelationList } from './Components/Drawer/DrawerRelationList.vue'
 export { default as DrawerRelationTable } from './Components/Drawer/DrawerRelationTable.vue'
-export { configureHttpErrors, httpErrorMessage, notifyHttpError, type HttpErrorMessages } from './Components/Notifications/httpErrors'
+export {
+  configureHttpErrors,
+  httpErrorFor,
+  httpErrorMessage,
+  notifyHttpError,
+  notifyPrefetchedError,
+  notifyNetworkError,
+  type HttpErrorMessages,
+  type HttpErrorPresentation,
+  type ServerError,
+} from './Components/Notifications/httpErrors'
 export { reconcileColumnPreferences, columnPreferencesFor, type ColumnPreference } from './Composables/columnPreferences'
 export { semanticColor, type SemanticColor } from './Utils/colors'
 export { default as GlobalSearchDialog } from './Components/Search/GlobalSearchDialog.vue'
@@ -252,6 +299,7 @@ export { useGlobalSearch, type SearchHit, type SearchGroup, type SearchResult } 
 export { default as ActionFormDialog } from './Components/Dialogs/ActionFormDialog.vue'
 export { default as DrawerRecordFrame } from './Components/Drawer/DrawerRecordFrame.vue'
 export { default as NestedDrawerForm } from './Components/Drawer/NestedDrawerForm.vue'
+export { default as RecordFormDrawer } from './Components/Drawer/RecordFormDrawer.vue'
 export { useDrawerStack, type StackItem, type StackItemTab } from './Components/Drawer/useDrawerStack'
 export { useFocusedStackRow } from './Components/Drawer/useFocusedStackRow'
 export { useIsDrawer, useDrawerStackContext } from './Components/Drawer/useIsDrawer'
@@ -260,8 +308,30 @@ export { useDrawerPage } from './Components/Drawer/useDrawerPage'
 // Resource pages (a PanelResource's listing and form, from the server's props)
 export { default as ResourcePage } from './Components/Resource/ResourcePage.vue'
 export { default as ResourceForm } from './Components/Resource/ResourceForm.vue'
-export { useResourceListing, humanize, fillId, type ResourceMeta, type ResourceListingProps, type ResourceUrls, type RowVerdicts, type ResourceRecords } from './Composables/useResourceListing'
+export type { ResourceFormMeta } from './Components/Resource/resourceTypes'
+export { useResourceFilters } from './Composables/useResourceFilters'
+export { useResourceListing, fillId, type ResourceMeta, type ResourceListingProps, type ResourceUrls, type RowVerdicts, type ResourceRecords } from './Composables/useResourceListing'
 export { useListFilters, type BaseFilters, type ListFiltersOptions, type SortPayload } from './Composables/useListFilters'
+
+// The generic Inertia pages the resource routes render, and the resolver map
+// that registers all three: `{ ...resourcePages, ...appPages }`.
+export { default as ResourceIndexPage } from './Pages/ResourceIndexPage.vue'
+export { default as ResourceCreatePage } from './Pages/ResourceCreatePage.vue'
+export { default as ResourceEditPage } from './Pages/ResourceEditPage.vue'
+export { default as ResourcePermissionsPage } from './Pages/ResourcePermissionsPage.vue'
+export { resourcePages } from './Pages/resourcePages'
+
+// Resumable uploads (TUS). `tus-js-client` is an optional peer: importing
+// useTusUploadQueue from an app that has not installed it will fail to
+// resolve, which is why neither is re-exported from anything else here.
+export { default as UploadQueue } from './Components/Upload/UploadQueue.vue'
+export {
+  useTusUploadQueue,
+  type UploadStatus,
+  type UploadItem,
+  type AddFilesOptions,
+  type UseTusUploadQueueOptions,
+} from './Composables/useTusUploadQueue'
 
 // Notification Components
 export { default as Toast } from './Components/Notifications/Toast.vue'

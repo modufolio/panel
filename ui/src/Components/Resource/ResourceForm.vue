@@ -46,17 +46,7 @@ import { fieldsFromSpec, initialValues } from '../Fields/fieldsFromSpec'
 import { useUnsavedChangesWarning } from '../../Composables/useUnsavedChangesWarning'
 import type { FieldDef, FormLayout } from '../Fields/useBlueprint'
 import type { FieldSpec } from '../Fields/fieldsFromSpec'
-
-/** Self-description from FormPresenter::props() — see its `resource` key. */
-interface ResourceFormMeta {
-  key: string
-  baseUrl: string
-  /** Where this form submits and deletes, from the router; see FormPresenter. */
-  urls?: { index?: string | null; store?: string | null; update?: string | null; destroy?: string | null }
-  drawerType: string
-  label: string
-  canDelete?: boolean
-}
+import type { ResourceFormMeta } from './resourceTypes'
 
 /**
  * A PanelResource's create or edit form, from the props the generated
