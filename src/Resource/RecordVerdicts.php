@@ -32,10 +32,7 @@ final class RecordVerdicts
     /** @return array{edit: bool, delete: bool} */
     public function can(object $entity): array
     {
-        return [
-            'edit'   => $this->permissions->edit($entity, $this->user),
-            'delete' => $this->permissions->delete($entity, $this->user),
-        ];
+        return $this->verdict($entity)['can'];
     }
 
     /**
@@ -46,21 +43,68 @@ final class RecordVerdicts
      */
     public function why(object $entity): array
     {
-        $reasons = [];
+        return $this->verdict($entity)['why'];
+    }
+
+    /**
+     * Both answers for one record from one round of questions.
+     *
+     * `can` and `why` are two views of the same verdicts, so asking them
+     * apart asked every ability twice. A surface that wants both — the
+     * listing, the board, the drawer frame all do — asks once here and reads
+     * both keys. {@see Permissions} promises its answers are cheap, but a
+     * promise kept is still no reason to spend it twice.
+     *
+     * @return array{can: array{edit: bool, delete: bool}, why: array<string, string>}
+     */
+    public function verdict(object $entity): array
+    {
+        $can = [];
+        $why = [];
 
         foreach (self::ABILITIES as $ability) {
-            if ($this->permissions->{$ability}($entity, $this->user)) {
+            $can[$ability] = $this->permissions->{$ability}($entity, $this->user);
+
+            if ($can[$ability]) {
                 continue;
             }
 
             $reason = $this->permissions->reason($ability, $entity, $this->user);
 
             if ($reason !== null) {
-                $reasons[$ability] = $reason;
+                $why[$ability] = $reason;
             }
         }
 
-        return $reasons;
+        /** @var array{edit: bool, delete: bool} $can */
+        return ['can' => $can, 'why' => $why];
+    }
+
+    /**
+     * {@see verdict()} for a page of records, keyed by the presented id:
+     * `can` for every record, `why` only for the records with something to
+     * explain — absent rather than present and empty, so the prop can be
+     * left out when nothing needs a tooltip.
+     *
+     * @param  array<int, object>               $entities
+     * @param  array<int, array<string, mixed>> $rows
+     * @return array{can: array<string, array{edit: bool, delete: bool}>, why: array<string, array<string, string>>}
+     */
+    public function verdictsEach(array $entities, array $rows): array
+    {
+        $can = [];
+        $why = [];
+
+        foreach (self::paired($entities, $rows) as $id => $entity) {
+            $verdict  = $this->verdict($entity);
+            $can[$id] = $verdict['can'];
+
+            if ($verdict['why'] !== []) {
+                $why[$id] = $verdict['why'];
+            }
+        }
+
+        return ['can' => $can, 'why' => $why];
     }
 
     /**
@@ -72,13 +116,7 @@ final class RecordVerdicts
      */
     public function canEach(array $entities, array $rows): array
     {
-        $verdicts = [];
-
-        foreach (self::paired($entities, $rows) as $id => $entity) {
-            $verdicts[$id] = $this->can($entity);
-        }
-
-        return $verdicts;
+        return $this->verdictsEach($entities, $rows)['can'];
     }
 
     /**
@@ -91,17 +129,7 @@ final class RecordVerdicts
      */
     public function whyEach(array $entities, array $rows): array
     {
-        $reasons = [];
-
-        foreach (self::paired($entities, $rows) as $id => $entity) {
-            $why = $this->why($entity);
-
-            if ($why !== []) {
-                $reasons[$id] = $why;
-            }
-        }
-
-        return $reasons;
+        return $this->verdictsEach($entities, $rows)['why'];
     }
 
     /**

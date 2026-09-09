@@ -17,6 +17,7 @@ use Modufolio\Panel\Tests\Fixture\Entity\Studio;
 use Modufolio\Panel\Tests\Fixture\Entity\Tag;
 use Modufolio\Panel\Tests\Fixture\MovieResource;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Modufolio\Panel\Form\Field;
 use Modufolio\Panel\Form\Form;
 
 /**
@@ -215,6 +216,30 @@ final class FormPresenterTest extends DoctrineTestCase
      * canDelete is derived from the routes, not declared: a resource routed
      * for reading only has no destroy route to offer.
      */
+    /**
+     * A field placed in a group or fieldset the form never declared as a
+     * container still gets one, labelled here — the client draws what it is
+     * sent and humanises nothing.
+     */
+    public function testAnUndeclaredGroupOrFieldsetArrivesInTheLayoutLabelled(): void
+    {
+        $resource = new class extends MovieResource {
+            public function form(): Form
+            {
+                return Form::make()->fields([
+                    Field::make('title')->group('billing_details'),
+                    Field::make('year')->fieldset('release_window'),
+                    'rating',
+                ]);
+            }
+        };
+
+        $layout = $this->presenter()->props($resource)['layout'];
+
+        self::assertSame([['key' => 'billing_details', 'label' => 'Billing details']], $layout['tabs']);
+        self::assertSame([['key' => 'release_window', 'label' => 'Release window']], $layout['fieldsets']);
+    }
+
     public function testCanDeleteIsFalseWhenNoDestroyRouteExists(): void
     {
         $urls = $this->urlGeneratorFromConfig(

@@ -9,7 +9,9 @@ use Modufolio\Panel\Blueprint\FieldAccess;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\RelationOptionResolver;
 use Modufolio\Panel\Routing\ResourceBaseUrl;
+use Modufolio\Panel\Resource\ResourceCapabilities;
 use Modufolio\Panel\Routing\RouteUrls;
+use Modufolio\Panel\Support\Label;
 use Modufolio\Panel\Table\RelationOptions;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -42,6 +44,8 @@ final class FormPresenter
      */
     public function props(PanelResource $resource, ?object $record = null, ?object $user = null): array
     {
+        $capabilities = new ResourceCapabilities($resource, $this->urlGenerator, $user);
+
         return [
             'resource' => [
                 'key'        => $resource->key(),
@@ -49,18 +53,17 @@ final class FormPresenter
                 // Where the form goes next, asked of the router: the record's
                 // own update and destroy URLs when there is a record, null
                 // for a route the resource did not generate.
-                'urls'       => $this->urls($resource, $record),
+                'urls'       => $this->urls($capabilities, $record),
                 'drawerType' => $resource->drawerType(),
                 'label'      => self::label($resource),
                 // The route must exist *and* this viewer must be allowed to
                 // delete this record — the same question the destroy endpoint
                 // asks, so the button and the refusal cannot disagree.
-                'canDelete'  => RouteUrls::exists($this->urlGenerator, $resource->key() . '_destroy')
-                    && $resource->permissions()->delete($record, $user),
+                'canDelete'  => $capabilities->delete($record),
             ],
-            'fields' => $this->fields($resource, $record, $user),
+            'fields' => $fields = $this->fields($resource, $record, $user),
             // The tabs and fieldsets the client draws; empty for a flat form.
-            'layout' => $resource->form()?->layout() ?? ['tabs' => [], 'fieldsets' => []],
+            'layout' => self::layout($resource, $fields),
         ];
     }
 
@@ -130,10 +133,45 @@ final class FormPresenter
         return $record;
     }
 
-    /** Human singular: 'movies' → 'Movie'. */
+    /** Human singular: 'movies' → 'Movie'. The resource's own {@see PanelResource::label()}. */
     public static function label(PanelResource $resource): string
     {
-        return ucfirst($resource->drawerType());
+        return $resource->label();
+    }
+
+    /**
+     * The tabs and fieldsets the client draws, completed.
+     *
+     * A field may name a group or fieldset the form never declared as a
+     * container — `Field::make('vat')->group('billing')` — and the client
+     * still has to draw a tab for it. It used to humanise the key itself,
+     * which was a second copy of {@see Label} that could not agree with this
+     * one by anything but luck. Now the container arrives declared, labelled
+     * here, and the client draws what it is sent.
+     *
+     * @param  list<array<string, mixed>>                                          $fields
+     * @return array{tabs: list<array<string, mixed>>, fieldsets: list<array<string, mixed>>}
+     */
+    public static function layout(PanelResource $resource, array $fields): array
+    {
+        $layout = $resource->form()?->layout() ?? ['tabs' => [], 'fieldsets' => []];
+
+        foreach (['group' => 'tabs', 'fieldset' => 'fieldsets'] as $placement => $containers) {
+            $declared = array_flip(array_map(static fn (array $container): string => (string) $container['key'], $layout[$containers]));
+
+            foreach ($fields as $field) {
+                $key = $field[$placement] ?? null;
+
+                if (!is_string($key) || $key === '' || isset($declared[$key])) {
+                    continue;
+                }
+
+                $declared[$key]        = true;
+                $layout[$containers][] = ['key' => $key, 'label' => Label::sentence($key)];
+            }
+        }
+
+        return $layout;
     }
 
     /**
@@ -187,7 +225,7 @@ final class FormPresenter
             // generator for one that does not exist threw — which took down
             // the page that merely *showed* a record. The list travels with
             // the field instead, and the control filters it in the browser.
-            $searchUrl = $this->url($resource->key() . '_relation_options', ['field' => $path]);
+            $searchUrl = RouteUrls::url($this->urlGenerator, $resource->key() . '_relation_options', ['field' => $path]);
 
             $field['options'] = $searchUrl === null ? $resolver->all($relation) : [];
             $field['props']   = [
@@ -217,28 +255,16 @@ final class FormPresenter
         return $this->relations ??= new RelationOptionResolver($this->entityManager);
     }
 
-    /** Route existence, asked by trying to build a URL for it. */
     /**
      * @return array<string, string|null>
      */
-    private function urls(PanelResource $resource, ?object $record): array
+    private function urls(ResourceCapabilities $capabilities, ?object $record): array
     {
-        $key    = $resource->key();
-        $params = $record !== null ? $resource->recordRouteParams($record) : null;
-
         return [
-            'index'   => $this->url($key),
-            'store'   => $this->url($key . '_store'),
-            'update'  => $params !== null ? $this->url($key . '_update', $params) : null,
-            'destroy' => $params !== null ? $this->url($key . '_destroy', $params) : null,
+            'index'   => $capabilities->url('index'),
+            'store'   => $capabilities->url('store'),
+            'update'  => $record !== null ? $capabilities->recordUrl('update', $record) : null,
+            'destroy' => $record !== null ? $capabilities->recordUrl('destroy', $record) : null,
         ];
-    }
-
-    /**
-     * @param array<string, mixed> $params
-     */
-    private function url(string $name, array $params = []): ?string
-    {
-        return RouteUrls::url($this->urlGenerator, $name, $params);
     }
 }

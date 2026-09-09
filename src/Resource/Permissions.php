@@ -36,6 +36,16 @@ use Doctrine\ORM\QueryBuilder;
  * The user is passed in rather than fetched, and typed as `?object`: the
  * package does not know the application's user class, and null means nobody
  * is signed in.
+ *
+ * **Every answer must be pure and cheap.** The record-level questions are
+ * asked once per row per ability on every listing render, once per card
+ * per lane on a board with quick moves, and once per field on every form —
+ * a page of fifty rows is a few hundred calls. That is nothing for a rule
+ * that reads a property or compares a role, and it is an N+1 for a rule
+ * that queries inside {@see edit()}. A rule that needs data the record does
+ * not carry should load it in the constructor, or narrow the rows with
+ * {@see scope()} so the question never comes up. Nothing here is memoised
+ * for you: the same record asked twice is answered twice.
  */
 class Permissions
 {
