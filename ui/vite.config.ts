@@ -42,6 +42,9 @@ export default defineConfig({
         '@heroicons/vue',
         /^@heroicons\/vue\//,
         'vuedraggable',
+        // Optional peer, reached only through the upload queue's dynamic
+        // import — external so an app that never uploads never loads it.
+        'tus-js-client',
         /^lodash\//,
       ],
     },

@@ -22,3 +22,11 @@ ui/dist/
 .vscode/
 /.phpstan.cache
 /node_modules
+
+#-------------------------
+# Local working notes
+#-------------------------
+
+# Scratch documents kept in the tree but never committed, e.g.
+# docs/plugin-roadmap.local.md
+*.local.md
