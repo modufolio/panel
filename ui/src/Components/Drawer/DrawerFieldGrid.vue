@@ -124,6 +124,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { titleLabel } from '../../Utils/labels'
 import DrawerLink from './DrawerLink.vue'
 import Icon from '../Core/Icon.vue'
 import { formatDate, hasTimeOfDay, parseTimestamp } from '../../Utils/dates'
@@ -204,13 +205,6 @@ const ROW_SPAN_CLASSES: Record<number, string> = {
 
 const gridClass = computed(() => GRID_CLASSES[props.columns] ?? GRID_CLASSES[2])
 const spanClass = computed(() => SPAN_CLASSES[props.columns] ?? SPAN_CLASSES[2])
-
-/** 'postal_code' → 'Postal Code' */
-function humanize(key: string): string {
-  return key
-    .replace(/[_-]+/g, ' ')
-    .replace(/\b\w/g, (character) => character.toUpperCase())
-}
 
 /** A plain object shaped like a presenter's media reference, not an array. */
 function imageUrl(value: unknown): string | undefined {
@@ -354,7 +348,7 @@ const resolvedFields = computed<DrawerField[]>(() => {
 
     return {
       key,
-      label: (typeof declaredLabel === 'string' ? declaredLabel : undefined) ?? humanize(key),
+      label: (typeof declaredLabel === 'string' ? declaredLabel : undefined) ?? titleLabel(key),
       value: image ? '' : text,
       wide: declaredWide || (!image && !href && text.length > props.wideThreshold),
       rows: declaredRows,

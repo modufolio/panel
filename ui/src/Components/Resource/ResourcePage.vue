@@ -93,6 +93,18 @@
            which re-runs this page's own query: the file is what the filters
            currently match, not the loaded page. -->
       <template #headerActions="{ selectedRecords }">
+        <!--
+          A filter set someone named. Beside the column toggle because it is
+          the same kind of thing — how this viewer wants to look at the list —
+          and remembered in the same place.
+        -->
+        <SavedViews
+          :views="savedViews"
+          :active="activeView"
+          @apply="applyView"
+          @save="saveView"
+          @delete="deleteView"
+        />
         <ColumnToggle v-model="visibleColumns" :columns="table.columns" />
         <ExportButton
           v-if="resource.exportUrl"
@@ -314,7 +326,6 @@ import PageHeader from '../Layout/PageHeader.vue'
 import DrawerStack from '../Drawer/DrawerStack.vue'
 import DrawerRecordFrame from '../Drawer/DrawerRecordFrame.vue'
 import BlueprintForm from '../Fields/BlueprintForm.vue'
-import type { MediaItem } from '../Media/MediaPickerDialog.vue'
 import Icon from '../Core/Icon.vue'
 import BoardView from '../Board/BoardView.vue'
 import ViewSwitcher from '../Board/ViewSwitcher.vue'
@@ -353,6 +364,7 @@ const {
   computedSortColumn,
   computedSortDirection,
   computedParams,
+  reset,
   updateSearch,
   handleSort,
   goToPage,
@@ -360,76 +372,25 @@ const {
   setFilter,
 } = useResourceListing(props)
 
-/**
- * Save handlers for the schema's `editable` columns.
- *
- * A hand-written page supplies these itself; a generated one has nothing to
- * supply them from, which is why an editable column used to render a control
- * that saved nowhere. The server's `patch` route is the missing half: one
- * field, keyed by column, allowlisted there against the same schema this
- * reads — so what the client offers and what the server accepts cannot drift.
- *
- * The list's own state rides on the URL because the redirect's URL is what
- * Inertia reloads: without it, editing a cell on page 3 of a filtered list
- * would answer with page 1 of an unfiltered one.
- */
-const listQuery = computed<string>(() => {
-  const query = new URLSearchParams()
-
-  for (const [name, value] of Object.entries(computedParams.value)) {
-    if (value === undefined || value === null || value === '') continue
-
-    query.set(name, String(value))
-  }
-
-  // The filter form does not hold the page — pagination travels as its own
-  // param — so it is read from the rows the server sent. Without it an edit
-  // made on page 3 answers with page 1.
-  const meta = records.value?.meta
-
-  if (meta?.current_page && meta.current_page > 1) {
-    query.set('page[number]', String(meta.current_page))
-
-    if (meta.per_page) query.set('page[size]', String(meta.per_page))
-  }
-
-  return query.toString()
+const { savedViews, activeView, applyView, saveView, deleteView } = useSavedViews({
+  resourceKey: () => props.resource.key,
+  form,
+  reset,
+  computedParams,
+  visibleColumns,
 })
 
-const cellHandlers = computed<Record<string, (record: TableRecord, column: string, value: unknown) => void>>(() => {
-  const template = props.resource.urls?.patch
-
-  if (!template) return {}
-
-  const handlers: Record<string, (record: TableRecord, column: string, value: unknown) => void> = {}
-
-  for (const column of props.table.columns ?? []) {
-    if (!column.editable) continue
-
-    handlers[column.key] = (record, key, value) => {
-      const url = fillId(template, recordId(record))
-
-      if (!url) return
-
-      // Inertia's payload type is FormData or a plain record of scalars; the
-      // value is whatever control the column declared, narrowed at the edge.
-      const payload = { [key]: value as string | number | boolean | null }
-      const query = listQuery.value
-
-      router.patch(query === '' ? url : `${url}?${query}`, payload, { preserveScroll: true })
-    }
-  }
-
-  return handlers
+const { cellHandlers } = useInlineCellPatch({
+  table: () => props.table,
+  patchTemplate: () => props.resource.urls?.patch,
+  computedParams,
+  records,
 })
 
 /** Which of this page's slots override a table cell, and which dress a drawer tab. */
 const slots = useSlots()
 const cellSlots = computed(() => Object.keys(slots).filter((name) => name.startsWith('cell-')))
 const frameSlots = computed(() => Object.keys(slots).filter((name) => !name.startsWith('cell-')))
-
-/** Why the last drag was put back, if it was. */
-const moveError = ref<string | null>(null)
 
 /**
  * Where things are, as the server says. `resource.urls` names every generated
@@ -474,59 +435,10 @@ function openCard(card: BoardCard): void {
   drawerStack.pushWithParams(String(card.id), computedParams.value as Record<string, string>)
 }
 
-/**
- * Persist one drag.
- *
- * The board reports where the card landed — the column, and the cards either
- * side of it — and never a position: two people can drop into the same gap at
- * the same instant, and only the server sees both. A refusal reloads, which
- * puts the card back where the server says it still is.
- */
-async function moveCard(payload: {
-  card: BoardCard
-  column: string
-  after: string | null
-  before: string | null
-}): Promise<void> {
-  const url = `${props.resource.baseUrl}/${payload.card.id}/board-move`
-
-  // A previous refusal describes a move that is over; this one starts clean.
-  moveError.value = null
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-        'X-CSRF-TOKEN': getCsrfToken() ?? '',
-      },
-      credentials: 'same-origin',
-      body: JSON.stringify({
-        view: props.board?.view.key,
-        column: payload.column,
-        after: payload.after,
-        before: payload.before,
-      }),
-    })
-
-    if (response.ok) {
-      return
-    }
-
-    const body = await response.json().catch(() => null)
-    moveError.value = body?.message ?? 'That move could not be saved.'
-  } catch (error) {
-    console.error(error)
-    moveError.value = 'That move could not be saved.'
-  }
-
-  // Re-read rather than undo locally: the server is the only party that knows
-  // where the card actually is now, and a hand-rolled undo would disagree with
-  // it the moment someone else moved something too.
-  router.reload({ only: ['board', 'flash', 'errors'] })
-}
+const { moveError, moveCard } = useBoardMove({
+  baseUrl: () => props.resource.baseUrl,
+  viewKey: () => props.board?.view.key,
+})
 
 /** The open tab, falling back to the first the resource declares. */
 function activeTab(item: StackItem): string {
@@ -540,61 +452,23 @@ function activeTab(item: StackItem): string {
 }
 
 /**
- * What the add form needs of the list it adds to. Structural on purpose: the
- * frame emits its own section type, the stack declares another, and both
- * carry these four.
- */
-interface AddableTab {
-  label: string
-  addLabel?: string | null
-  addFields?: FieldSpec[]
-  /** Where the row goes, stamped per record by the server. */
-  addUrl?: string | null
-}
-
-/**
- * The open add-form, if any: which list is being added to, on which record.
- *
- * Adding happens in a drawer over the drawer rather than by navigating to the
- * full form — reading a record and extending one of its lists is one task, and
- * leaving the record to do it loses the place.
- */
-const addForm = ref<{ tab: AddableTab; fields: FieldDef[] } | null>(null)
-const addValues = ref<Record<string, unknown>>({})
-const addErrors = ref<Record<string, string>>({})
-const addSaving = ref(false)
-
-function openAddForm(item: StackItem, tab: AddableTab): void {
-  // Nothing to render a form from — fall back to the place that can edit it.
-  if (!tab.addFields?.length) {
-    router.visit(editUrl(item))
-    return
-  }
-
-  // The declaration arrives with `rules` as the server's map; the blueprint
-  // layer needs rule *functions*, and handing the raw map through throws the
-  // moment a field validates. One conversion, shared with ResourceForm.
-  const fields = fieldsFromSpec(tab.addFields)
-
-  addValues.value = initialValues(fields)
-  addErrors.value = {}
-  addForm.value = { tab, fields }
-}
-
-/**
- * Register the panel in the overlay layer stack. Without it the drawer beneath
- * stays the topmost layer, so Escape closed the drawer out from under an
- * open form — and the drawer's focus trap kept reaching into this panel.
+ * The add panel's element, registered by the composable as the topmost overlay
+ * layer while the form is open. Without it the drawer beneath stays topmost,
+ * so Escape closed the drawer out from under an open form.
  */
 const addPanelRef = ref<HTMLElement | null>(null)
 
-useDismissableLayer(() => addForm.value !== null, {
-  elements: () => [addPanelRef.value],
-  onDismiss: (reason) => { if (reason === 'escape') closeAddForm() },
-  // The panel's own scrim already handles a press outside.
-  dismissOnOutsidePointer: false,
-  modalElement: () => addPanelRef.value,
-})
+const {
+  addForm,
+  addValues,
+  addErrors,
+  addSaving,
+  openAddForm,
+  closeAddForm,
+  submitAddForm,
+} = useDrawerAddForm({ editUrl, panel: addPanelRef })
+
+const { imagePicker, onImageSelected } = useImagePicker()
 
 /**
  * A press on the dimmed page puts the whole stack away, form included — the
@@ -607,110 +481,4 @@ function dismissEverything(): void {
   drawerStack.closeAll()
 }
 
-function closeAddForm(): void {
-  addForm.value = null
-  addErrors.value = {}
-  addSaving.value = false
-}
-
-/**
- * The open image picker, if any: which field is being set, on which record.
- * Same over-the-drawer reasoning as `addForm` above — picking a cover should
- * not mean leaving the record to reach the full edit form.
- */
-const imagePicker = ref<{ field: DrawerField; item: StackItem } | null>(null)
-
-async function onImageSelected(image: MediaItem): Promise<void> {
-  const open = imagePicker.value
-  imagePicker.value = null
-
-  if (open === null || !open.field.pickUrl || !open.field.pickTarget) {
-    return
-  }
-
-  try {
-    const response = await fetch(open.field.pickUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-        'X-CSRF-TOKEN': getCsrfToken() ?? '',
-      },
-      credentials: 'same-origin',
-      body: JSON.stringify({ [open.field.pickTarget]: image.id }),
-    })
-
-    if (!response.ok) {
-      return
-    }
-
-    // Same reasoning as submitAddForm(): the server owns the record's shape,
-    // so re-read the frame rather than patching a second copy of it here.
-    router.reload()
-  } catch (error) {
-    console.error(error)
-  }
-}
-
-async function submitAddForm(): Promise<void> {
-  const open = addForm.value
-  if (open === null || addSaving.value) {
-    return
-  }
-
-  addSaving.value = true
-  addErrors.value = {}
-
-  // The server names the endpoint, record and field included. Composing it
-  // here from this page's resource was wrong the moment a frame of another
-  // resource was stacked over it — and it also had to know that a tab may
-  // *read* from a display copy (`tag_list`) while the field that edits the
-  // relation is the form's own (`tags`).
-  const url = open.tab.addUrl ?? ''
-
-  if (url === '') {
-    addErrors.value = { _: 'This list cannot be added to here.' }
-    addSaving.value = false
-    return
-  }
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-        'X-CSRF-TOKEN': getCsrfToken() ?? '',
-      },
-      credentials: 'same-origin',
-      body: JSON.stringify(addValues.value),
-    })
-
-    if (response.status === 422) {
-      const body = await response.json()
-      addErrors.value = body?.errors ?? {}
-      return
-    }
-
-    if (!response.ok) {
-      addErrors.value = { _: `Could not save (status ${response.status}).` }
-      return
-    }
-
-    closeAddForm()
-    // The server owns the record's shape, so re-read the frame rather than
-    // patching a second copy of it here. Reloading the current URL rebuilds
-    // whatever stack it addresses — the record alone, or the record with
-    // another resource's frame over it — which navigating to this resource's
-    // record URL would have collapsed to one frame.
-    router.reload()
-  } catch (error) {
-    console.error(error)
-    addErrors.value = { _: 'Could not save.' }
-  } finally {
-    addSaving.value = false
-  }
-}
 </script>

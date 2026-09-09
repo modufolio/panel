@@ -1,4 +1,5 @@
 import { reactive } from 'vue'
+import { apiFetch } from '../Utils/apiFetch'
 
 /**
  * One record's deletion, from "are you sure?" to done.
@@ -94,16 +95,7 @@ export function useDeleteConfirmation<T = unknown>(options: UseDeleteConfirmatio
     state.loading = true
 
     try {
-      const response = await fetch(options.previewUrl(record), {
-        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-        credentials: 'same-origin',
-      })
-
-      if (!response.ok) {
-        throw new Error(`Preview failed with status ${response.status}`)
-      }
-
-      state.plan = await response.json()
+      state.plan = await apiFetch<DeletionPlan>(options.previewUrl(record))
     } catch (error) {
       console.error(error)
       // Without a preview there is nothing honest to promise, so refuse rather

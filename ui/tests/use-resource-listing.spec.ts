@@ -6,7 +6,7 @@ const { get } = vi.hoisted(() => ({ get: vi.fn() }))
 vi.mock('@inertiajs/vue3', () => ({ router: { prefetch: vi.fn(), flushAll: vi.fn(), get, visit: vi.fn() } }))
 import { defineComponent, h } from 'vue'
 import { mount } from '@vue/test-utils'
-import { useResourceListing, humanize } from '../src/Composables/useResourceListing'
+import { useResourceListing } from '../src/Composables/useResourceListing'
 import type { TableSchema } from '../src/Components/Table/tableSchema'
 import { setPanelBaseUrl } from '../src/Utils/url'
 
@@ -113,15 +113,5 @@ describe('useResourceListing', () => {
     expect(get).toHaveBeenCalledTimes(1)
     expect(get.mock.calls[0][0]).toBe('/admin/events')
     expect(get.mock.calls[0][1]).toMatchObject({ page: { number: 2 } })
-  })
-})
-
-describe('humanize', () => {
-  it.each([
-    ['events', 'Events'],
-    ['purchase_orders', 'Purchase Orders'],
-    ['finished-products', 'Finished Products'],
-  ])('%s → %s', (input, expected) => {
-    expect(humanize(input)).toBe(expected)
   })
 })

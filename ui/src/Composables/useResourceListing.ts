@@ -4,6 +4,7 @@ import { filterDefaults } from '../Components/Table/tableSchema'
 import { columnPreferencesFor, loadColumnPreferences, reconcileColumnPreferences, saveColumnPreferences } from './columnPreferences'
 import type { BoardPayload, ResourceViewOption } from '../Components/Board/boardTypes'
 import { useDrawerStack, type StackItem } from '../Components/Drawer/useDrawerStack'
+import { titleLabel } from '../Utils/labels'
 import { useListFilters } from './useListFilters'
 
 /**
@@ -128,7 +129,7 @@ export function useResourceListing(props: ResourceListingProps) {
     () => (attrs[props.resource.key] as ResourceRecords | undefined) ?? { data: [] },
   )
 
-  const title = computed(() => humanize(props.resource.key))
+  const title = computed(() => titleLabel(props.resource.key))
 
   /** 'movies' → 'Movie' — matches the server's drawerType-derived label. */
   const singularLabel = computed(() => {
@@ -189,11 +190,4 @@ export function useResourceListing(props: ResourceListingProps) {
     setFilter,
     goToPage,
   }
-}
-
-/** 'form_submissions' → 'Form Submissions' */
-export function humanize(key: string): string {
-  return key
-    .replace(/[_-]+/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
 }

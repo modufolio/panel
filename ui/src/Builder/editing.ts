@@ -8,7 +8,7 @@
  * is the whole point of the migration.
  */
 
-import { type Command, type EditorState, NodeSelection, TextSelection } from 'prosemirror-state'
+import { type Command, type EditorState, TextSelection } from 'prosemirror-state'
 import {
   toggleMark, setBlockType, wrapIn, lift,
   chainCommands, exitCode, baseKeymap,
@@ -45,34 +45,6 @@ export function isMarkActive(state: EditorState, type: MarkType): boolean {
   return empty
     ? !!type.isInSet(state.storedMarks || $from.marks())
     : state.doc.rangeHasMark(from, to, type)
-}
-
-/** Whether the selection sits inside a `type` block with these attrs. */
-export function isBlockActive(
-  state: EditorState,
-  type: NodeType,
-  attrs: Record<string, unknown> = {},
-): boolean {
-  const { selection } = state
-
-  if (selection instanceof NodeSelection) {
-    return selection.node.hasMarkup(type, attrs)
-  }
-
-  const { $from, to } = selection
-
-  return to <= $from.end() && $from.parent.hasMarkup(type, attrs)
-}
-
-/** Whether the selection is inside a list of this type. */
-export function isInList(state: EditorState, type: NodeType): boolean {
-  const { $from } = state.selection
-
-  for (let depth = $from.depth; depth > 0; depth--) {
-    if ($from.node(depth).type === type) return true
-  }
-
-  return false
 }
 
 /** The href on the link mark under the cursor, or '' if there is none. */

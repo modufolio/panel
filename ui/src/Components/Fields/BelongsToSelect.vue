@@ -141,8 +141,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, type PropType } from 'vue'
+import { ref, computed, watch, onMounted, type PropType } from 'vue'
 import { useRelationship } from '../Composables/useRelationship'
+import { useRemoteOptions } from './useRemoteOptions'
 import FieldPrimitive from './FieldPrimitive.vue'
 import { fieldWidthProp } from './useFieldWidth'
 import { apiFetch, ApiError } from '../../Utils/apiFetch'
@@ -310,9 +311,13 @@ const relationshipComposable = props.endpoint
   : null
 
 /** Results of the current server search, plus labels for the held value. */
-const remoteOptions = ref<BelongsToOption[]>([])
-const remoteLoading = ref(false)
-const remoteTruncated = ref(false)
+const {
+  results: remoteOptions,
+  loading: remoteLoading,
+  truncated: remoteTruncated,
+  search: scheduleRemoteSearch,
+  fetchValues: fetchRemoteValues,
+} = useRemoteOptions<BelongsToOption>({ searchUrl: () => props.searchUrl })
 
 const loading = computed(() => relationshipComposable?.loading.value || remoteLoading.value || false)
 
@@ -344,47 +349,6 @@ const filteredOptions = computed(() => {
     labelOf(option).toLowerCase().includes(query)
   )
 })
-
-/** Fetch from the relation endpoint, keyed by query string. */
-async function fetchRemote(params: string): Promise<BelongsToOption[]> {
-  const url = `${props.searchUrl}${props.searchUrl!.includes('?') ? '&' : '?'}${params}`
-
-  const response = await fetch(url, {
-    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-    credentials: 'same-origin',
-  })
-
-  if (!response.ok) {
-    throw new Error(`Relation search failed with status ${response.status}`)
-  }
-
-  const body: { data?: unknown; meta?: { truncated?: unknown } } | null = await response.json()
-  remoteTruncated.value = body?.meta?.truncated === true
-
-  const data = body?.data
-  return Array.isArray(data) ? data : []
-}
-
-/** Debounced so typing does not issue a request per keystroke. */
-let searchTimer: ReturnType<typeof setTimeout> | undefined
-
-function scheduleRemoteSearch(term: string): void {
-  if (searchTimer !== undefined) {
-    clearTimeout(searchTimer)
-  }
-
-  searchTimer = setTimeout(async () => {
-    remoteLoading.value = true
-    try {
-      remoteOptions.value = await fetchRemote(`q=${encodeURIComponent(term)}`)
-    } catch (error) {
-      console.error(error)
-      remoteOptions.value = []
-    } finally {
-      remoteLoading.value = false
-    }
-  }, 200)
-}
 
 // Get selected option object
 const selectedOption = computed(() => {
@@ -594,9 +558,7 @@ onMounted(async () => {
     // never sent — so ask the server what to call it before anything renders.
     if (props.modelValue !== null && props.modelValue !== '') {
       try {
-        remoteOptions.value = await fetchRemote(
-          `values=${encodeURIComponent(String(props.modelValue))}`,
-        )
+        remoteOptions.value = await fetchRemoteValues(String(props.modelValue))
         if (selectedOption.value) {
           selectedLabel.value = labelOf(selectedOption.value)
           searchQuery.value = labelOf(selectedOption.value)
@@ -618,12 +580,6 @@ onMounted(async () => {
   if (props.modelValue && selectedOption.value) {
     selectedLabel.value = labelOf(selectedOption.value)
     searchQuery.value = labelOf(selectedOption.value)
-  }
-})
-
-onUnmounted(() => {
-  if (searchTimer !== undefined) {
-    clearTimeout(searchTimer)
   }
 })
 </script>

@@ -75,6 +75,11 @@ export async function apiFetch<T = unknown>(url: string, options: ApiFetchOption
 
   const finalHeaders: Record<string, string> = {
     Accept: 'application/json',
+    // Announces the call as an XHR, which is what the security layer reads to
+    // decide that a rejected request wants data back rather than an HTML error
+    // page. Every hand-rolled fetch in the panel sent it; sending it here is
+    // what lets them stop hand-rolling.
+    'X-Requested-With': 'XMLHttpRequest',
     ...(headers as Record<string, string> | undefined),
   }
 

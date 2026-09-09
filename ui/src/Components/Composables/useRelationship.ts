@@ -1,12 +1,5 @@
 import { ref, computed, type Ref, type ComputedRef } from 'vue'
-import { getCsrfToken } from '../../Utils/csrf'
-
-const jsonHeaders = (): Record<string, string> => ({
-  'Accept': 'application/json',
-  'Content-Type': 'application/json',
-  'X-Requested-With': 'XMLHttpRequest',
-  'X-CSRF-TOKEN': getCsrfToken() ?? '',
-})
+import { apiFetch } from '../../Utils/apiFetch'
 
 const buildUrl = (endpoint: string, params: Record<string, unknown>): string => {
   const search = new URLSearchParams()
@@ -16,17 +9,6 @@ const buildUrl = (endpoint: string, params: Record<string, unknown>): string => 
   })
   const query = search.toString()
   return query ? `${endpoint}?${query}` : endpoint
-}
-
-const parseResponse = async (response: Response): Promise<Record<string, unknown>> => {
-  if (!response.ok) {
-    const error = new Error(`Request failed with status ${response.status}`) as Error & { response?: Response }
-    error.response = response
-    throw error
-  }
-  if (response.status === 204) return {}
-  const text = await response.text()
-  return text ? JSON.parse(text) : {}
 }
 
 export interface RelationshipConfig {
@@ -121,15 +103,12 @@ export function useRelationship(config: RelationshipConfig = {}) {
 
     try {
       const params = buildQueryParams(options)
-      const response = await fetch(buildUrl(endpoint, params), {
-        method: 'GET',
-        headers: jsonHeaders(),
-        credentials: 'same-origin',
-      })
-      const data = await parseResponse(response) as Record<string, unknown> & {
+      // `?? {}` keeps the old parser's answer for an empty body: an endpoint
+      // that replies 204 leaves the list empty rather than throwing here.
+      const data = await apiFetch<Record<string, unknown> & {
         data?: Record<string, unknown>[]
         meta?: { total?: number; last_page?: number }
-      }
+      } | null>(buildUrl(endpoint, params)) ?? {}
 
       // Handle JSON:API response format
       if (data.data) {
@@ -175,18 +154,10 @@ export function useRelationship(config: RelationshipConfig = {}) {
    */
   const attach = async (resourceId: string | number, relatedId: string | number): Promise<boolean> => {
     try {
-      const response = await fetch(`${endpoint}/${resourceId}/relationships/${relationship}`, {
+      await apiFetch(`${endpoint}/${resourceId}/relationships/${relationship}`, {
         method: 'POST',
-        headers: jsonHeaders(),
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          data: {
-            type: relationship,
-            id: relatedId,
-          },
-        }),
+        body: { data: { type: relationship, id: relatedId } },
       })
-      await parseResponse(response)
 
       return true
     } catch (error) {
@@ -200,12 +171,9 @@ export function useRelationship(config: RelationshipConfig = {}) {
    */
   const detach = async (resourceId: string | number, relatedId: string | number): Promise<boolean> => {
     try {
-      const response = await fetch(`${endpoint}/${resourceId}/relationships/${relationship}/${relatedId}`, {
+      await apiFetch(`${endpoint}/${resourceId}/relationships/${relationship}/${relatedId}`, {
         method: 'DELETE',
-        headers: jsonHeaders(),
-        credentials: 'same-origin',
       })
-      await parseResponse(response)
 
       return true
     } catch (error) {
@@ -219,18 +187,10 @@ export function useRelationship(config: RelationshipConfig = {}) {
    */
   const associate = async (resourceId: string | number, relatedId: string | number): Promise<boolean> => {
     try {
-      const response = await fetch(`${endpoint}/${resourceId}`, {
+      await apiFetch(`${endpoint}/${resourceId}`, {
         method: 'PATCH',
-        headers: jsonHeaders(),
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          data: {
-            type: relationship,
-            id: relatedId,
-          },
-        }),
+        body: { data: { type: relationship, id: relatedId } },
       })
-      await parseResponse(response)
 
       return true
     } catch (error) {
@@ -244,18 +204,10 @@ export function useRelationship(config: RelationshipConfig = {}) {
    */
   const dissociate = async (resourceId: string | number): Promise<boolean> => {
     try {
-      const response = await fetch(`${endpoint}/${resourceId}`, {
+      await apiFetch(`${endpoint}/${resourceId}`, {
         method: 'PATCH',
-        headers: jsonHeaders(),
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          data: {
-            type: relationship,
-            id: null,
-          },
-        }),
+        body: { data: { type: relationship, id: null } },
       })
-      await parseResponse(response)
 
       return true
     } catch (error) {
@@ -269,18 +221,12 @@ export function useRelationship(config: RelationshipConfig = {}) {
    */
   const create = async (resourceId: string | number, data: Record<string, unknown>): Promise<Record<string, unknown>> => {
     try {
-      const response = await fetch(`${endpoint}/${resourceId}/${relationship}`, {
+      // `?? {}` keeps the old parser's answer for an empty body: this
+      // resolves to the created record where the server sends one back.
+      const body = await apiFetch<Record<string, unknown> | null>(`${endpoint}/${resourceId}/${relationship}`, {
         method: 'POST',
-        headers: jsonHeaders(),
-        credentials: 'same-origin',
-        body: JSON.stringify({
-          data: {
-            type: relationship,
-            attributes: data,
-          },
-        }),
-      })
-      const body = await parseResponse(response)
+        body: { data: { type: relationship, attributes: data } },
+      }) ?? {}
 
       // Refresh records after creation
       await fetchRecords()
@@ -297,12 +243,7 @@ export function useRelationship(config: RelationshipConfig = {}) {
    */
   const deleteRecord = async (relatedId: string | number): Promise<boolean> => {
     try {
-      const response = await fetch(`${endpoint}/${relatedId}`, {
-        method: 'DELETE',
-        headers: jsonHeaders(),
-        credentials: 'same-origin',
-      })
-      await parseResponse(response)
+      await apiFetch(`${endpoint}/${relatedId}`, { method: 'DELETE' })
 
       // Refresh records after deletion
       await fetchRecords()

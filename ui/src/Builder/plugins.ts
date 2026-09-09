@@ -41,7 +41,7 @@ export function placeholder(text: string): Plugin {
 
 // ── Slash menu ───────────────────────────────────────────────────────────────
 
-export const slashMenuKey = new PluginKey<SlashMenuState>('builderSlashMenu')
+const slashMenuKey = new PluginKey<SlashMenuState>('builderSlashMenu')
 
 export interface SlashMenuState {
   /** Position of the `/` in the document, or null when the menu is closed. */

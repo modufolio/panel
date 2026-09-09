@@ -182,8 +182,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onBeforeUnmount, type PropType } from 'vue'
+import { ref, computed, watch, onMounted, type PropType } from 'vue'
 import FieldPrimitive from './FieldPrimitive.vue'
+import { useRemoteOptions } from './useRemoteOptions'
 import { fieldWidthProp } from './useFieldWidth'
 import { resolveNavigationIndex } from '../../Primitives/useArrowNavigation'
 import { useDismissableLayer } from '../../Primitives/useDismissableLayer'
@@ -259,14 +260,23 @@ const highlightedIndex = ref(0)
 const selectedValues = ref<(string | number)[]>([...props.modelValue as (string | number)[]])
 
 /**
- * Server-search state. `knownOptions` accumulates every option this field has
- * ever seen — search results plus the labels resolved for the initial
- * selection — because a chip must keep its label after the search that
- * produced it has been replaced by another.
+ * Every option this field has ever seen — search results plus the labels
+ * resolved for the initial selection — because a chip must keep its label
+ * after the search that produced it has been replaced by another. Which is
+ * why every batch is fed in below, the values lookup included, and not just
+ * what the current search returned.
  */
-const remoteResults = ref<SelectOption[]>([])
 const knownOptions = ref<SelectOption[]>([])
-const remoteTruncated = ref(false)
+
+const {
+  results: remoteResults,
+  truncated: remoteTruncated,
+  search: scheduleRemoteSearch,
+  fetchValues: fetchRemoteValues,
+} = useRemoteOptions<SelectOption>({
+  searchUrl: () => props.searchUrl,
+  onReceive: (options) => rememberOptions(options),
+})
 
 // Normalize options to { label, value } format
 const normalizedOptions = computed<SelectOption[]>(() => {
@@ -306,45 +316,6 @@ function rememberOptions(options: SelectOption[]): void {
     ...knownOptions.value,
     ...options.filter((option) => !seen.has(String(option.value))),
   ]
-}
-
-async function fetchRemote(params: string): Promise<SelectOption[]> {
-  const url = `${props.searchUrl}${props.searchUrl!.includes('?') ? '&' : '?'}${params}`
-
-  const response = await fetch(url, {
-    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-    credentials: 'same-origin',
-  })
-
-  if (!response.ok) {
-    throw new Error(`Relation search failed with status ${response.status}`)
-  }
-
-  const body = await response.json()
-  remoteTruncated.value = body?.meta?.truncated === true
-
-  const options: SelectOption[] = Array.isArray(body?.data) ? body.data : []
-  rememberOptions(options)
-
-  return options
-}
-
-/** Debounced so typing does not issue a request per keystroke. */
-let searchTimer: ReturnType<typeof setTimeout> | undefined
-
-function scheduleRemoteSearch(term: string): void {
-  if (searchTimer !== undefined) {
-    clearTimeout(searchTimer)
-  }
-
-  searchTimer = setTimeout(async () => {
-    try {
-      remoteResults.value = await fetchRemote(`q=${encodeURIComponent(term)}`)
-    } catch (error) {
-      console.error(error)
-      remoteResults.value = []
-    }
-  }, 200)
 }
 
 // Helper functions
@@ -479,16 +450,10 @@ watch(searchQuery, (term) => {
 onMounted(async () => {
   if (props.searchUrl && selectedValues.value.length > 0) {
     try {
-      await fetchRemote(`values=${encodeURIComponent(selectedValues.value.join(','))}`)
+      await fetchRemoteValues(selectedValues.value.join(','))
     } catch (error) {
       console.error(error)
     }
-  }
-})
-
-onBeforeUnmount(() => {
-  if (searchTimer !== undefined) {
-    clearTimeout(searchTimer)
   }
 })
 </script>

@@ -3,6 +3,7 @@ import manifest from '../src/Components/Fields/fieldTypes.json'
 import {
   builtInFieldTypes,
   registeredFieldTypes,
+  hasFieldType,
   missingFieldTypes,
   unknownFieldTypeMessage,
   registerFieldType,
@@ -20,6 +21,14 @@ describe('field registry contract', () => {
   it('ships exactly the types the manifest lists', () => {
     expect([...registeredFieldTypes()].sort()).toEqual([...(manifest as string[])].sort())
     expect(builtInFieldTypes()).toEqual(manifest)
+  })
+
+  it('answers whether a type is registered, which is how a host checks before registering', () => {
+    expect(hasFieldType('text')).toBe(true)
+    expect(hasFieldType('no-such-field')).toBe(false)
+
+    registerFieldType('no-such-field', () => import('../src/Components/Fields/TextField.vue'))
+    expect(hasFieldType('no-such-field')).toBe(true)
   })
 
   it('every manifest type resolves to a component', async () => {

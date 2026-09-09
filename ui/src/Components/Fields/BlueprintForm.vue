@@ -101,6 +101,7 @@
 
 <script setup lang="ts">
 import { computed, defineAsyncComponent, ref, watch, type Component, type PropType } from 'vue'
+import { sentenceLabel } from '../../Utils/labels'
 import FieldsSection from '../Sections/FieldsSection.vue'
 import FieldGrid from './FieldGrid.vue'
 import FormTabs from './FormTabs.vue'
@@ -171,10 +172,6 @@ watch(unknownTypes, (types) => {
 // in it is hidden by a condition — a bar with an empty tab is a bug the user
 // sees before the developer does.
 
-function humanize(key: string): string {
-  return key.charAt(0).toUpperCase() + key.slice(1).replace(/[-_]+/g, ' ')
-}
-
 const groupedFields = computed<Record<string, FieldDef[]>>(() => {
   const groups: Record<string, FieldDef[]> = {}
   for (const field of visibleFields.value) {
@@ -195,7 +192,7 @@ const tabs = computed(() => {
   for (const key of keys) {
     if (seen.has(key) || !(groupedFields.value[key]?.length)) continue
     seen.add(key)
-    result.push(declared.find((tab) => tab.key === key) ?? { key, label: humanize(key) })
+    result.push(declared.find((tab) => tab.key === key) ?? { key, label: sentenceLabel(key) })
   }
 
   return result
@@ -230,7 +227,7 @@ function runs(fields: FieldDef[]): Run[] {
       continue
     }
 
-    const declared = key === null ? null : (props.layout.fieldsets ?? []).find((set) => set.key === key) ?? { key, label: humanize(key) }
+    const declared = key === null ? null : (props.layout.fieldsets ?? []).find((set) => set.key === key) ?? { key, label: sentenceLabel(key) }
     result.push({ key: `${key ?? 'bare'}:${field.key}`, fieldset: declared, fields: [field] })
   }
 

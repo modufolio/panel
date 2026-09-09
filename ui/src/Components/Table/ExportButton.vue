@@ -96,6 +96,7 @@
 
 <script setup lang="ts">
 import { nextTick, ref, computed, type PropType } from 'vue'
+import { titleLabel } from '../../Utils/labels'
 import { useTableExport, type TableColumn } from './useTableExport'
 import { getCsrfToken } from '../../Utils/csrf'
 import { pathIcon } from '../../Utils/pathIcon'
@@ -261,6 +262,8 @@ async function exportViaBackend(format: string, filename: string) {
     // worse than an error.
     const requestUrl = props.exportUrl + window.location.search
 
+    // One of the two calls in the panel that stays on a bare `fetch`: the
+    // reply is a file, and apiFetch reads every response as text or JSON.
     const response = await fetch(requestUrl, {
       method: 'POST',
       credentials: 'same-origin',
@@ -304,7 +307,7 @@ async function exportViaBackend(format: string, filename: string) {
 function handlePrint() {
   isOpen.value = false
 
-  const title = props.filename.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+  const title = titleLabel(props.filename)
   const dataToExport = recordsToExport.value
   printTable(dataToExport, props.columns, title)
 

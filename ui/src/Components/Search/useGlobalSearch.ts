@@ -26,7 +26,7 @@ export interface SearchResult {
   groups: SearchGroup[]
 }
 
-export const SEARCH_DEBOUNCE_MS = 250
+const SEARCH_DEBOUNCE_MS = 250
 
 export function useGlobalSearch(endpoint: string = panelUrl('/search')) {
   const query = ref('')

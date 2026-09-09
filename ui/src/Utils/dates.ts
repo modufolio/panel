@@ -75,10 +75,6 @@ export function addMonths(date: Date, months: number, anchorDay?: number): Date 
   return result
 }
 
-export function startOfMonth(date: Date): Date {
-  return makeDate(date.getFullYear(), date.getMonth(), 1)
-}
-
 export function daysInMonth(year: number, month: number): number {
   return makeDate(year, month + 1, 0).getDate()
 }
