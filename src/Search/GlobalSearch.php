@@ -6,7 +6,6 @@ namespace Modufolio\Panel\Search;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Modufolio\Appkit\Security\User\UserInterface;
-use Modufolio\Panel\Contracts\ResourceLocatorInterface;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\ResourceListing;
 use Modufolio\Panel\Support\Label;
@@ -29,12 +28,13 @@ final class GlobalSearch
     public const DEFAULT_LIMIT = 5;
 
     /**
+     * @param \Closure(class-string<PanelResource>): PanelResource                            $resources       where a class becomes an instance; the host's, because only its container knows how to build one
      * @param list<class-string<PanelResource>>|\Closure(): list<class-string<PanelResource>> $resourceClasses
      */
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly UrlGeneratorInterface $urlGenerator,
-        private readonly ResourceLocatorInterface $resources,
+        private readonly \Closure $resources,
         private readonly array|\Closure $resourceClasses,
     ) {
     }
@@ -52,7 +52,7 @@ final class GlobalSearch
         }
 
         foreach ($this->classes() as $class) {
-            $resource = $this->resources->get($class);
+            $resource = ($this->resources)($class);
 
             if (!$resource->searchableGlobally() || !$resource->permissions()->view(null, $user)) {
                 continue;

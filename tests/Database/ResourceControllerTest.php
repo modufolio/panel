@@ -8,8 +8,6 @@ use Modufolio\Appkit\Inertia\Inertia;
 use Modufolio\Appkit\Security\Token\TokenStorageInterface;
 use Modufolio\Panel\Form\Form;
 use Modufolio\Panel\Http\ResourceController;
-use Modufolio\Panel\Resource\ContainerResourceLocator;
-use Psr\Container\ContainerInterface;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Contracts\PermissionReportProviderInterface;
 use Modufolio\Panel\Inspection\PermissionReport;
@@ -35,6 +33,9 @@ use Symfony\Component\Validator\Validation;
 final class ResourceControllerTest extends DoctrineTestCase
 {
     private FlashBag $flash;
+
+    /** The resource the last controller() was built for, as handle()'s argument. */
+    private PanelResource $resource;
 
     private function seed(): Movie
     {
@@ -74,23 +75,18 @@ final class ResourceControllerTest extends DoctrineTestCase
     {
         $this->flash = new FlashBag();
 
-        // The module wires these from the container; here they are handed
-        // over directly, with the package's own test doubles.
-        $container = $this->createStub(ContainerInterface::class);
-        $container->method('has')->willReturnCallback(static fn (string $id): bool => $id === DerivedMovieResource::class);
-        $container->method('get')->willReturn($resource);
+        // What a host's parameter resolver would have built from the route's
+        // resourceClass default, handed to handle() as the argument it fills.
+        $this->resource = $resource;
 
-        $controller = new ResourceController(
+        return new ResourceController(
             entityManager: self::em(),
             urlGenerator: $urls ?? $this->urlGenerator(DerivedMovieResource::class),
             validator: Validation::createValidator(),
             tokenStorage: $this->createStub(TokenStorageInterface::class),
             flashBag: $this->flash,
-            resources: new ContainerResourceLocator($container),
             permissions: $permissions,
         );
-
-        return $controller;
     }
 
     /**
@@ -128,7 +124,7 @@ final class ResourceControllerTest extends DoctrineTestCase
     {
         $this->seed();
 
-        $page = $this->page($this->controller(new DerivedMovieResource())->handle($this->http('GET', '/panel/movies'), DerivedMovieResource::class, 'index'));
+        $page = $this->page($this->controller(new DerivedMovieResource())->handle($this->http('GET', '/panel/movies'), 'index', $this->resource));
 
         self::assertSame('Resource/Index', $page->component());
         self::assertSame(['Heat', 'Jaws'], array_column($page->props()['movies']['data'], 'title'));
@@ -140,8 +136,8 @@ final class ResourceControllerTest extends DoctrineTestCase
 
         $page = $this->page($this->controller(new DerivedMovieResource())->handle(
             $this->http('GET', '/panel/movies/' . $heat->getUuid()->toString()),
-            DerivedMovieResource::class,
             'show',
+            $this->resource,
             $heat->getUuid()->toString(),
         ));
 
@@ -166,7 +162,7 @@ final class ResourceControllerTest extends DoctrineTestCase
         $page = $this->page($this->controller(
             new CastDrawerMovieResource(),
             $this->urlGenerator(CastDrawerMovieResource::class),
-        )->handle($this->http('GET', '/panel/movies/' . $uuid), DerivedMovieResource::class, 'show', $uuid));
+        )->handle($this->http('GET', '/panel/movies/' . $uuid), 'show', $this->resource, $uuid));
 
         $cast = $page->props()['stack'][0]['tabs'][0]['sections'][0];
 
@@ -193,7 +189,7 @@ final class ResourceControllerTest extends DoctrineTestCase
         $page = $this->page($this->controller(
             $resource,
             $this->urlGenerator(CastDrawerMovieResource::class),
-        )->handle($this->http('GET', '/panel/movies/' . $uuid), DerivedMovieResource::class, 'show', $uuid));
+        )->handle($this->http('GET', '/panel/movies/' . $uuid), 'show', $this->resource, $uuid));
 
         $cast = $page->props()['stack'][0]['tabs'][0]['sections'][0];
 
@@ -205,7 +201,7 @@ final class ResourceControllerTest extends DoctrineTestCase
     {
         $this->seed();
 
-        $response = $this->response($this->controller($this->refusing('view'))->handle($this->http('GET', '/panel/movies'), DerivedMovieResource::class, 'index'));
+        $response = $this->response($this->controller($this->refusing('view'))->handle($this->http('GET', '/panel/movies'), 'index', $this->resource));
 
         self::assertSame(302, $response->getStatusCode());
         self::assertSame('/panel/movies', $response->getHeaderLine('Location'));
@@ -218,8 +214,8 @@ final class ResourceControllerTest extends DoctrineTestCase
 
         $response = $this->response($this->controller($this->refusing('create'))->handle(
             $this->http('GET', '/panel/movies/create', headers: ['Accept' => 'application/json']),
-            DerivedMovieResource::class,
             'create',
+            $this->resource,
         ));
 
         self::assertSame(403, $response->getStatusCode());
@@ -239,8 +235,8 @@ final class ResourceControllerTest extends DoctrineTestCase
 
         $response = $this->response($this->controller(new DerivedMovieResource())->handle(
             $this->http('POST', '/panel/movies', ['title' => 'Collateral', 'synopsis' => 'A cab ride.']),
-            DerivedMovieResource::class,
             'store',
+            $this->resource,
         ));
 
         self::assertSame(302, $response->getStatusCode());
@@ -255,8 +251,8 @@ final class ResourceControllerTest extends DoctrineTestCase
 
         $page = $this->page($this->controller(new DerivedMovieResource())->handle(
             $this->http('POST', '/panel/movies', ['title' => '']),
-            DerivedMovieResource::class,
             'store',
+            $this->resource,
         ));
 
         self::assertSame('Resource/Create', $page->component());
@@ -271,8 +267,8 @@ final class ResourceControllerTest extends DoctrineTestCase
 
         $response = $this->response($this->controller(new DerivedMovieResource())->handle(
             $this->http('PUT', '/panel/movies/' . $uuid, ['title' => 'Heat (1995)', 'synopsis' => null, 'released_on' => null]),
-            DerivedMovieResource::class,
             'update',
+            $this->resource,
             $uuid,
         ));
 
@@ -293,8 +289,8 @@ final class ResourceControllerTest extends DoctrineTestCase
 
         $response = $this->response($this->controller($this->editableTitle())->handle(
             $this->http('PATCH', '/panel/movies/' . $uuid . '?page=3&sort=-year', ['title' => 'Heat (1995)']),
-            DerivedMovieResource::class,
             'patch',
+            $this->resource,
             $uuid,
         ));
 
@@ -330,8 +326,8 @@ final class ResourceControllerTest extends DoctrineTestCase
 
         $this->response($this->controller($resource)->handle(
             $this->http('PATCH', '/panel/movies/' . $uuid, ['name' => 'Heat, remastered']),
-            DerivedMovieResource::class,
             'patch',
+            $this->resource,
             $uuid,
         ));
 
@@ -350,8 +346,8 @@ final class ResourceControllerTest extends DoctrineTestCase
 
         $this->response($this->controller($this->editableTitle())->handle(
             $this->http('PATCH', '/panel/movies/' . $uuid, ['synopsis' => 'Smuggled in beside the form.']),
-            DerivedMovieResource::class,
             'patch',
+            $this->resource,
             $uuid,
         ));
 
@@ -386,8 +382,8 @@ final class ResourceControllerTest extends DoctrineTestCase
 
         $this->response($this->controller($resource)->handle(
             $this->http('PATCH', '/panel/movies/' . $uuid, ['title' => 'Nope']),
-            DerivedMovieResource::class,
             'patch',
+            $this->resource,
             $uuid,
         ));
 
@@ -408,8 +404,8 @@ final class ResourceControllerTest extends DoctrineTestCase
 
         $this->response($this->controller($this->editableTitle())->handle(
             $this->http('PATCH', '/panel/movies/' . $uuid, ['title' => '']),
-            DerivedMovieResource::class,
             'patch',
+            $this->resource,
             $uuid,
         ));
 
@@ -442,8 +438,8 @@ final class ResourceControllerTest extends DoctrineTestCase
 
         $this->controller($resource)->handle(
             $this->http('PATCH', '/panel/movies/' . $uuid, ['year' => 1996]),
-            DerivedMovieResource::class,
             'patch',
+            $this->resource,
             $uuid,
         );
     }
@@ -478,8 +474,8 @@ final class ResourceControllerTest extends DoctrineTestCase
 
         $this->response($this->controller($resource)->handle(
             $this->http('PATCH', '/panel/movies/' . $uuid, ['title' => 'Frozen']),
-            DerivedMovieResource::class,
             'patch',
+            $this->resource,
             $uuid,
         ));
 
@@ -536,8 +532,8 @@ final class ResourceControllerTest extends DoctrineTestCase
             $this->http('GET', '/panel/_permissions'),
             // The operation spans every resource, so the class on the route is
             // not read; the signature still wants one.
-            DerivedMovieResource::class,
             'permissions',
+            $this->resource,
         ));
 
         self::assertSame('Resource/Permissions', $page->component());
@@ -549,8 +545,8 @@ final class ResourceControllerTest extends DoctrineTestCase
     {
         $response = $this->response($this->controller(new DerivedMovieResource())->handle(
             $this->http('GET', '/panel/_permissions'),
-            DerivedMovieResource::class,
             'permissions',
+            $this->resource,
         ));
 
         self::assertSame(404, $response->getStatusCode());
@@ -580,7 +576,7 @@ final class ResourceControllerTest extends DoctrineTestCase
         $heat = $this->seed();
         $uuid = $heat->getUuid()->toString();
 
-        $preview = $this->response($this->controller(new DerivedMovieResource())->handle($this->http('GET', '/x'), DerivedMovieResource::class, 'deletePreview', $uuid));
+        $preview = $this->response($this->controller(new DerivedMovieResource())->handle($this->http('GET', '/x'), 'deletePreview', $this->resource, $uuid));
         $plan    = json_decode((string) $preview->getBody(), true);
 
         self::assertSame(200, $preview->getStatusCode());
@@ -588,7 +584,7 @@ final class ResourceControllerTest extends DoctrineTestCase
         self::assertArrayNotHasKey('soft', $plan, 'No softDelete() on the entity: a real removal, with a blast radius.');
         self::assertSame('Movie: Heat', $plan['nested'][0]['label']);
 
-        $response = $this->response($this->controller(new DerivedMovieResource())->handle($this->http('DELETE', '/x'), DerivedMovieResource::class, 'destroy', $uuid));
+        $response = $this->response($this->controller(new DerivedMovieResource())->handle($this->http('DELETE', '/x'), 'destroy', $this->resource, $uuid));
         self::assertSame(303, $response->getStatusCode());
         self::assertSame(['Movie deleted.'], $this->flash->get('success'));
 
@@ -605,8 +601,8 @@ final class ResourceControllerTest extends DoctrineTestCase
         // Everything allowed, one id that no longer exists: "1 of 2", one reason.
         $this->response($this->controller(new DerivedMovieResource())->handle(
             $this->http('POST', '/panel/movies/bulk-destroy', ['ids' => [$heat->getUuid()->toString(), 'no-such-uuid']]),
-            DerivedMovieResource::class,
             'bulkDestroy',
+            $this->resource,
         ));
         self::assertSame(['1 of 2 movie(s) deleted.'], $this->flash->get('success'));
         self::assertSame(['1 skipped: no longer exists.'], $this->flash->get('warning'));
@@ -614,8 +610,8 @@ final class ResourceControllerTest extends DoctrineTestCase
         // Every record refused with a reason: nothing deleted, the reason named once with its count.
         $this->response($this->controller($this->refusing('delete'))->handle(
             $this->http('POST', '/panel/movies/bulk-destroy', ['ids' => [$jaws->getUuid()->toString(), $heat->getUuid()->toString()]]),
-            DerivedMovieResource::class,
             'bulkDestroy',
+            $this->resource,
         ));
         self::assertSame([], $this->flash->get('success'));
         self::assertSame(
@@ -631,8 +627,8 @@ final class ResourceControllerTest extends DoctrineTestCase
 
         $page = $this->page($this->controller($this->refusing('delete'))->handle(
             $this->http('GET', '/panel/movies/' . $heat->getUuid()->toString()),
-            DerivedMovieResource::class,
             'show',
+            $this->resource,
             $heat->getUuid()->toString(),
         ));
 
@@ -646,9 +642,9 @@ final class ResourceControllerTest extends DoctrineTestCase
         $heat = $this->seed();
         $uuid = $heat->getUuid()->toString();
 
-        self::assertSame(403, $this->response($this->controller($this->refusing('delete'))->handle($this->http('GET', '/x'), DerivedMovieResource::class, 'deletePreview', $uuid))->getStatusCode());
+        self::assertSame(403, $this->response($this->controller($this->refusing('delete'))->handle($this->http('GET', '/x'), 'deletePreview', $this->resource, $uuid))->getStatusCode());
 
-        $response = $this->response($this->controller($this->refusing('delete'))->handle($this->http('DELETE', '/x'), DerivedMovieResource::class, 'destroy', $uuid));
+        $response = $this->response($this->controller($this->refusing('delete'))->handle($this->http('DELETE', '/x'), 'destroy', $this->resource, $uuid));
         self::assertSame(303, $response->getStatusCode());
         self::assertSame(['You do not have permission to do that.'], $this->flash->get('error'));
     }
@@ -657,7 +653,7 @@ final class ResourceControllerTest extends DoctrineTestCase
     {
         $this->seed();
 
-        $response = $this->response($this->controller(new DerivedMovieResource())->handle($this->http('GET', '/x'), DerivedMovieResource::class, 'show', '00000000-0000-4000-8000-000000000000'));
+        $response = $this->response($this->controller(new DerivedMovieResource())->handle($this->http('GET', '/x'), 'show', $this->resource, '00000000-0000-4000-8000-000000000000'));
 
         self::assertSame(302, $response->getStatusCode());
         self::assertSame('/panel/movies', $response->getHeaderLine('Location'));
@@ -667,7 +663,7 @@ final class ResourceControllerTest extends DoctrineTestCase
     {
         $this->seed();
 
-        $response = $this->response($this->controller(new DerivedMovieResource())->handle($this->http('GET', '/x'), DerivedMovieResource::class, 'relationOptions', null, 'title'));
+        $response = $this->response($this->controller(new DerivedMovieResource())->handle($this->http('GET', '/x'), 'relationOptions', $this->resource, null, 'title'));
 
         self::assertSame(404, $response->getStatusCode());
     }
@@ -676,7 +672,7 @@ final class ResourceControllerTest extends DoctrineTestCase
     {
         $this->seed();
 
-        $response = $this->response($this->controller(new DerivedMovieResource())->handle($this->http('POST', '/x', ['format' => 'csv']), DerivedMovieResource::class, 'export'));
+        $response = $this->response($this->controller(new DerivedMovieResource())->handle($this->http('POST', '/x', ['format' => 'csv']), 'export', $this->resource));
 
         self::assertSame(422, $response->getStatusCode());
         self::assertStringContainsString('not configured', (string) $response->getBody());
@@ -711,8 +707,8 @@ final class ResourceControllerTest extends DoctrineTestCase
 
         $response = $this->response($this->controller($this->movieResourceWithStudioField())->handle(
             $this->http('POST', '/x', ['studio_id' => $amblin->getUuid()->toString()]),
-            DerivedMovieResource::class,
             'relationStore',
+            $this->resource,
             $heat->getUuid()->toString(),
             'studio_id',
         ));
@@ -746,8 +742,8 @@ final class ResourceControllerTest extends DoctrineTestCase
 
         $response = $this->response($this->controller($resource)->handle(
             $this->http('POST', '/x', ['studio_id' => 'irrelevant']),
-            DerivedMovieResource::class,
             'relationStore',
+            $this->resource,
             $heat->getUuid()->toString(),
             'studio_id',
         ));
@@ -761,8 +757,8 @@ final class ResourceControllerTest extends DoctrineTestCase
 
         $response = $this->response($this->controller(new DerivedMovieResource())->handle(
             $this->http('POST', '/x', ['column' => 'done', 'view' => 'board']),
-            DerivedMovieResource::class,
             'boardMove',
+            $this->resource,
             $heat->getUuid()->toString(),
         ));
 

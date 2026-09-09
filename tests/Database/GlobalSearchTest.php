@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Database;
 
-use Modufolio\Panel\Resource\ContainerResourceLocator;
+use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Search\GlobalSearch;
 use Modufolio\Panel\Tests\Case\DoctrineTestCase;
 use Modufolio\Panel\Tests\Fixture\DerivedMovieResource;
 use Modufolio\Panel\Tests\Fixture\Entity\Movie;
 use Modufolio\Panel\Tests\Fixture\Entity\Studio;
 use Modufolio\Panel\Tests\Fixture\SearchableMovieResource;
-use Psr\Container\ContainerInterface;
 
 /**
  * The search across resources asks each opted-in resource the way its own
@@ -42,14 +41,22 @@ final class GlobalSearchTest extends DoctrineTestCase
         $this->clear();
     }
 
-    /** @param list<class-string<\Modufolio\Panel\Resource\PanelResource>> $classes */
+    /** @param list<class-string<PanelResource>> $classes */
     private function search(array $classes): GlobalSearch
     {
-        $container = $this->createStub(ContainerInterface::class);
-        $container->method('has')->willReturnCallback(static fn (string $id): bool => in_array($id, $classes, true));
-        $container->method('get')->willReturnCallback(static fn (string $id): object => new $id());
+        return new GlobalSearch(self::em(), $this->urlGenerator(...$classes), self::resolver(), $classes);
+    }
 
-        return new GlobalSearch(self::em(), $this->urlGenerator(...$classes), new ContainerResourceLocator($container), $classes);
+    /**
+     * What the module closes over the application. Every fixture resource
+     * constructs bare, so here it is `new`.
+     */
+    private static function resolver(): \Closure
+    {
+        return static function (string $class): PanelResource {
+            /** @var class-string<PanelResource> $class */
+            return new $class();
+        };
     }
 
     public function testAHitCarriesTitleDetailsAndTheRecordUrl(): void

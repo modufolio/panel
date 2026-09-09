@@ -12,14 +12,13 @@ use Modufolio\Appkit\Module\AbstractModule;
 use Modufolio\Appkit\Security\Token\TokenStorageInterface;
 use Modufolio\Panel\Contracts\ExportAdapterProviderInterface;
 use Modufolio\Panel\Contracts\PermissionReportProviderInterface;
-use Modufolio\Panel\Contracts\ResourceLocatorInterface;
 use Modufolio\Panel\Export\NoExportAdapters;
 use Modufolio\Panel\Form\FormResolver;
 use Modufolio\Panel\Http\ResourceController;
 use Modufolio\Panel\Inspection\NoPermissionReport;
 use Modufolio\Panel\Inspection\PermissionInspector;
+use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Search\GlobalSearch;
-use Modufolio\Panel\Resource\ContainerResourceLocator;
 use Symfony\Component\HttpFoundation\Session\Flash\FlashBagInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
@@ -40,8 +39,7 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  * the controller from the container like any wired controller — no
  * reflection fallback, no `AppAware` hand-over, no application held anywhere.
  * And its services are the defaults a host would otherwise have to declare:
- * a {@see ResourceLocatorInterface} over the host's container, a
- * {@see FormResolver} naming the configured media entity, and a
+ * a {@see FormResolver} naming the configured media entity, and a
  * {@see ExportAdapterProviderInterface} that offers no formats. Module
  * definitions sit underneath the application's config/services.php, so a
  * host overrides any of them by declaring the same id.
@@ -70,7 +68,6 @@ final class PanelModule extends AbstractModule
                 'validator' => ValidatorInterface::class,
                 'tokenStorage' => TokenStorageInterface::class,
                 'flashBag' => FlashBagInterface::class,
-                'resources' => ResourceLocatorInterface::class,
                 'forms' => FormResolver::class,
                 'exports' => ExportAdapterProviderInterface::class,
                 'search' => GlobalSearch::class,
@@ -84,12 +81,6 @@ final class PanelModule extends AbstractModule
         // The search across resources reads the resources off the routes, as
         // the permission inspector does, so it knows exactly what is mounted.
         $services->set(GlobalSearch::class, static function (AppInterface $app): GlobalSearch {
-            $resources = $app->get(ResourceLocatorInterface::class);
-
-            if (!$resources instanceof ResourceLocatorInterface) {
-                throw new \LogicException(sprintf('The service "%s" must be a resource locator, %s given.', ResourceLocatorInterface::class, get_debug_type($resources)));
-            }
-
             // The route collection is the kernel's; the interface exposes the
             // URL generator only, so the concrete kernel is asked for it.
             if (!$app instanceof Kernel) {
@@ -99,7 +90,10 @@ final class PanelModule extends AbstractModule
             return new GlobalSearch(
                 $app->entityManager(),
                 $app->urlGenerator(),
-                $resources,
+                // The second argument is the container's own type check, so
+                // a resource registered under someone else's id fails by name
+                // here rather than somewhere down the request.
+                static fn (string $class): PanelResource => $app->get($class, $class),
                 static fn (): array => PermissionInspector::resourceClassesIn($app->router()->getRouteCollection()),
             );
         });
@@ -116,7 +110,6 @@ final class PanelModule extends AbstractModule
         $mediaEntity = $declared;
 
         $services
-            ->set(ResourceLocatorInterface::class, fn (AppInterface $app) => new ContainerResourceLocator($app))
             ->set(FormResolver::class, fn (AppInterface $app) => new FormResolver($app->entityManager(), $mediaEntity))
             ->set(ExportAdapterProviderInterface::class, fn () => new NoExportAdapters())
             // No report until a host wires one: only the application knows its

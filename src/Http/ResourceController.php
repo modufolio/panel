@@ -10,7 +10,6 @@ use Modufolio\Appkit\Security\Token\TokenStorageInterface;
 use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Contracts\ExportAdapterProviderInterface;
 use Modufolio\Panel\Contracts\PermissionReportProviderInterface;
-use Modufolio\Panel\Contracts\ResourceLocatorInterface;
 use Modufolio\Panel\Delete\Collector;
 use Modufolio\Panel\Delete\PlanExecutor;
 use Modufolio\Panel\Form\FormPresenter;
@@ -20,7 +19,6 @@ use Modufolio\Panel\Resource\BoardMover;
 use Modufolio\Panel\Resource\FieldPickUrls;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\RecordLocator;
-use Modufolio\Panel\Resource\RecordVerdicts;
 use Modufolio\Panel\Resource\RelationAddUrls;
 use Modufolio\Panel\Resource\RelationOptionResolver;
 use Modufolio\Panel\Resource\ResourceListing;
@@ -57,8 +55,13 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
  * the kernel's Inertia renderer; download
  * formats ({@see ExportAdapterProviderInterface}) and a {@see FormResolver}
  * naming the media entity have module defaults a host may override.
- * Resources come from the {@see ResourceLocatorInterface}: the one place a
- * resource class becomes an instance.
+ *
+ * The resource arrives as an argument, not a lookup. A generated route
+ * carries its class as the `resourceClass` default; the host's parameter
+ * resolver turns that into the instance its container builds, the same way
+ * it fills a `#[MapEntity]` argument. So this controller never names a
+ * resource class, never resolves one, and holds nothing that could resolve
+ * anything else.
  */
 final class ResourceController
 {
@@ -78,7 +81,6 @@ final class ResourceController
         private readonly ValidatorInterface $validator,
         private readonly TokenStorageInterface $tokenStorage,
         private readonly FlashBagInterface $flashBag,
-        private readonly ResourceLocatorInterface $resources,
         ?FormResolver $forms = null,
         private readonly ?ExportAdapterProviderInterface $exports = null,
         private readonly ?GlobalSearch $search = null,
@@ -88,11 +90,16 @@ final class ResourceController
         $this->forms = $forms ?? new FormResolver($entityManager);
     }
 
-    /** @param class-string<PanelResource> $resourceClass */
+    /**
+     * Arguments are spread by name, so the order here is free: `$operation`
+     * and `$resource` both come from the route's defaults, the first as the
+     * string the loader wrote and the second as whatever the host's parameter
+     * resolver built from it.
+     */
     public function handle(
         ServerRequestInterface $request,
-        string $resourceClass,
         string $operation,
+        ?PanelResource $resource = null,
         ?string $uuid = null,
         ?string $field = null,
     ): ResponseInterface|Inertia {
@@ -105,7 +112,16 @@ final class ResourceController
             return $this->permissions();
         }
 
-        $resource = $this->resource($resourceClass);
+        // Every other route names a resource, so a null here is a wiring
+        // fault — the host's parameter resolver did not fill the argument —
+        // and not something a request could provoke.
+        if ($resource === null) {
+            throw new \LogicException(sprintf(
+                'The panel resource for operation "%s" was not resolved. The host\'s parameterResolver() must fill a %s argument from the route\'s "resourceClass" default.',
+                $operation,
+                PanelResource::class,
+            ));
+        }
 
         return match ($operation) {
             'index'           => $this->index($request, $resource),
@@ -166,9 +182,11 @@ final class ResourceController
             return $this->deny($request, $resource);
         }
 
-        $listing    = $this->listing($request, $resource);
-        $navigation = $listing->navigationUrls($entity);
-        $record     = $resource->presentOne($entity);
+        $listing      = $this->listing($request, $resource);
+        $navigation   = $listing->navigationUrls($entity);
+        $record       = $resource->presentOne($entity);
+        $capabilities = $listing->capabilities();
+        $verdict      = $capabilities->verdicts()->verdict($entity);
 
         $frame = [
             'type'              => $resource->drawerType(),
@@ -181,11 +199,11 @@ final class ResourceController
             'previousRecordUrl' => $navigation['previous'],
             // What the viewer may do with this record and where, so the
             // frame's footer offers exactly what the endpoints would accept.
-            'can'               => $this->verdicts($resource)->can($entity),
-            'why'               => $this->verdicts($resource)->why($entity),
+            'can'               => $verdict['can'],
+            'why'               => $verdict['why'],
             'urls'              => [
-                'edit'    => RouteUrls::url($this->urlGenerator, $resource->key() . '_edit', $resource->recordRouteParams($entity)),
-                'destroy' => RouteUrls::url($this->urlGenerator, $resource->key() . '_destroy', $resource->recordRouteParams($entity)),
+                'edit'    => $capabilities->recordUrl('edit', $entity),
+                'destroy' => $capabilities->recordUrl('destroy', $entity),
             ],
             // Badges count the rows the record already carries, so declaring
             // a tab costs no query. The resolved form comes along so an
@@ -685,12 +703,6 @@ final class ResourceController
         return $this->page('Resource/Permissions', ['report' => $report->toArray()]);
     }
 
-    /** This viewer's record-level verdicts, for the resource's own rules. */
-    private function verdicts(PanelResource $resource): RecordVerdicts
-    {
-        return new RecordVerdicts($resource->permissions(), $this->user());
-    }
-
     /**
      * What deleting this record would do, before anyone commits to it. The
      * same collection runs here and in {@see destroy()}, so the preview cannot
@@ -896,18 +908,6 @@ final class ResourceController
     }
 
     // ── Collaborators ────────────────────────────────────────────────────────
-
-    /**
-     * A resource, as the container builds it — the one way a class becomes an
-     * instance, so a resource with constructor dependencies comes from the same
-     * place it does everywhere else.
-     *
-     * @param class-string<PanelResource> $class
-     */
-    private function resource(string $class): PanelResource
-    {
-        return $this->resources->get($class);
-    }
 
     private function listing(ServerRequestInterface $request, PanelResource $resource): ResourceListing
     {

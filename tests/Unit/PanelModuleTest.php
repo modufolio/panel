@@ -8,12 +8,10 @@ use Doctrine\ORM\EntityManagerInterface;
 use Modufolio\Appkit\Core\AppInterface;
 use Modufolio\Appkit\DependencyInjection\ServiceConfigurator;
 use Modufolio\Panel\Contracts\ExportAdapterProviderInterface;
-use Modufolio\Panel\Contracts\ResourceLocatorInterface;
 use Modufolio\Panel\Export\NoExportAdapters;
 use Modufolio\Panel\Form\FormResolver;
 use Modufolio\Panel\Http\ResourceController;
 use Modufolio\Panel\PanelModule;
-use Modufolio\Panel\Resource\ContainerResourceLocator;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -52,7 +50,6 @@ final class PanelModuleTest extends TestCase
         $app = $this->createStub(AppInterface::class);
         $app->method('entityManager')->willReturn($this->createStub(EntityManagerInterface::class));
 
-        self::assertInstanceOf(ContainerResourceLocator::class, $services->definitions[ResourceLocatorInterface::class]($app));
         self::assertInstanceOf(FormResolver::class, $services->definitions[FormResolver::class]($app));
 
         $exports = $services->definitions[ExportAdapterProviderInterface::class]($app);

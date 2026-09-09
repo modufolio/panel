@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Routing;
 
-use Modufolio\Panel\Contracts\ResourceLocatorInterface;
 use Modufolio\Panel\Http\ResourceController;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\PanelResourceConfigurator;
@@ -40,16 +39,18 @@ use Symfony\Component\Routing\RouteCollection;
 final class PanelResourceRouteLoader extends Loader
 {
     /**
-     * @param ResourceLocatorInterface|\Closure(class-string<PanelResource>): PanelResource $resources where a resource class becomes an instance; a closure when the container does not exist yet at construction
-     *        how a configured class becomes an instance — the host's
-     *        container, in practice
+     * @param \Closure(class-string<PanelResource>): PanelResource $resources where a
+     *        configured class becomes an instance. A closure rather than a
+     *        container, because the loader is built before the container is:
+     *        routes load lazily on the router's first use, and the host's
+     *        closure reads whatever is standing by then.
      * @param class-string $controllerClass what every generated route dispatches
      *        to, as `[$controllerClass, 'handle']`. The package ships one; a
      *        host names its own only when it has outgrown it.
      */
     public function __construct(
         private readonly FileLocatorInterface $fileLocator,
-        private readonly ResourceLocatorInterface|\Closure $resources,
+        private readonly \Closure $resources,
         private readonly string $controllerClass = ResourceController::class,
         private readonly string $prefix = '/panel',
         /**
@@ -361,9 +362,7 @@ final class PanelResourceRouteLoader extends Loader
             ));
         }
 
-        $resource = $this->resources instanceof ResourceLocatorInterface
-            ? $this->resources->get($resourceClass)
-            : ($this->resources)($resourceClass);
+        $resource = ($this->resources)($resourceClass);
 
         if (!$resource instanceof $resourceClass) {
             throw new \LogicException(sprintf(
