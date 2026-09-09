@@ -43,6 +43,12 @@
       {{ moveError }}
     </p>
 
+    <!--
+      Numbers about the resource, above whichever shape of it is showing. The
+      server computed them; this only lays them out.
+    -->
+    <MetricRow :metrics="metrics" />
+
     <BoardView
       v-if="board"
       :view="board.view"
@@ -287,17 +293,18 @@
  */
 import { computed, ref, useSlots, type PropType } from 'vue'
 import { router } from '@inertiajs/vue3'
-import { getCsrfToken } from '../../Utils/csrf'
-import { fieldsFromSpec, initialValues } from '../Fields/fieldsFromSpec'
-import { useDismissableLayer } from '../../Primitives/useDismissableLayer'
 import { useResourceListing, fillId, type ResourceMeta } from '../../Composables/useResourceListing'
+import { useSavedViews } from './useSavedViews'
+import { useInlineCellPatch } from './useInlineCellPatch'
+import { useBoardMove } from './useBoardMove'
+import { useDrawerAddForm } from './useDrawerAddForm'
+import { useImagePicker } from './useImagePicker'
 import type { TableSchema } from '../Table/tableSchema'
 import type { BoardCard, BoardPayload } from '../Board/boardTypes'
 import type { StackItem } from '../Drawer/useDrawerStack'
-import { recordId, type TableRecord } from '../Table/tableTypes'
-import type { FieldDef } from '../Fields/useBlueprint'
-import type { FieldSpec } from '../Fields/fieldsFromSpec'
-import type { DrawerField } from '../Drawer/drawerFieldGrid'
+import type { Metric } from '../Metrics/metrics'
+import MetricRow from '../Metrics/MetricRow.vue'
+import SavedViews from './SavedViews.vue'
 import SchemaTable from '../Table/SchemaTable.vue'
 import TablePagination from '../Table/TablePagination.vue'
 import ColumnToggle from '../Table/ColumnToggle.vue'
@@ -323,6 +330,11 @@ const props = defineProps({
   stack: { type: Array as PropType<StackItem[]>, default: () => [] },
   /** Present only while a board view is the active one. */
   board: { type: Object as PropType<BoardPayload | undefined>, default: undefined },
+  /**
+   * Server-computed numbers about the resource, from its `metrics()`. Absent
+   * when it declares none, which is every resource until it says otherwise.
+   */
+  metrics: { type: Array as PropType<Metric[]>, default: () => [] },
 })
 
 /**

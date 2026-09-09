@@ -6,6 +6,7 @@ namespace Modufolio\Panel\Resource;
 
 use Modufolio\Panel\Form\Field;
 use Modufolio\Panel\Form\Form;
+use Modufolio\Panel\Metric\Metric;
 use Modufolio\Panel\Query\DerivedListQuery;
 use Modufolio\Panel\Query\ListQueryInterface;
 use Modufolio\Panel\Query\QueryInterface;
@@ -243,6 +244,27 @@ abstract class PanelResource
      * is a different *query*, not a different renderer over the table's
      * payload, which is why the choice has to reach the server.
      */
+    /**
+     * Numbers about this resource, shown above its listing: how many, how
+     * much, which way it is going, how it breaks down.
+     *
+     * Declared, not computed — {@see \Modufolio\Panel\Metric\MetricCalculator}
+     * runs them against the same scope the listing uses. A resource declaring
+     * none shows none, which is every resource until it says otherwise.
+     *
+     *     return [
+     *         Metric::value('movies')->count(),
+     *         Metric::trend('added')->count()->over('createdAt')->days(30),
+     *         Metric::partition('genre')->count(),
+     *     ];
+     *
+     * @return list<Metric>
+     */
+    public function metrics(): array
+    {
+        return [];
+    }
+
     public function board(): ?Board
     {
         return null;

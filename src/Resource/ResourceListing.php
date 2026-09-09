@@ -20,6 +20,7 @@ use Modufolio\Panel\Table\Group;
 use Modufolio\Panel\Table\RowAction;
 use Modufolio\Panel\Table\RelationOptions;
 use Modufolio\Panel\Table\Summary;
+use Modufolio\Panel\Metric\MetricCalculator;
 use Modufolio\Panel\Table\TableSchema;
 use Doctrine\ORM\EntityManagerInterface;
 use Modufolio\Appkit\Security\User\UserInterface;
@@ -190,14 +191,20 @@ final class ResourceListing
                     // stays exactly what present() returned.
                     [
                         'summaries' => $this->summaries($query, $alias, $params),
-                        'can'       => $this->verdicts($entities, $rows),
+                        'can'       => $this->verdicts()->canEach($entities, $rows),
                         // Only for refusals the resource can explain: an
                         // action with a reason shows disabled, with the
                         // sentence as its tooltip, instead of vanishing.
-                        ...(($why = $this->reasons($entities, $rows)) === [] ? [] : ['why' => $why]),
+                        ...(($why = $this->verdicts()->whyEach($entities, $rows)) === [] ? [] : ['why' => $why]),
                     ],
                 ),
                 'stack' => $this->stack,
+                // Numbers about the resource, above the list. Deliberately not
+                // narrowed by the current filters: a metric describes the
+                // resource, and a column's summary already describes the
+                // filtered set. Absent entirely when none are declared, so a
+                // listing that wants none pays for none.
+                ...(($metrics = $this->metrics()) === [] ? [] : ['metrics' => $metrics]),
                 // Lets the generic Resource/Index page configure itself:
                 // which prop holds the rows, where the listing lives, which
                 // DrawerStack slot a record renders into — and which write
@@ -1195,6 +1202,27 @@ final class ResourceListing
         }
 
         return $summaries;
+    }
+
+    /** This viewer's record-level verdicts, for the resource's own rules. */
+    /**
+     * The resource's declared metrics, computed against the same scope the
+     * listing reads through.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function metrics(): array
+    {
+        if ($this->resource->metrics() === []) {
+            return [];
+        }
+
+        return (new MetricCalculator($this->entityManager))->compute($this->resource, $this->user);
+    }
+
+    private function verdicts(): RecordVerdicts
+    {
+        return $this->recordVerdicts ??= new RecordVerdicts($this->resource->permissions(), $this->user);
     }
 
     /** @return EntityRepository<object> */
