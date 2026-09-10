@@ -35,7 +35,7 @@ final class RelationAddUrls
      *
      * @param  list<array<string, mixed>> $tabs   as {@see PanelResource::drawerTabsFor()} built them
      * @param  object                     $entity the record the lists hang off
-     * @param  object|null                $user   the viewer, for the permission check
+     * @param  UserInterface|null         $user   the viewer, for the permission check
      * @return list<array<string, mixed>>
      */
     public function stamp(array $tabs, PanelResource $resource, object $entity, ?UserInterface $user): array

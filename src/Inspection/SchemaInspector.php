@@ -57,7 +57,7 @@ final class SchemaInspector
 
     /**
      * @param class-string<PanelResource> $class
-     * @param object|null                 $user  the viewer to answer for; null is nobody signed in
+     * @param UserInterface|null          $user  the viewer to answer for; null is nobody signed in
      */
     public function inspect(string $class, ?UserInterface $user = null): SchemaReport
     {
