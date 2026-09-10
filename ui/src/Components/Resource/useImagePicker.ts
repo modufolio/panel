@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue'
 import { router } from '@inertiajs/vue3'
-import { apiFetch } from '../../Utils/apiFetch'
+import { apiFetch, ApiError } from '../../Utils/apiFetch'
 import type { DrawerField } from '../Drawer/drawerFieldGrid'
 import type { StackItem } from '../Drawer/useDrawerStack'
 import type { MediaItem } from '../Media/MediaPickerDialog.vue'
@@ -21,13 +21,16 @@ export interface OpenImagePicker {
  */
 export function useImagePicker(): {
   imagePicker: Ref<OpenImagePicker | null>
+  imageError: Ref<string | null>
   onImageSelected: (image: MediaItem) => Promise<void>
 } {
   const imagePicker = ref<OpenImagePicker | null>(null)
+  const imageError = ref<string | null>(null)
 
   async function onImageSelected(image: MediaItem): Promise<void> {
     const open = imagePicker.value
     imagePicker.value = null
+    imageError.value = null
 
     if (open === null || !open.field.pickUrl || !open.field.pickTarget) {
       return
@@ -41,9 +44,9 @@ export function useImagePicker(): {
 
       router.reload()
     } catch (error) {
-      console.error(error)
+      imageError.value = error instanceof ApiError ? error.message : 'Could not save.'
     }
   }
 
-  return { imagePicker, onImageSelected }
+  return { imagePicker, imageError, onImageSelected }
 }

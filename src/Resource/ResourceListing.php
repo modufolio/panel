@@ -103,7 +103,7 @@ final class ResourceListing
         $pagination  = $this->getJsonApiPagination($queryParams);
 
         $schema = $this->resource->table();
-        $query  = $this->listQuery($params, $pagination['limit'], $pagination['offset']);
+        $query  = $this->listQuery($params, $pagination['limit'], $pagination['offset'], $schema);
 
         // Which shape of this listing was asked for. A board is a different
         // query — grouped into columns, ordered by position, limited per
@@ -120,8 +120,8 @@ final class ResourceListing
         $repository = $this->repository();
 
         $listQb = $query->apply($repository->createQueryBuilder($alias));
-        $this->applySchemaFilters($listQb, $alias, $params);
-        $this->applyGrouping($listQb, $alias, $params);
+        $this->applySchemaFilters($listQb, $alias, $params, $schema);
+        $this->applyGrouping($listQb, $alias, $params, $schema);
 
         [, $sortDirection] = $this->resolveSortField($query, $params['sort']);
         $this->applyKeysetTiebreak($listQb, $alias, $sortDirection);
@@ -144,7 +144,7 @@ final class ResourceListing
         // The count must see the same filters, or the pager advertises pages
         // that do not exist.
         $countQb = $query->forCount($repository->createQueryBuilder($alias));
-        $this->applySchemaFilters($countQb, $alias, $params);
+        $this->applySchemaFilters($countQb, $alias, $params, $schema);
 
         $totalCount = (int)$countQb
             ->select("COUNT({$alias}.id)")
@@ -189,7 +189,7 @@ final class ResourceListing
                     // The verdicts sit beside the rows, keyed by id, so a row
                     // stays exactly what present() returned.
                     [
-                        'summaries' => $this->summaries($query, $alias, $params),
+                        'summaries' => $this->summaries($query, $alias, $params, $schema),
                         'can'       => $verdicts['can'],
                         // Only for refusals the resource can explain: an
                         // action with a reason shows disabled, with the
@@ -506,8 +506,10 @@ final class ResourceListing
      *
      * @param array<string, mixed> $params
      */
-    private function applySchemaFilters(QueryBuilder $qb, string $alias, array $params): void
+    private function applySchemaFilters(QueryBuilder $qb, string $alias, array $params, ?TableSchema $schema = null): void
     {
+        $schema ??= $this->resource->table();
+
         // Scoping rides along here for the same reason the schema filters do:
         // every query that must agree — the page, the count, the export, the
         // prev/next navigation — passes through this method, and a scope
@@ -516,11 +518,11 @@ final class ResourceListing
 
         $values = $params['filters'] ?? [];
 
-        foreach ($this->resource->table()?->declaredFilters() ?? [] as $filter) {
+        foreach ($schema?->declaredFilters() ?? [] as $filter) {
             $filter->apply($qb, $alias, $values[$filter->key()] ?? null);
         }
 
-        $this->applyConstraints($qb, $alias, $params);
+        $this->applyConstraints($qb, $alias, $params, $schema);
     }
 
     /**
@@ -531,11 +533,12 @@ final class ResourceListing
      *
      * @param array<string, mixed> $params
      */
-    private function applyConstraints(QueryBuilder $qb, string $alias, array $params): void
+    private function applyConstraints(QueryBuilder $qb, string $alias, array $params, ?TableSchema $schema = null): void
     {
+        $schema ??= $this->resource->table();
         $declared = [];
 
-        foreach ($this->resource->table()?->declaredConstraints() ?? [] as $constraint) {
+        foreach ($schema?->declaredConstraints() ?? [] as $constraint) {
             $declared[$constraint->key()] = $constraint;
         }
 
@@ -584,9 +587,10 @@ final class ResourceListing
      *
      * @param array<string, mixed> $params
      */
-    private function applyGrouping(QueryBuilder $qb, string $alias, array $params): void
+    private function applyGrouping(QueryBuilder $qb, string $alias, array $params, ?TableSchema $schema = null): void
     {
-        $group = $this->resource->table()?->group($params['group'] ?? null);
+        $schema ??= $this->resource->table();
+        $group = $schema?->group($params['group'] ?? null);
 
         if (!$group instanceof Group) {
             return;
@@ -690,9 +694,9 @@ final class ResourceListing
      * @param  array<string, mixed> $params
      * @return array<string, list<array{type: string, label: string, value: float|null}>>
      */
-    private function summaries(ListQueryInterface $query, string $alias, array $params): array
+    private function summaries(ListQueryInterface $query, string $alias, array $params, ?TableSchema $schema = null): array
     {
-        $schema = $this->resource->table();
+        $schema ??= $this->resource->table();
 
         if ($schema === null) {
             return [];
@@ -804,12 +808,14 @@ final class ResourceListing
      *
      * @param array<string, mixed> $params
      */
-    private function listQuery(array $params, ?int $limit, ?int $offset): ListQueryInterface
+    private function listQuery(array $params, ?int $limit, ?int $offset, ?TableSchema $schema = null): ListQueryInterface
     {
+        $schema ??= $this->resource->table();
+
         $base = $this->resource->listQueryClass() !== null
             ? $this->resource->buildListQuery($params, $limit, $offset)
             : DerivedListQuery::fromTable(
-                $this->resource->table(),
+                $schema,
                 $this->entityManager->getClassMetadata($this->resource->entityClass()),
                 $params,
                 $limit,
