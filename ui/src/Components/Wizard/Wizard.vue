@@ -1,7 +1,7 @@
 <template>
   <div class="ui-wizard">
     <!-- Wizard Header/Steps -->
-    <ol role="list" class="ui-wizard-header border-b border-gray-200 mb-8">
+    <ol role="list" class="ui-wizard-header border-b border-line mb-8">
       <div class="flex items-center justify-between">
         <li
           v-for="(step, index) in steps"
@@ -60,7 +60,7 @@
                 </span>
                 <span
                   v-if="step.description"
-                  class="ui-wizard-header-step-description text-xs text-gray-500"
+                  class="ui-wizard-header-step-description text-xs text-ink-3"
                 >
                   {{ step.description }}
                 </span>
@@ -71,7 +71,7 @@
           <!-- Separator -->
           <svg
             v-if="index < steps.length - 1"
-            class="ui-wizard-header-step-separator absolute top-5 -right-5 w-10 h-0.5 text-gray-300"
+            class="ui-wizard-header-step-separator absolute top-5 -right-5 w-10 h-0.5 text-line-strong"
             viewBox="0 0 40 2"
             fill="none"
             preserveAspectRatio="none"
@@ -100,7 +100,7 @@
     </div>
 
     <!-- Wizard Footer/Actions -->
-    <div class="ui-wizard-footer flex items-center justify-between mt-8 pt-6 border-t border-gray-200">
+    <div class="ui-wizard-footer flex items-center justify-between mt-8 pt-6 border-t border-line">
       <div>
         <!-- Back Button -->
         <Action
@@ -262,21 +262,21 @@ function handleCancel() {
 function stepIconClasses(index: number) {
   if (currentStep.value > index) {
     // Completed step
-    return 'border-primary-600 bg-primary-600 text-white'
+    return 'border-primary bg-primary-fill text-primary-on-fill'
   } else if (currentStep.value === index) {
     // Active step
-    return 'border-primary-600 bg-white text-primary-600'
+    return 'border-primary bg-surface text-primary'
   } else {
     // Future step
-    return 'border-gray-300 bg-white text-gray-500'
+    return 'border-line-strong bg-surface text-ink-3'
   }
 }
 
 function stepLabelClasses(index: number) {
   if (currentStep.value >= index) {
-    return 'text-gray-900'
+    return 'text-ink'
   } else {
-    return 'text-gray-500'
+    return 'text-ink-3'
   }
 }
 </script>

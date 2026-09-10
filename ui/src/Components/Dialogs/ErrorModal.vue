@@ -6,14 +6,14 @@
     @update:is-open="close"
   >
     <div class="ui-error-modal flex gap-4">
-      <div class="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full bg-danger-100">
-        <Icon name="exclamation-triangle" class="h-6 w-6 text-danger-600" />
+      <div class="flex-shrink-0 flex h-10 w-10 items-center justify-center rounded-full bg-danger-surface">
+        <Icon name="exclamation-triangle" class="h-6 w-6 text-danger" />
       </div>
       <div class="pt-1">
-        <p class="text-sm text-gray-600">{{ state.message }}</p>
+        <p class="text-sm text-ink-2">{{ state.message }}</p>
         <!-- The status is for the person reporting the bug, not the person
              reading the sentence: present, quiet, not part of the message. -->
-        <p v-if="state.status" class="mt-2 text-xs text-gray-400">Error {{ state.status }}</p>
+        <p v-if="state.status" class="mt-2 text-xs text-ink-3">Error {{ state.status }}</p>
       </div>
     </div>
 

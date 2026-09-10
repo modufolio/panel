@@ -5,7 +5,7 @@
       aria-haspopup="menu"
       :aria-expanded="isOpen"
       :aria-controls="isOpen ? menuId : undefined"
-      class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
+      class="inline-flex items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm font-medium text-ink-2 shadow-sm transition-colors hover:bg-hover focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-0"
       :disabled="disabled || !canExport"
       :class="{
         'cursor-not-allowed opacity-50': disabled || !canExport,
@@ -34,7 +34,7 @@
         tree, so the placeholder count is not announced.
       -->
       <span
-        class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600 tabular-nums"
+        class="inline-flex items-center rounded-full bg-surface-sunken px-2 py-0.5 text-xs font-medium text-ink-2 tabular-nums"
         :class="{ invisible: exportCount === 0 }"
       >
         {{ exportCount }}
@@ -55,7 +55,7 @@
         v-show="isOpen"
         ref="menuRef"
         role="menu"
-        class="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-lg border border-gray-200 bg-white shadow-lg"
+        class="absolute right-0 z-50 mt-2 w-48 origin-top-right rounded-lg border border-line bg-surface-raised shadow-lg"
         @keydown="onKeydown"
       >
         <div class="p-2">
@@ -64,29 +64,29 @@
             :key="format.value"
             type="button"
             role="menuitem"
-            class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50"
+            class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-hover"
             @click="handleExport(format.value)"
           >
-            <component :is="format.icon" class="h-5 w-5 text-gray-400" />
-            <span class="font-medium text-gray-900">{{ format.label }}</span>
+            <component :is="format.icon" class="h-5 w-5 text-ink-3" />
+            <span class="font-medium text-ink">{{ format.label }}</span>
           </button>
 
           <div
             v-if="showPrint"
-            class="my-2 border-t border-gray-200"
+            class="my-2 border-t border-line"
           />
 
           <button
             v-if="showPrint"
             type="button"
             role="menuitem"
-            class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50"
+            class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-hover"
             @click="handlePrint"
           >
-            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="h-5 w-5 text-ink-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
             </svg>
-            <span class="font-medium text-gray-900">Print</span>
+            <span class="font-medium text-ink">Print</span>
           </button>
         </div>
       </div>

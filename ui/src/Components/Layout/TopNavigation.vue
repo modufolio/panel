@@ -1,14 +1,14 @@
 <template>
-  <div class="border-b">
+  <div class="border-b border-line">
     <!-- Main Navigation Bar -->
-    <div class="flex items-center justify-between h-16 px-4 bg-white shrink-0 dark:bg-gray-900 dark:ring-white/10">
+    <div class="flex items-center justify-between h-16 px-4 bg-surface text-ink shrink-0">
 
       <div class="flex items-center space-x-4">
       <!-- Mobile Menu Toggle -->
       <button
         v-if="showMobileToggle"
         @click="$emit('toggle-mobile-menu')"
-        class="md:hidden p-2 text-gray-400 hover:bg-gray-50 focus-visible:bg-gray-50 rounded-lg transition-all duration-75 dark:text-gray-500 dark:hover:bg-white/5 dark:focus-visible:bg-white/5"
+        class="md:hidden p-2 text-ink-3 hover:bg-hover focus-visible:bg-hover rounded-lg transition-all duration-75"
       >
         <icon name="menu" class="w-6 h-6 fill-current" />
       </button>
@@ -27,7 +27,7 @@
       <button
         v-if="showSearch"
         @click="$emit('open-search')"
-        class="p-2 text-gray-400 hover:bg-gray-50 focus-visible:bg-gray-50 rounded-lg transition-all duration-75 dark:text-gray-500 dark:hover:bg-white/5 dark:focus-visible:bg-white/5"
+        class="p-2 text-ink-3 hover:bg-hover focus-visible:bg-hover rounded-lg transition-all duration-75"
         title="Search (Cmd+K)"
       >
         <icon name="search" class="w-5 h-5 fill-current" />
@@ -37,45 +37,48 @@
       <button
         v-if="showNotifications"
         @click="$emit('open-notifications')"
-        class="relative p-2 text-gray-400 hover:bg-gray-50 focus-visible:bg-gray-50 rounded-lg transition-all duration-75 dark:text-gray-500 dark:hover:bg-white/5 dark:focus-visible:bg-white/5"
+        class="relative p-2 text-ink-3 hover:bg-hover focus-visible:bg-hover rounded-lg transition-all duration-75"
         title="Notifications"
       >
         <icon name="bell" class="w-5 h-5 fill-current" />
         <span
           v-if="notificationCount > 0"
-          class="absolute top-1 right-1 flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-danger-500 rounded-full dark:bg-danger-600"
+          class="absolute top-1 right-1 flex items-center justify-center w-4 h-4 text-xs font-bold bg-danger-fill text-danger-on-fill rounded-full"
         >
           {{ notificationCount > 9 ? '9+' : notificationCount }}
         </span>
       </button>
 
+      <!-- Theme -->
+      <ThemeSwitcher v-if="showThemeSwitcher" />
+
       <!-- User Menu Dropdown -->
       <dropdown placement="bottom-end">
         <template #default>
-          <div class="group flex items-center px-3 py-2 space-x-2 cursor-pointer select-none hover:bg-gray-50 focus-visible:bg-gray-50 rounded-lg transition-all duration-75 dark:hover:bg-white/5 dark:focus-visible:bg-white/5">
+          <div class="group flex items-center px-3 py-2 space-x-2 cursor-pointer select-none hover:bg-hover focus-visible:bg-hover rounded-lg transition-all duration-75">
             <!-- User Avatar (if provided) -->
             <div class="relative">
               <div
                 v-if="userAvatar"
-                class="w-8 h-8 bg-gray-200 rounded-full overflow-hidden dark:bg-gray-700"
+                class="w-8 h-8 bg-surface-sunken rounded-full overflow-hidden"
               >
                 <img :src="userAvatar" :alt="userName" class="w-full h-full object-cover" />
               </div>
               <div
                 v-else
-                class="flex items-center justify-center w-8 h-8 bg-primary-600 text-white rounded-full text-sm font-medium dark:bg-primary-500"
+                class="flex items-center justify-center w-8 h-8 bg-primary-fill text-primary-on-fill rounded-full text-sm font-medium"
               >
                 {{ userInitials }}
               </div>
               <!-- Impersonation indicator dot -->
               <span
                 v-if="impersonation?.is_impersonating"
-                class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-warning-500 border-2 border-white rounded-full dark:border-gray-900"
+                class="absolute -top-0.5 -right-0.5 w-3 h-3 bg-warning-fill border-2 border-surface rounded-full"
               />
             </div>
 
             <!-- User Name -->
-            <div class="hidden md:block text-sm font-medium text-gray-700 dark:text-gray-200">
+            <div class="hidden md:block text-sm font-medium text-ink">
               <span>{{ userFirstName }}</span>
               <span class="hidden lg:inline">&nbsp;{{ userLastName }}</span>
             </div>
@@ -89,11 +92,11 @@
         </template>
 
         <template #dropdown>
-          <div class="mt-2 py-2 w-56 text-sm bg-white rounded-lg shadow-xl ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+          <div class="mt-2 py-2 w-56 text-sm bg-surface-raised text-ink rounded-lg shadow-xl ring-1 ring-hairline">
             <!-- User Info Header -->
-            <div class="px-4 py-3 border-b ring-1 ring-gray-950/5 dark:ring-white/10">
-              <div class="font-medium text-gray-950 dark:text-white">{{ userName }}</div>
-              <div v-if="userEmail" class="text-xs text-gray-500 truncate dark:text-gray-400">
+            <div class="px-4 py-3 border-b border-line">
+              <div class="font-medium text-ink">{{ userName }}</div>
+              <div v-if="userEmail" class="text-xs text-ink-3 truncate">
                 {{ userEmail }}
               </div>
             </div>
@@ -101,19 +104,19 @@
             <!-- Impersonation Notice -->
             <div
               v-if="impersonation?.is_impersonating"
-              class="px-4 py-3 border-b ring-1 ring-gray-950/5 bg-warning-50 dark:bg-warning-900/20 dark:ring-white/10"
+              class="px-4 py-3 border-b border-line bg-warning-surface"
             >
-              <div class="text-xs text-warning-700 dark:text-warning-300">
+              <div class="text-xs text-warning-on-surface">
                 Viewing as <strong>{{ userName }}</strong>
               </div>
-              <div class="text-xs text-warning-600 dark:text-warning-400 mt-0.5">
+              <div class="text-xs text-warning-on-surface/80 mt-0.5">
                 Logged in as {{ impersonation.original_user.first_name }} {{ impersonation.original_user.last_name }}
               </div>
               <Link
                 :href="panelUrl('/users/switch/exit')"
                 method="post"
                 as="button"
-                class="mt-2 w-full px-3 py-1.5 text-xs font-medium text-center text-warning-800 bg-warning-100 hover:bg-warning-200 rounded-md transition-colors duration-75 dark:text-warning-200 dark:bg-warning-800 dark:hover:bg-warning-700"
+                class="mt-2 w-full px-3 py-1.5 text-xs font-medium text-center bg-warning-fill text-warning-on-fill hover:opacity-90 rounded-md transition-opacity duration-75"
               >
                 Exit Switch User
               </Link>
@@ -128,8 +131,8 @@
                   type="button"
                   @click="item.action()"
                   :class="[
-                    'flex items-center justify-between w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 focus-visible:bg-gray-50 transition-all duration-75 dark:text-gray-200 dark:hover:bg-white/5 dark:focus-visible:bg-white/5',
-                    item.divider && 'border-t ring-1 ring-gray-950/5 mt-2 pt-2 dark:ring-white/10'
+                    'flex items-center justify-between w-full px-4 py-2 text-left text-ink hover:bg-hover focus-visible:bg-hover transition-all duration-75',
+                    item.divider && 'border-t border-line mt-2 pt-2'
                   ]"
                 >
                   <div class="flex items-center">
@@ -148,8 +151,8 @@
                   :data="item.method === 'post' && item.href === panelUrl('/logout') ? { _csrf_token: String($page.props.logout_csrf ?? '') } : undefined"
                   :as="item.method ? 'button' : 'a'"
                   :class="[
-                    'flex items-center justify-between w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 focus-visible:bg-gray-50 transition-all duration-75 dark:text-gray-200 dark:hover:bg-white/5 dark:focus-visible:bg-white/5',
-                    item.divider && 'border-t ring-1 ring-gray-950/5 mt-2 pt-2 dark:ring-white/10'
+                    'flex items-center justify-between w-full px-4 py-2 text-left text-ink hover:bg-hover focus-visible:bg-hover transition-all duration-75',
+                    item.divider && 'border-t border-line mt-2 pt-2'
                   ]"
                 >
                   <div class="flex items-center">
@@ -164,11 +167,11 @@
                     v-if="item.badge"
                     :class="[
                       'ml-2 px-2 py-0.5 text-xs font-medium rounded-full',
-                      item.badgeColor === 'primary' && 'bg-primary-100 text-primary-800 dark:bg-primary-500/20 dark:text-primary-400',
-                      item.badgeColor === 'success' && 'bg-success-100 text-success-800 dark:bg-success-500/20 dark:text-success-400',
-                      item.badgeColor === 'danger' && 'bg-danger-100 text-danger-800 dark:bg-danger-500/20 dark:text-danger-400',
-                      item.badgeColor === 'warning' && 'bg-warning-100 text-warning-800 dark:bg-warning-500/20 dark:text-warning-400',
-                      !item.badgeColor && 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                      item.badgeColor === 'primary' && 'bg-primary-surface text-primary-on-surface',
+                      item.badgeColor === 'success' && 'bg-success-surface text-success-on-surface',
+                      item.badgeColor === 'danger' && 'bg-danger-surface text-danger-on-surface',
+                      item.badgeColor === 'warning' && 'bg-warning-surface text-warning-on-surface',
+                      !item.badgeColor && 'bg-gray-surface text-gray-on-surface'
                     ]"
                   >
                     {{ item.badge }}
@@ -190,6 +193,7 @@ import { Link } from '@inertiajs/vue3'
 import { panelUrl } from '../../Utils/url'
 import Icon from '../../Components/Core/Icon.vue'
 import Dropdown from '../../Components/Core/Dropdown.vue'
+import ThemeSwitcher from './ThemeSwitcher.vue'
 
 import type { MenuItem } from '../../types/menu'
 
@@ -240,6 +244,15 @@ const props = defineProps({
     default: 0
   },
   showMobileToggle: {
+    type: Boolean,
+    default: true
+  },
+  /**
+   * The light/dark control. On by default — a panel whose theme cannot be
+   * changed from its own chrome sends the user to look for a settings page
+   * that does not exist. Off for a host that places <ThemeSwitcher> itself.
+   */
+  showThemeSwitcher: {
     type: Boolean,
     default: true
   },

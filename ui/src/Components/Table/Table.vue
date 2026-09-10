@@ -2,7 +2,7 @@
   <div
     ref="root"
     class="ui-table-wrapper"
-    :class="nested ? 'ui-table-nested' : 'bg-white rounded-lg shadow-sm ring-1 ring-gray-950/5 overflow-hidden'"
+    :class="nested ? 'ui-table-nested' : 'bg-surface rounded-lg shadow-sm ring-1 ring-hairline overflow-hidden'"
   >
     <TableToolbar
       v-if="!nested && ($slots.header || searchable || $slots.headerActions || showTreeToggle)"
@@ -27,10 +27,10 @@
     <!-- Bulk Actions Bar -->
     <div
       v-if="bulkActionsEnabled && selectedRecords.length > 0"
-      class="ui-table-bulk-actions flex items-center justify-between gap-3 bg-primary-50 px-4 py-3 border-y border-primary-200"
+      class="ui-table-bulk-actions flex items-center justify-between gap-3 bg-selected px-4 py-3 border-y border-primary/40"
     >
       <div class="flex items-center gap-3">
-        <span class="text-sm font-medium text-primary-700">
+        <span class="text-sm font-medium text-primary-on-surface">
           {{ selectedRecords.length }} selected
         </span>
       </div>
@@ -41,7 +41,7 @@
 
     <!-- Table -->
     <div class="ui-table-content overflow-x-auto overflow-y-visible">
-      <table class="ui-table w-full divide-y divide-gray-200" :class="treeCollapsible ? 'table-fixed' : 'table-auto'" @keydown="onTableKeyDown">
+      <table class="ui-table w-full divide-y divide-line" :class="treeCollapsible ? 'table-fixed' : 'table-auto'" @keydown="onTableKeyDown">
         <colgroup v-if="treeCollapsible">
           <col v-if="expandable" class="w-4" />
           <col v-if="bulkActionsEnabled" class="w-4" />
@@ -53,7 +53,7 @@
           <col v-if="$slots.actions" class="w-40" />
         </colgroup>
 
-        <thead class="bg-gray-50" :class="{ 'ui-table-sticky-header': stickyHeader }">
+        <thead class="bg-surface-sunken" :class="{ 'ui-table-sticky-header': stickyHeader }">
           <tr>
             <!-- Expand Column -->
             <th v-if="expandable" class="ui-table-header-cell w-4 px-4 py-3">
@@ -67,7 +67,7 @@
                 :checked="allSelected"
                 :aria-label="allSelected ? 'Deselect all rows' : 'Select all rows'"
                 :aria-checked="allSelected"
-                class="rounded border-gray-300 text-primary-600 focus:ring-primary-600"
+                class="rounded border-line-strong accent-primary focus:ring-focus"
                 @change="toggleSelectAll"
               />
             </th>
@@ -76,7 +76,7 @@
             <th
               v-for="(column, index) in filteredColumns"
               :key="index"
-              class="ui-table-header-cell px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider"
+              class="ui-table-header-cell px-4 py-3 text-left text-xs font-medium text-ink-2 uppercase tracking-wider"
               :class="column.headerClass"
             >
               <div class="flex items-center gap-2">
@@ -99,7 +99,7 @@
           </tr>
         </thead>
 
-        <tbody class="bg-white divide-y divide-gray-200">
+        <tbody class="bg-surface divide-y divide-line">
           <TableSkeletonRows
             v-if="loading"
             :rows="skeletonRows"
@@ -112,20 +112,30 @@
           <template v-else>
             <template v-for="(record, recordIndex) in visibleRecords" :key="recordIndex">
               <!-- Group heading, emitted whenever the grouped value changes -->
-              <tr v-if="isGroupStart(recordIndex)" class="ui-table-group-row bg-gray-50">
+              <tr v-if="isGroupStart(recordIndex)" class="ui-table-group-row bg-surface-sunken">
                 <td
                   :colspan="columnCount"
-                  class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-gray-600"
+                  class="px-4 py-2 text-xs font-semibold uppercase tracking-wider text-ink-2"
                 >
                   {{ groupHeading(record) }}
                 </td>
               </tr>
 
+              <!--
+                Selection is the tint, focus is the ring — two independent
+                signals rather than two tints, which is what the old
+                primary-50 / primary-100 pair could no longer express once
+                both collapsed onto one semantic token. Hover is opted out on
+                a selected row: bg-hover is a translucent overlay Tailwind
+                emits after the tint, so leaving it on made the selection
+                appear to drop out under the cursor.
+              -->
               <tr
-                class="ui-table-row hover:bg-gray-50 transition-colors"
+                class="ui-table-row transition-colors"
                 :class="{
-                  'bg-primary-50': isSelected(record) && stableFocusedRowIndex !== recordIndex,
-                  'bg-primary-100 ring-2 ring-primary-500': stableFocusedRowIndex === recordIndex
+                  'bg-selected': isSelected(record),
+                  'hover:bg-hover': !isSelected(record),
+                  'ring-2 ring-focus': stableFocusedRowIndex === recordIndex
                 }"
                 :tabindex="stableFocusedRowIndex === recordIndex ? 0 : -1"
                 @focus="handleRowFocus(recordIndex)"
@@ -136,7 +146,7 @@
                     type="button"
                     :aria-label="isExpanded(record) ? 'Collapse row' : 'Expand row'"
                     :aria-expanded="isExpanded(record)"
-                    class="ui-table-expand-btn text-gray-400 hover:text-gray-600 transition-transform"
+                    class="ui-table-expand-btn text-ink-3 hover:text-ink-2 transition-transform"
                     :class="{ 'rotate-90': isExpanded(record) }"
                     @click="toggleExpand(record)"
                   >
@@ -153,7 +163,7 @@
                     :checked="isSelected(record)"
                     :aria-label="`Select row ${recordIndex + 1}`"
                     :aria-checked="isSelected(record)"
-                    class="rounded border-gray-300 text-primary-600 focus:ring-primary-600"
+                    class="rounded border-line-strong accent-primary focus:ring-focus"
                     @change="toggleSelect(record)"
                   />
                 </td>
@@ -162,7 +172,7 @@
                 <td
                   v-for="(column, colIndex) in filteredColumns"
                   :key="colIndex"
-                  class="ui-table-cell px-4 py-3 text-sm text-gray-900"
+                  class="ui-table-cell px-4 py-3 text-sm text-ink"
                   :class="column.cellClass"
                 >
                   <slot
@@ -185,10 +195,10 @@
 
               <!-- Expanded Row Content -->
               <tr v-if="expandable && isExpanded(record)" class="ui-table-expanded-row">
-                <td :colspan="columnCount" class="px-4 py-4 bg-gray-50">
+                <td :colspan="columnCount" class="px-4 py-4 bg-surface-sunken">
                   <div class="ui-table-expanded-content">
                     <slot name="expandedRow" :record="record">
-                      <div class="text-sm text-gray-500">
+                      <div class="text-sm text-ink-3">
                         No expanded content defined
                       </div>
                     </slot>
@@ -201,7 +211,7 @@
             <tr v-if="records.length === 0">
               <td
                 :colspan="columnCount"
-                class="text-sm text-gray-500"
+                class="text-sm text-ink-3"
                 :class="nested ? 'ui-table-empty-nested px-4 py-3' : 'px-4 py-12 text-center'"
               >
                 <slot name="emptyState">
@@ -219,14 +229,14 @@
           the cells line up with their columns; scoped by column so a consumer
           only fills the ones it has a value for.
         -->
-        <tfoot v-if="$slots.summary" class="ui-table-summary bg-gray-50 border-t border-gray-200">
+        <tfoot v-if="$slots.summary" class="ui-table-summary bg-surface-sunken border-t border-line">
           <tr>
             <td v-if="expandable" class="px-4 py-3" />
             <td v-if="bulkActionsEnabled" class="px-4 py-3" />
             <td
               v-for="(column, colIndex) in filteredColumns"
               :key="`summary-${colIndex}`"
-              class="ui-table-summary-cell px-4 py-3 text-sm text-gray-700"
+              class="ui-table-summary-cell px-4 py-3 text-sm text-ink-2"
               :class="column.cellClass"
             >
               <slot name="summary" :column="column" />
@@ -238,7 +248,7 @@
     </div>
 
     <!-- Pagination -->
-    <div v-if="$slots.pagination" class="ui-table-footer border-t border-gray-200 bg-white px-4 py-3">
+    <div v-if="$slots.pagination" class="ui-table-footer border-t border-line bg-surface px-4 py-3">
       <slot name="pagination" />
     </div>
   </div>

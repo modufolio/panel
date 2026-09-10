@@ -23,7 +23,7 @@
         :aria-invalid="invalid"
         :aria-describedby="describedBy"
         class="ui-input ui-field-input block w-full"
-        :class="{ 'border-danger-600 focus:border-danger-600 focus:ring-danger-600/20': error !== '' }"
+        :class="{ 'border-danger focus:border-danger focus:ring-danger/20': error !== '' }"
         @input="onInput"
       />
     </div>

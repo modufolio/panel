@@ -62,8 +62,8 @@ describe('FilterPopover', () => {
     })
 
     it('marks the trigger as carrying filters', () => {
-      expect(trigger(popover()).classes()).toContain('bg-white')
-      expect(trigger(popover({ activeFilterCount: 1 })).classes()).toContain('bg-primary-50')
+      expect(trigger(popover()).classes()).toContain('bg-surface')
+      expect(trigger(popover({ activeFilterCount: 1 })).classes()).toContain('bg-primary-surface')
     })
   })
 

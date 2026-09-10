@@ -1,15 +1,15 @@
 <template>
-  <div class="ui-drawer-relation-list" :class="bordered ? 'border-t border-gray-200 pt-4' : undefined">
+  <div class="ui-drawer-relation-list" :class="bordered ? 'border-t border-line pt-4' : undefined">
     <!-- Heading + add action. Omitted entirely when the list *is* the tab. -->
     <div v-if="heading || $slots.actions || addable" class="mb-3 flex items-center justify-between">
-      <h4 class="text-sm font-medium text-gray-700">{{ heading }}</h4>
+      <h4 class="text-sm font-medium text-ink-2">{{ heading }}</h4>
 
       <div class="flex items-center gap-2">
         <slot name="actions" />
         <button
           v-if="addable"
           type="button"
-          class="text-xs font-medium text-primary-600 hover:text-primary-800"
+          class="text-xs font-medium text-primary hover:text-primary-on-surface"
           @click="$emit('add')"
         >
           {{ addLabel }}
@@ -18,7 +18,7 @@
     </div>
 
     <slot v-if="items.length === 0" name="empty">
-      <div class="text-sm text-gray-400" :class="dense ? 'py-2' : 'py-8 text-center'">
+      <div class="text-sm text-ink-3" :class="dense ? 'py-2' : 'py-8 text-center'">
         {{ emptyText }}
       </div>
     </slot>
@@ -42,7 +42,7 @@
           <button
             v-if="deletable"
             type="button"
-            class="p-1 text-gray-400 transition-colors hover:text-red-500"
+            class="p-1 text-ink-3 transition-colors hover:text-danger"
             :title="deleteLabel"
             @click.stop.prevent="$emit('delete', item)"
           >
@@ -52,7 +52,7 @@
           <Icon
             v-if="showChevron && href"
             name="chevron-right"
-            class="h-4 w-4 text-gray-400"
+            class="h-4 w-4 text-ink-3"
           />
         </div>
       </component>
@@ -127,16 +127,16 @@ defineEmits<{
 }>()
 
 const listContainerClass =
-  'divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200'
+  'divide-y divide-hairline overflow-hidden rounded-lg border border-line'
 
 const rowClass = computed(() => {
   const base = 'group flex w-full items-center justify-between text-left'
 
   if (props.variant === 'cards') {
-    return `${base} rounded-lg border border-gray-200 bg-white px-3 py-3`
+    return `${base} rounded-lg border border-line bg-surface px-3 py-3`
   }
 
-  return `${base} px-3 py-2 ${props.href ? 'hover:bg-gray-50' : ''}`
+  return `${base} px-3 py-2 ${props.href ? 'hover:bg-hover' : ''}`
 })
 
 /**

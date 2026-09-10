@@ -1,20 +1,20 @@
 <template>
-  <div class="ui-calendar w-72 rounded-lg bg-white p-3 shadow-lg ring-1 ring-black/5" role="dialog" aria-label="Choose date">
+  <div class="ui-calendar w-72 rounded-lg bg-surface-raised p-3 shadow-lg ring-1 ring-hairline" role="dialog" aria-label="Choose date">
     <div class="mb-2 flex items-center justify-between">
       <button
         type="button"
-        class="flex h-7 w-7 items-center justify-center rounded text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+        class="flex h-7 w-7 items-center justify-center rounded text-ink-3 hover:bg-hover hover:text-ink"
         aria-label="Previous month"
         @click="moveViewBy(-1)"
       >
         <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>
       </button>
 
-      <span class="text-sm font-semibold text-gray-800" aria-live="polite">{{ title }}</span>
+      <span class="text-sm font-semibold text-ink" aria-live="polite">{{ title }}</span>
 
       <button
         type="button"
-        class="flex h-7 w-7 items-center justify-center rounded text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+        class="flex h-7 w-7 items-center justify-center rounded text-ink-3 hover:bg-hover hover:text-ink"
         aria-label="Next month"
         @click="moveViewBy(1)"
       >
@@ -36,17 +36,17 @@
       @cell-focus="onCellFocus"
     />
 
-    <div class="mt-2 flex items-center justify-between border-t border-gray-100 pt-2">
+    <div class="mt-2 flex items-center justify-between border-t border-line pt-2">
       <button
         type="button"
-        class="rounded px-2 py-1 text-sm text-primary-600 hover:bg-primary-50 disabled:cursor-default disabled:text-gray-300 disabled:hover:bg-transparent"
+        class="rounded px-2 py-1 text-sm text-primary hover:bg-primary-surface disabled:cursor-default disabled:opacity-40 disabled:hover:bg-transparent"
         :disabled="!todayAllowed"
         @click="onTodayClick"
       >Today</button>
 
       <button
         type="button"
-        class="rounded px-2 py-1 text-sm text-gray-500 hover:bg-gray-100"
+        class="rounded px-2 py-1 text-sm text-ink-3 hover:bg-hover"
         @click="$emit('close')"
       >Cancel</button>
     </div>

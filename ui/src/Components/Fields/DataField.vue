@@ -28,6 +28,6 @@ const rendered = computed(() => {
 
 <template>
   <FieldPrimitive v-bind="{ width, id, label, help }" wrapper-class="ui-field-data">
-    <pre class="rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600 whitespace-pre-wrap break-all max-h-64 overflow-y-auto">{{ rendered }}</pre>
+    <pre class="rounded-md border border-line bg-surface-sunken p-3 text-xs text-ink-2 whitespace-pre-wrap break-all max-h-64 overflow-y-auto">{{ rendered }}</pre>
   </FieldPrimitive>
 </template>

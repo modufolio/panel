@@ -2,8 +2,10 @@
   <component
     :is="resolvedAs"
     v-bind="elementAttrs"
-    class="ui-btn inline-flex items-center justify-center gap-2 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none"
+    class="ui-btn inline-flex items-center justify-center gap-2 font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none"
     :class="buttonClasses"
+    :data-variant="variant"
+    :data-color="resolvedColor"
     @click="!loading && $emit('click', $event)"
   >
     <!-- Loading spinner -->
@@ -47,6 +49,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import { isSemanticColorInput, semanticColor } from '../../Utils/colors'
 
 const props = defineProps({
   label: {
@@ -79,7 +82,7 @@ const props = defineProps({
   color: {
     type: String,
     default: 'primary',
-    validator: (v: string) => ['primary', 'success', 'danger', 'warning', 'info', 'gray'].includes(v),
+    validator: isSemanticColorInput,
   },
   variant: {
     type: String,
@@ -116,6 +119,14 @@ const elementAttrs = computed(() => {
   return { href: props.href }
 })
 
+/**
+ * Colour and variant are `data-` attributes rather than class strings: the
+ * skin is eighteen combinations of six roles and three variants, and
+ * `styles/components.css` expresses it as tokens the attributes reassign. What
+ * is left here is geometry, which no theme touches.
+ */
+const resolvedColor = computed(() => semanticColor(props.color))
+
 const buttonClasses = computed(() => {
   const sizeClasses: Record<string, string> = {
     sm: 'px-2.5 py-1.5 text-xs rounded-md',
@@ -123,36 +134,8 @@ const buttonClasses = computed(() => {
     lg: 'px-4 py-2.5 text-base rounded-lg',
   }
 
-  const colorClasses: Record<string, Record<string, string>> = {
-    filled: {
-      primary: 'bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-600',
-      success: 'bg-success-600 text-white hover:bg-success-700 focus:ring-success-600',
-      danger: 'bg-danger-600 text-white hover:bg-danger-700 focus:ring-danger-600',
-      warning: 'bg-warning-600 text-white hover:bg-warning-700 focus:ring-warning-600',
-      info: 'bg-info-600 text-white hover:bg-info-700 focus:ring-info-600',
-      gray: 'bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-600',
-    },
-    outlined: {
-      primary: 'border border-primary-600 text-primary-600 hover:bg-primary-50 focus:ring-primary-600',
-      success: 'border border-success-600 text-success-600 hover:bg-success-50 focus:ring-success-600',
-      danger: 'border border-danger-600 text-danger-600 hover:bg-danger-50 focus:ring-danger-600',
-      warning: 'border border-warning-600 text-warning-600 hover:bg-warning-50 focus:ring-warning-600',
-      info: 'border border-info-600 text-info-600 hover:bg-info-50 focus:ring-info-600',
-      gray: 'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-600',
-    },
-    text: {
-      primary: 'text-primary-600 hover:bg-primary-50 focus:ring-primary-600',
-      success: 'text-success-600 hover:bg-success-50 focus:ring-success-600',
-      danger: 'text-danger-600 hover:bg-danger-50 focus:ring-danger-600',
-      warning: 'text-warning-600 hover:bg-warning-50 focus:ring-warning-600',
-      info: 'text-info-600 hover:bg-info-50 focus:ring-info-600',
-      gray: 'text-gray-600 hover:bg-gray-50 focus:ring-gray-600',
-    },
-  }
-
   return [
     sizeClasses[props.size],
-    colorClasses[props.variant][props.color],
     (props.disabled || props.loading) ? 'opacity-50 pointer-events-none' : '',
   ]
 })

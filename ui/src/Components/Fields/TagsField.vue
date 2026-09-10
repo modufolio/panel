@@ -7,24 +7,24 @@
     <!-- Clicking anywhere in the box focuses the input, so the whole control
          behaves like a text field rather than a row of buttons. -->
     <div
-      class="ui-field-wrapper flex flex-wrap items-center gap-1.5 rounded-xs border bg-white px-2 py-1.5 shadow-sm transition-colors"
+      class="ui-field-wrapper flex flex-wrap items-center gap-1.5 rounded-xs border bg-surface px-2 py-1.5 shadow-sm transition-colors"
       :class="[
         error
-          ? 'border-danger-500 focus-within:border-danger-600 focus-within:ring-2 focus-within:ring-danger-600/20'
-          : 'border-gray-300 focus-within:border-primary-600 focus-within:ring-2 focus-within:ring-primary-600/20',
-        disabled && 'bg-gray-50 cursor-not-allowed',
+          ? 'border-danger focus-within:border-danger focus-within:ring-2 focus-within:ring-danger/20'
+          : 'border-line-strong focus-within:border-focus focus-within:ring-2 focus-within:ring-focus/20',
+        disabled && 'bg-surface-sunken cursor-not-allowed',
       ]"
       @click="focusInput"
     >
       <span
         v-for="(tag, i) in tags"
         :key="`${tag}-${i}`"
-        class="inline-flex items-center gap-1 rounded-md bg-gray-100 py-0.5 pl-2 pr-1 text-sm text-gray-700 ring-1 ring-inset ring-gray-200"
+        class="inline-flex items-center gap-1 rounded-md bg-surface-sunken py-0.5 pl-2 pr-1 text-sm text-ink ring-1 ring-inset ring-line"
       >
         {{ tag }}
         <button
           type="button"
-          class="rounded text-gray-500 hover:text-danger-600 hover:bg-gray-200 transition-colors"
+          class="rounded text-ink-3 hover:text-danger hover:bg-hover transition-colors"
           :aria-label="`Remove ${tag}`"
           :disabled="disabled"
           @click.stop="removeAt(i)"
@@ -40,7 +40,7 @@
         ref="inputEl"
         v-model="draft"
         type="text"
-        class="ui-field-input flex-1 min-w-32 border-0 p-0.5 text-sm placeholder-gray-400 focus:ring-0 focus:outline-none disabled:bg-transparent"
+        class="ui-field-input flex-1 min-w-32 border-0 p-0.5 text-sm placeholder-ink-3 focus:ring-0 focus:outline-none disabled:bg-transparent"
         :placeholder="tags.length ? '' : placeholder"
         :disabled="disabled"
         :aria-describedby="describedBy"

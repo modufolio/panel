@@ -7,8 +7,8 @@
     <div class="ui-field-wrapper relative">
       <!-- Prefix Icon/Text -->
       <div v-if="prefix" class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-        <component v-if="typeof prefix !== 'string'" :is="prefix" class="w-5 h-5 text-gray-400" />
-        <span v-else class="text-gray-500 text-sm">{{ prefix }}</span>
+        <component v-if="typeof prefix !== 'string'" :is="prefix" class="w-5 h-5 text-ink-3" />
+        <span v-else class="text-ink-3 text-sm">{{ prefix }}</span>
       </div>
 
       <!-- Input -->
@@ -31,8 +31,8 @@
 
       <!-- Suffix Icon/Text -->
       <div v-if="suffix" class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-        <component v-if="typeof suffix !== 'string'" :is="suffix" class="w-5 h-5 text-gray-400" />
-        <span v-else class="text-gray-500 text-sm">{{ suffix }}</span>
+        <component v-if="typeof suffix !== 'string'" :is="suffix" class="w-5 h-5 text-ink-3" />
+        <span v-else class="text-ink-3 text-sm">{{ suffix }}</span>
       </div>
     </div>
   </FieldPrimitive>
@@ -120,7 +120,7 @@ const inputClasses = computed(() => {
   classes.push('py-2')
 
   if (props.error) {
-    classes.push('border-danger-600 focus:border-danger-600 focus:ring-danger-600/20')
+    classes.push('border-danger focus:border-danger focus:ring-danger/20')
   }
 
   return classes

@@ -36,14 +36,14 @@ describe('a toggleIcon cell', () => {
     })
 
     expect(off.find('button').attributes('aria-pressed')).toBe('false')
-    expect(off.find('button').classes()).toContain('text-danger-600')
+    expect(off.find('button').classes()).toContain('text-danger')
 
     const on = mount(SchemaCell, {
       props: { column: column({ onColor: 'warning' }), record, value: true },
     })
 
     expect(on.find('button').attributes('aria-pressed')).toBe('true')
-    expect(on.find('button').classes()).toContain('text-warning-600')
+    expect(on.find('button').classes()).toContain('text-warning')
   })
 
   it('still renders the control when the row has no value yet', () => {

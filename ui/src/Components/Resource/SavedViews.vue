@@ -3,7 +3,7 @@
     <button
       ref="triggerRef"
       type="button"
-      class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
+      class="inline-flex items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm font-medium text-label shadow-sm transition-colors hover:bg-hover focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-0"
       :aria-expanded="isOpen"
       aria-haspopup="true"
       @click="isOpen = !isOpen"
@@ -12,7 +12,7 @@
       <!-- The active view's name replaces the label: which list you are
            looking at matters more than what the button opens. -->
       <span>{{ active ?? 'Views' }}</span>
-      <Icon name="chevron-down" class="h-4 w-4 text-gray-400" aria-hidden="true" />
+      <Icon name="chevron-down" class="h-4 w-4 text-ink-3" aria-hidden="true" />
     </button>
 
     <Teleport :to="teleportTarget">
@@ -27,13 +27,13 @@
         <div
           v-show="isOpen"
           ref="dropdownRef"
-          class="z-50 flex w-72 flex-col origin-top-right rounded-lg border border-gray-200 bg-white shadow-lg"
+          class="z-50 flex w-72 flex-col origin-top-right rounded-lg border border-line bg-surface-raised shadow-lg"
           :style="floatingStyles"
         >
           <div class="flex min-h-0 flex-1 flex-col p-3">
-            <h3 class="mb-2 text-sm font-medium text-gray-900">Saved views</h3>
+            <h3 class="mb-2 text-sm font-medium text-ink">Saved views</h3>
 
-            <p v-if="views.length === 0" class="px-1 py-2 text-sm text-gray-500">
+            <p v-if="views.length === 0" class="px-1 py-2 text-sm text-ink-3">
               No saved views yet. Filter the list, then save it here.
             </p>
 
@@ -41,8 +41,8 @@
               <li v-for="view in views" :key="view.name" class="group flex items-center gap-1">
                 <button
                   type="button"
-                  class="flex-1 truncate rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-gray-50"
-                  :class="view.name === active ? 'font-medium text-primary-700' : 'text-gray-700'"
+                  class="flex-1 truncate rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-hover"
+                  :class="view.name === active ? 'font-medium text-primary' : 'text-label'"
                   :aria-current="view.name === active ? 'true' : undefined"
                   @click="apply(view)"
                 >
@@ -50,7 +50,7 @@
                 </button>
                 <button
                   type="button"
-                  class="shrink-0 rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-danger-600 focus:outline-none focus:ring-2 focus:ring-primary-600"
+                  class="shrink-0 rounded-md p-1.5 text-ink-3 transition-colors hover:bg-hover hover:text-danger focus:outline-none focus:ring-2 focus:ring-focus"
                   :aria-label="`Delete ${view.name}`"
                   @click="emit('delete', view.name)"
                 >
@@ -60,7 +60,7 @@
             </ul>
           </div>
 
-          <div class="border-t border-gray-200 bg-gray-50 p-3">
+          <div class="border-t border-line bg-surface-sunken p-3">
             <!--
               Naming the current list is the whole feature, so the input is the
               footer rather than something behind another click. Saving over an
@@ -72,11 +72,11 @@
                 type="text"
                 :placeholder="active ?? 'Name this view'"
                 aria-label="Name this view"
-                class="min-w-0 flex-1 rounded-md border border-gray-300 px-2 py-1.5 text-sm shadow-sm focus:border-primary-600 focus:outline-none focus:ring-1 focus:ring-primary-600"
+                class="min-w-0 flex-1 rounded-md border border-line-strong bg-surface px-2 py-1.5 text-sm text-ink shadow-sm focus:border-focus focus:outline-none focus:ring-1 focus:ring-focus"
               />
               <button
                 type="submit"
-                class="shrink-0 rounded-md bg-primary-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+                class="shrink-0 rounded-md bg-primary-fill px-3 py-1.5 text-sm font-medium text-primary-on-fill transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
                 :disabled="name.trim() === ''"
               >
                 Save

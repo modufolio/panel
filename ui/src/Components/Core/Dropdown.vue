@@ -11,7 +11,7 @@
     <slot />
 
     <Teleport v-if="isOpen" :to="teleportTarget">
-      <div class="ui-dropdown-scrim fixed inset-0 z-9998 bg-black/20" @click="isOpen = false" />
+      <div class="ui-dropdown-scrim fixed inset-0 z-9998 bg-overlay-soft" @click="isOpen = false" />
       <div
         :id="menuId"
         ref="menuRef"

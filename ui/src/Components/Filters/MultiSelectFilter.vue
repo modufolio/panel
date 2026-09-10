@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-3 p-4">
-    <label class="block text-sm font-medium text-gray-900">
+    <label class="block text-sm font-medium text-label">
       {{ label }}
     </label>
 
@@ -19,18 +19,18 @@
       <label
         v-for="option in filteredOptions"
         :key="option.value"
-        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-gray-50"
+        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-hover"
       >
         <input
           type="checkbox"
           :checked="isSelected(option.value)"
           @change="toggleOption(option.value)"
-          class="rounded border-gray-300 text-primary-600 focus:ring-primary-600"
+          class="rounded border-line-strong accent-primary text-primary-fill focus:ring-focus"
         />
-        <span class="flex-1 text-sm text-gray-700">{{ option.label }}</span>
+        <span class="flex-1 text-sm text-ink-2">{{ option.label }}</span>
         <span
           v-if="option.count !== undefined"
-          class="text-xs text-gray-500"
+          class="text-xs text-ink-3"
         >
           {{ option.count }}
         </span>
@@ -39,18 +39,18 @@
       <!-- No Results -->
       <div
         v-if="filteredOptions.length === 0"
-        class="py-4 text-center text-sm text-gray-500"
+        class="py-4 text-center text-sm text-ink-3"
       >
         {{ searchQuery ? 'No results found' : 'No options available' }}
       </div>
     </div>
 
     <!-- Select All / Clear All -->
-    <div class="flex items-center justify-between border-t border-gray-200 pt-2">
+    <div class="flex items-center justify-between border-t border-line pt-2">
       <button
         v-if="selectedValues.length < normalizedOptions.length"
         type="button"
-        class="text-xs font-medium text-primary-600 hover:text-primary-700"
+        class="text-xs font-medium text-primary hover:text-primary-hover"
         @click="selectAll"
       >
         Select All
@@ -58,7 +58,7 @@
       <button
         v-if="selectedValues.length > 0"
         type="button"
-        class="text-xs font-medium text-gray-600 hover:text-gray-700"
+        class="text-xs font-medium text-ink-2 hover:text-ink"
         @click="clear"
       >
         Clear ({{ selectedValues.length }})

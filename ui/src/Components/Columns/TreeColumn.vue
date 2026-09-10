@@ -5,7 +5,7 @@
       type="button"
       @click.stop="onToggle && onToggle()"
       :style="{ marginLeft: depth * 16 + 'px' }"
-      class="mr-1 inline-flex h-4 w-4 shrink-0 items-center justify-center text-gray-400 hover:text-gray-600"
+      class="mr-1 inline-flex h-4 w-4 shrink-0 items-center justify-center text-ink-3 hover:text-ink-2"
       :aria-label="collapsed ? `Expand ${label}` : `Collapse ${label}`"
       :aria-expanded="!collapsed"
     >
@@ -24,7 +24,7 @@
     </button>
     <span
       v-else-if="depth > 0"
-      class="mr-1 inline-block shrink-0 text-gray-400"
+      class="mr-1 inline-block shrink-0 text-ink-3"
       :style="{ paddingLeft: depth * 16 + 'px' }"
     >↳</span>
     <span class="min-w-0 flex-1 truncate" :class="labelClass" :title="String(label)">{{ label }}</span>
@@ -44,7 +44,7 @@ defineProps({
   },
   labelClass: {
     type: String,
-    default: 'font-medium text-gray-900',
+    default: 'font-medium text-ink',
   },
   // Whether this row has children — swaps the static "↳" marker for a
   // clickable collapse/expand chevron.

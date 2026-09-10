@@ -1,7 +1,7 @@
 <template>
   <div class="ui-date-column">
     <span :class="labelClass">{{ formattedDate }}</span>
-    <span v-if="description" class="block text-xs text-gray-500 mt-0.5">
+    <span v-if="description" class="block text-xs text-ink-3 mt-0.5">
       {{ description }}
     </span>
   </div>

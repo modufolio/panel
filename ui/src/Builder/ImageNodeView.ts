@@ -45,7 +45,7 @@ export class ImageNodeView implements NodeView {
     private options: ImageNodeViewOptions,
   ) {
     this.dom = document.createElement('figure')
-    this.dom.className = 'pm-image group relative my-3 rounded-lg border border-transparent hover:border-gray-200'
+    this.dom.className = 'pm-image group relative my-3 rounded-lg border border-transparent hover:border-line'
     this.dom.setAttribute('data-node', 'image')
 
     this.img = document.createElement('img')
@@ -62,7 +62,7 @@ export class ImageNodeView implements NodeView {
     this.placeholder.type = 'button'
     this.placeholder.className =
       'flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed ' +
-      'border-gray-300 py-10 text-sm text-gray-400 hover:border-primary-400 hover:text-primary-600'
+      'border-line-strong py-10 text-sm text-ink-3 hover:border-primary hover:text-primary'
     this.placeholder.textContent = 'Choose an image…'
     this.placeholder.addEventListener('click', (e) => {
       e.preventDefault()
@@ -70,7 +70,7 @@ export class ImageNodeView implements NodeView {
     })
 
     this.captionEl = document.createElement('figcaption')
-    this.captionEl.className = 'mt-1 text-xs text-gray-500'
+    this.captionEl.className = 'mt-1 text-xs text-ink-3'
 
     this.dom.append(this.placeholder, this.img, this.captionEl, this.buildToolbar())
     this.render()
@@ -78,8 +78,11 @@ export class ImageNodeView implements NodeView {
 
   private buildToolbar(): HTMLElement {
     const bar = document.createElement('div')
+    // A bordered raised surface rather than a dark chip: the bar floats over an
+    // arbitrary photo, so it needs an outline to separate from the image in
+    // either theme — the tint alone cannot be trusted against unknown pixels.
     bar.className =
-      'absolute right-2 top-2 hidden gap-1 rounded-md bg-gray-900/90 p-1 group-hover:flex'
+      'absolute right-2 top-2 hidden gap-1 rounded-md border border-line bg-surface-raised/95 p-1 group-hover:flex'
     bar.setAttribute('contenteditable', 'false')
 
     const button = (label: string, title: string, onClick: () => void) => {
@@ -87,7 +90,7 @@ export class ImageNodeView implements NodeView {
       el.type = 'button'
       el.title = title
       el.textContent = label
-      el.className = 'rounded px-1.5 py-0.5 text-xs text-white hover:bg-white/20'
+      el.className = 'rounded px-1.5 py-0.5 text-xs text-ink hover:bg-hover'
       el.addEventListener('mousedown', (e) => e.preventDefault())
       el.addEventListener('click', (e) => {
         e.preventDefault()

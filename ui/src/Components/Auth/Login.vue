@@ -1,6 +1,6 @@
 <template>
   <Head title="Login" />
-  <div class="flex items-center justify-center p-6 min-h-screen bg-gray-50">
+  <div class="flex items-center justify-center p-6 min-h-screen bg-app">
     <div class="w-full max-w-md">
       <!-- Logo -->
       <div class="mb-8 text-center">
@@ -12,11 +12,11 @@
       <FlashMessages class="mb-4" />
 
       <!-- Login Card -->
-      <div class="bg-white rounded-xl shadow-sm ring-1 ring-gray-950/5">
+      <div class="bg-surface rounded-xl shadow-sm ring-1 ring-hairline">
         <form @submit.prevent="login" class="p-8 space-y-6">
           <div>
-            <h2 class="text-xl font-semibold text-gray-950">Sign in</h2>
-            <p class="mt-1 text-sm text-gray-600">Welcome back! Please enter your details.</p>
+            <h2 class="text-xl font-semibold text-ink">Sign in</h2>
+            <p class="mt-1 text-sm text-ink-2">Welcome back! Please enter your details.</p>
           </div>
 
           <!-- Email Field -->
@@ -64,16 +64,16 @@
           <template v-if="google_enabled">
             <div class="relative">
               <div class="absolute inset-0 flex items-center" aria-hidden="true">
-                <div class="w-full border-t border-gray-200" />
+                <div class="w-full border-t border-line" />
               </div>
               <div class="relative flex justify-center text-sm">
-                <span class="bg-white px-2 text-gray-500">or</span>
+                <span class="bg-surface px-2 text-ink-3">or</span>
               </div>
             </div>
 
             <a
               :href="panelUrl('/auth/google/start')"
-              class="flex w-full items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              class="flex w-full items-center justify-center gap-3 rounded-lg border border-line-strong bg-surface px-4 py-2.5 text-sm font-medium text-ink-2 hover:bg-hover"
             >
               <svg class="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
@@ -86,8 +86,8 @@
           </template>
 
           <!-- Forgot password -->
-          <p class="text-center text-sm text-gray-600">
-            <a :href="panelUrl('/forgot-password')" class="font-medium text-primary-600 hover:text-primary-700">
+          <p class="text-center text-sm text-ink-2">
+            <a :href="panelUrl('/forgot-password')" class="font-medium text-primary hover:text-primary-hover">
               Forgot your password?
             </a>
           </p>

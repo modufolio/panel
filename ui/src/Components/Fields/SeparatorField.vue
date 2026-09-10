@@ -24,7 +24,7 @@ const widthClass = useFieldWidth(() => props.width)
 <template>
   <div
     class="ui-field-separator"
-    :class="[widthClass, separator === 'line' ? 'border-t border-gray-200 my-1' : 'h-2']"
+    :class="[widthClass, separator === 'line' ? 'border-t border-line my-1' : 'h-2']"
     role="separator"
     aria-hidden="true"
   />

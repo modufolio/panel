@@ -332,7 +332,7 @@ describe('ToggleField Component', () => {
       const button = wrapper.find('button')
       const html = button.html()
       // Should contain primary color classes when on
-      expect(html).toContain('bg-primary')
+      expect(html).toContain('bg-primary-fill')
     })
 
     it('should apply gray background when off', () => {
@@ -344,8 +344,8 @@ describe('ToggleField Component', () => {
       
       const button = wrapper.find('button')
       const html = button.html()
-      // Should contain gray classes when off
-      expect(html).toContain('bg-gray')
+      // Should contain the neutral off-state track when off
+      expect(html).toContain('bg-track-off')
     })
 
     it('should translate switch handle when on', () => {

@@ -1,18 +1,18 @@
 <template>
   <div
     :class="[
-      'flex flex-col bg-white transition-all duration-300 ease-in-out',
+      'flex flex-col bg-surface text-ink transition-all duration-300 ease-in-out',
       isCollapsed ? 'w-16' : 'w-96',
       'shrink-0 overflow-hidden'
     ]"
   >
     <!-- Logo Section -->
-    <div class="flex items-center justify-between border-b bg-white px-6 h-16">
+    <div class="flex items-center justify-between border-b border-line bg-surface px-6 h-16">
       <Link :href="getPanelBaseUrl()" class="flex items-center shrink-0">
         <!-- Consumers supply their own mark; the default is a neutral square. -->
         <slot name="logo" :collapsed="isCollapsed">
           <svg
-            class="fill-gray-950 dark:fill-white"
+            class="fill-ink"
             width="28"
             height="28"
             viewBox="0 0 28 28"
@@ -32,12 +32,12 @@
         <!-- Group Header (collapsible) -->
         <div
           v-if="group.name"
-          :class="['mb-1 mt-4', isCollapsed ? 'border-t border-gray-300 pt-4 dark:border-gray-600' : '']"
+          :class="['mb-1 mt-4', isCollapsed ? 'border-t border-line-strong pt-4' : '']"
         >
           <button
             v-if="!isCollapsed"
             @click="toggleGroup(group.name)"
-            class="w-full flex items-center justify-between px-3 mb-1 text-xs font-semibold text-gray-950 uppercase tracking-wider dark:text-gray-400 hover:text-gray-700 transition-colors"
+            class="w-full flex items-center justify-between px-3 mb-1 text-xs font-semibold text-label uppercase tracking-wider hover:text-ink transition-colors"
           >
             <span>{{ group.name }}</span>
             <svg
@@ -68,8 +68,8 @@
                 :class="[
                   'group flex h-9 items-center rounded-lg px-3 transition-colors duration-75',
                   isActive(item.href)
-                    ? 'bg-gray-100 dark:bg-white/5'
-                    : 'hover:bg-gray-50 focus-visible:bg-gray-50 dark:hover:bg-white/5 dark:focus-visible:bg-white/5'
+                    ? 'bg-pressed'
+                    : 'hover:bg-hover focus-visible:bg-hover'
                 ]"
                 :title="isCollapsed ? item.label : ''"
               >
@@ -82,7 +82,7 @@
                 />
                 <span
                   v-if="!isCollapsed"
-                  class="text-sm font-medium truncate text-gray-950 dark:text-white"
+                  class="text-sm font-medium truncate text-ink"
                 >
                   {{ item.label }}
                 </span>
@@ -90,11 +90,11 @@
                   v-if="item.badge && !isCollapsed"
                   :class="[
                     'ml-auto px-2 py-0.5 text-xs font-medium rounded-full',
-                    item.badgeColor === 'primary' && 'bg-primary-100 text-primary-800 dark:bg-primary-500/20 dark:text-primary-400',
-                    item.badgeColor === 'success' && 'bg-success-100 text-success-800 dark:bg-success-500/20 dark:text-success-400',
-                    item.badgeColor === 'danger' && 'bg-danger-100 text-danger-800 dark:bg-danger-500/20 dark:text-danger-400',
-                    item.badgeColor === 'warning' && 'bg-warning-100 text-warning-800 dark:bg-warning-500/20 dark:text-warning-400',
-                    !item.badgeColor && 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                    item.badgeColor === 'primary' && 'bg-primary-surface text-primary-on-surface',
+                    item.badgeColor === 'success' && 'bg-success-surface text-success-on-surface',
+                    item.badgeColor === 'danger' && 'bg-danger-surface text-danger-on-surface',
+                    item.badgeColor === 'warning' && 'bg-warning-surface text-warning-on-surface',
+                    !item.badgeColor && 'bg-gray-surface text-gray-on-surface'
                   ]"
                 >
                   {{ item.badge }}
@@ -109,8 +109,8 @@
                 :class="[
                   'group w-full flex h-9 items-center rounded-lg px-3 transition-colors duration-75',
                   hasActiveChild(item)
-                    ? 'bg-gray-100 dark:bg-white/5'
-                    : 'hover:bg-gray-50 focus-visible:bg-gray-50 dark:hover:bg-white/5 dark:focus-visible:bg-white/5'
+                    ? 'bg-pressed'
+                    : 'hover:bg-hover focus-visible:bg-hover'
                 ]"
                 :title="isCollapsed ? item.label : ''"
               >
@@ -123,7 +123,7 @@
                 />
                 <span
                   v-if="!isCollapsed"
-                  class="flex-1 text-left text-sm font-medium truncate text-gray-950 dark:text-white"
+                  class="flex-1 text-left text-sm font-medium truncate text-ink"
                 >
                   {{ item.label }}
                 </span>
@@ -141,7 +141,7 @@
               <div
                 v-if="!isCollapsed"
                 v-show="openSubmenus[`${gIndex}-${index}`]"
-                class="mt-1 ml-4 space-y-1 border-l-2 border-gray-300 pl-4 dark:border-gray-600"
+                class="mt-1 ml-4 space-y-1 border-l-2 border-line-strong pl-4"
               >
                 <Link
                   v-for="(child, childIndex) in item.children"
@@ -152,8 +152,8 @@
                   :class="[
                     'group flex items-center px-2 py-2 rounded-lg text-sm transition-all duration-75',
                     isActive(child.href)
-                      ? 'bg-gray-100 dark:bg-white/5'
-                      : 'hover:bg-gray-50 focus-visible:bg-gray-50 dark:hover:bg-white/5 dark:focus-visible:bg-white/5'
+                      ? 'bg-pressed'
+                      : 'hover:bg-hover focus-visible:bg-hover'
                   ]"
                 >
                   <icon
@@ -161,7 +161,7 @@
                     :name="child.icon"
                     class="nav-icon w-4 h-4 mr-3 shrink-0 transition-colors duration-75"
                   />
-                  <span class="truncate font-medium text-gray-950 dark:text-white">
+                  <span class="truncate font-medium text-ink">
                     {{ child.label }}
                   </span>
                 </Link>
@@ -177,10 +177,10 @@
     </div>
 
     <!-- Toggle Button -->
-    <div class="border-t ring-1 ring-gray-950/5 p-3 dark:ring-white/10">
+    <div class="border-t border-line ring-1 ring-hairline p-3">
       <button
         @click="toggleSidebar"
-        class="group w-full flex h-9 items-center rounded-lg px-3 text-gray-950 hover:bg-gray-50 focus-visible:bg-gray-50 transition-colors duration-75 dark:text-white dark:hover:bg-white/5 dark:focus-visible:bg-white/5"
+        class="group w-full flex h-9 items-center rounded-lg px-3 text-ink hover:bg-hover focus-visible:bg-hover transition-colors duration-75"
         :title="isCollapsed ? (isCollapsed ? 'Expand sidebar' : 'Collapse sidebar') : ''"
       >
         <icon
@@ -188,7 +188,7 @@
           class="nav-icon w-4 h-4 shrink-0 transition-colors duration-75"
           :class="isCollapsed ? '' : 'mr-3'"
         />
-        <span v-if="!isCollapsed" class="text-sm font-medium text-gray-950 dark:text-white">
+        <span v-if="!isCollapsed" class="text-sm font-medium text-ink">
           Collapse
         </span>
       </button>

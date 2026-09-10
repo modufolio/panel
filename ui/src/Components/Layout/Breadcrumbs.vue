@@ -9,7 +9,7 @@
         <!-- Separator (except for first item) -->
         <svg
           v-if="index > 0"
-          class="ui-breadcrumb-separator w-4 h-4 text-gray-400 flex-shrink-0"
+          class="ui-breadcrumb-separator w-4 h-4 text-ink-3 flex-shrink-0"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
@@ -24,7 +24,7 @@
         <svg
           v-if="index === 0 && showHomeIcon"
           class="ui-breadcrumb-home-icon w-4 h-4 flex-shrink-0"
-          :class="isActive(index) ? 'text-gray-900' : 'text-gray-500'"
+          :class="isActive(index) ? 'text-ink' : 'text-ink-2'"
           xmlns="http://www.w3.org/2000/svg"
           fill="none"
           viewBox="0 0 24 24"
@@ -82,11 +82,11 @@ const props = defineProps({
   },
   activeClass: {
     type: String,
-    default: 'text-gray-900 font-medium',
+    default: 'text-ink font-medium',
   },
   inactiveClass: {
     type: String,
-    default: 'text-gray-500 hover:text-gray-700 transition-colors',
+    default: 'text-ink-2 hover:text-ink transition-colors',
   },
 })
 

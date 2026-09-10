@@ -8,8 +8,8 @@
       :placeholder="placeholder"
       :aria-label="ariaLabel"
       :aria-invalid="failed ? 'true' : undefined"
-      class="ui-input ui-text-input-column-input w-full min-w-0 border-transparent bg-transparent px-2 py-1 text-sm hover:border-gray-300 focus:border-primary-600 focus:bg-white disabled:opacity-60"
-      :class="{ 'border-danger-600 focus:border-danger-600': failed }"
+      class="ui-input ui-text-input-column-input w-full min-w-0 border-transparent bg-transparent px-2 py-1 text-sm hover:border-line-strong focus:border-primary focus:bg-surface disabled:opacity-60"
+      :class="{ 'border-danger focus:border-danger': failed }"
       @keydown.enter.prevent="commit"
       @keydown.esc.prevent="revert"
       @blur="commit"
@@ -18,7 +18,7 @@
 
     <svg
       v-if="saving"
-      class="h-3.5 w-3.5 shrink-0 animate-spin text-gray-400"
+      class="h-3.5 w-3.5 shrink-0 animate-spin text-ink-3"
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
@@ -35,7 +35,7 @@
     <span v-if="failed" class="sr-only" role="alert">{{ failed }}</span>
     <span
       v-if="failed"
-      class="shrink-0 text-xs text-danger-600"
+      class="shrink-0 text-xs text-danger"
       :title="failed"
       aria-hidden="true"
     >!</span>

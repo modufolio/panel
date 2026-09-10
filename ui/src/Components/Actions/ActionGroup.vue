@@ -8,7 +8,7 @@
       :aria-controls="isOpen ? menuId : undefined"
       @click="toggleDropdown"
       @keydown.down.prevent="openAndFocusFirst"
-      class="inline-flex items-center justify-center gap-2 px-3.5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:ring-offset-2"
+      class="inline-flex items-center justify-center gap-2 px-3.5 py-2 text-sm font-medium text-ink-2 bg-surface border border-line-strong rounded-lg hover:bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
     >
       <span>{{ label }}</span>
       <svg
@@ -38,7 +38,7 @@
           v-show="isOpen"
           ref="dropdownRef"
           role="menu"
-          class="z-50 w-56 overflow-hidden rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+          class="z-50 w-56 overflow-hidden rounded-lg bg-surface-raised shadow-lg ring-1 ring-hairline focus:outline-none"
           :style="floatingStyles"
           @keydown="onKeydown"
         >

@@ -40,45 +40,48 @@
         </select>
 
         <!-- Favorite: label only, no value needed -->
-        <span v-if="row.field === 'favorite'" class="flex-1 text-sm text-gray-500 italic">is marked as favorite</span>
+        <span v-if="row.field === 'favorite'" class="flex-1 text-sm text-ink-3 italic">is marked as favorite</span>
 
         <!-- Value: album multi-select -->
         <div v-if="row.field === 'album'" class="relative flex-1" :data-album-row="row.id">
           <div
-            class="flex flex-wrap gap-1 min-h-[34px] w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-sm cursor-pointer"
+            class="flex flex-wrap gap-1 min-h-[34px] w-full rounded-md border border-line-strong bg-surface px-2 py-1 text-sm cursor-pointer"
             @click="toggleAlbumDropdown(row.id)"
           >
-            <span v-if="(row.value as string[]).length === 0" class="text-gray-400 self-center">Select albums…</span>
+            <span v-if="(row.value as string[]).length === 0" class="text-ink-3 self-center">Select albums…</span>
             <template v-else>
               <span
                 v-for="id in (row.value as string[])"
                 :key="id"
-                class="inline-flex items-center gap-1 bg-primary-100 text-primary-700 rounded px-1.5 py-0.5 text-xs"
+                class="inline-flex items-center gap-1 bg-primary-surface text-primary-on-surface rounded px-1.5 py-0.5 text-xs"
               >
                 {{ albumLabel(id) }}
-                <button type="button" class="hover:text-primary-900" @click.stop="removeAlbumFromRow(row, id)">×</button>
+                <!-- Opacity rather than a second colour: the × rides the chip's
+                     own foreground, so hovering strengthens it instead of
+                     stepping to a lighter token than the label it sits beside. -->
+                <button type="button" class="opacity-70 hover:opacity-100" @click.stop="removeAlbumFromRow(row, id)">×</button>
               </span>
             </template>
           </div>
           <!-- Album dropdown -->
           <div
             v-if="albumDropdownOpen === row.id"
-            class="absolute z-20 mt-1 w-full max-h-52 overflow-y-auto rounded-lg bg-white shadow-xl ring-1 ring-black/10 py-1"
+            class="absolute z-20 mt-1 w-full max-h-52 overflow-y-auto rounded-lg bg-surface-raised shadow-xl ring-1 ring-hairline py-1"
           >
-            <div v-if="albumsLoading" class="px-3 py-2 text-xs text-gray-500">Loading…</div>
-            <div v-else-if="albumList.length === 0" class="px-3 py-2 text-xs text-gray-500">No albums found</div>
+            <div v-if="albumsLoading" class="px-3 py-2 text-xs text-ink-3">Loading…</div>
+            <div v-else-if="albumList.length === 0" class="px-3 py-2 text-xs text-ink-3">No albums found</div>
             <label
               v-for="album in albumList"
               :key="album.id"
-              class="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer"
+              class="flex items-center gap-2 px-3 py-1.5 hover:bg-hover cursor-pointer"
             >
               <input
                 type="checkbox"
                 :checked="(row.value as string[]).includes(album.id)"
-                class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                class="rounded border-line-strong accent-primary focus:ring-focus"
                 @change="toggleAlbum(row, album.id)"
               />
-              <span class="text-sm text-gray-700">{{ album.title }}</span>
+              <span class="text-sm text-label">{{ album.title }}</span>
             </label>
           </div>
         </div>
@@ -96,7 +99,7 @@
         <!-- Remove row -->
         <button
           type="button"
-          class="text-gray-400 hover:text-gray-600 text-lg leading-none px-1"
+          class="text-ink-3 hover:text-ink-2 text-lg leading-none px-1"
           @click="removeFilter(row.id)"
         >×</button>
       </div>
@@ -104,7 +107,7 @@
       <!-- Add filter button -->
       <button
         type="button"
-        class="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 font-medium"
+        class="inline-flex items-center gap-1 text-sm text-primary hover:text-primary-hover font-medium"
         @click="addFilter"
       >
         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -116,7 +119,7 @@
 
     <!-- Loading -->
     <div v-if="loading" class="flex justify-center py-12">
-      <svg class="animate-spin h-6 w-6 text-primary-500" fill="none" viewBox="0 0 24 24">
+      <svg class="animate-spin h-6 w-6 text-primary" fill="none" viewBox="0 0 24 24">
         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
       </svg>
@@ -129,7 +132,7 @@
           v-for="image in images"
           :key="image.id"
           type="button"
-          class="relative aspect-square rounded-sm overflow-hidden border-2 border-transparent hover:border-primary-500 focus:border-primary-500 focus:outline-none transition-colors bg-gray-100"
+          class="relative aspect-square rounded-sm overflow-hidden border-2 border-transparent hover:border-primary focus:border-primary focus:outline-none transition-colors bg-media-placeholder"
           @click="selectImage(image)"
         >
           <img
@@ -141,15 +144,17 @@
       </div>
 
       <!-- Empty -->
-      <div v-else class="text-center py-12 text-gray-500">
-        <svg class="mx-auto h-10 w-10 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div v-else class="text-center py-12 text-ink-3">
+        <!-- A step fainter than the label below it: the illustration should not
+             compete with the sentence that says what happened. -->
+        <svg class="mx-auto h-10 w-10 text-line-strong mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
         No images found
       </div>
 
       <!-- Pagination -->
-      <div v-if="meta.total > 0" class="pt-2 border-t border-gray-100">
+      <div v-if="meta.total > 0" class="pt-2 border-t border-line">
         <TablePagination
           :current-page="meta.page"
           :last-page="meta.pages"

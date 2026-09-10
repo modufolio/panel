@@ -11,10 +11,10 @@
         class="min-h-10.5 w-full rounded-xs border shadow-sm transition-colors duration-200 focus-within:ring-2 focus-within:ring-offset-0"
         :class="[
           error
-            ? 'border-danger-600 focus-within:border-danger-600 focus-within:ring-danger-600/20'
+            ? 'border-danger bg-surface focus-within:border-danger focus-within:ring-danger/20'
             : disabled
-            ? 'border-gray-300 bg-gray-50'
-            : 'border-gray-300 focus-within:border-primary-600 focus-within:ring-primary-600/20',
+            ? 'border-line-strong bg-surface-sunken'
+            : 'border-line-strong bg-surface focus-within:border-focus focus-within:ring-focus/20',
           isOpen ? 'rounded-b-none' : '',
         ]"
       >
@@ -24,14 +24,14 @@
             <div
               v-for="value in selectedValues"
               :key="value"
-              class="inline-flex items-center gap-1 rounded-md bg-primary-50 px-2 py-1 text-sm font-medium text-primary-700"
+              class="inline-flex items-center gap-1 rounded-md bg-primary-surface px-2 py-1 text-sm font-medium text-primary-on-surface"
             >
               <span>{{ getOptionLabel(value) }}</span>
               <button
                 v-if="!disabled"
                 type="button"
                 @click.stop="removeValue(value)"
-                class="rounded hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                class="rounded hover:bg-hover focus:outline-none focus:ring-2 focus:ring-focus"
               >
                 <svg
                   class="h-3.5 w-3.5"
@@ -62,7 +62,7 @@
             :aria-activedescendant="activeDescendant"
             :placeholder="selectedValues.length === 0 ? placeholder : ''"
             :disabled="disabled"
-            class="min-w-30 flex-1 border-0 bg-transparent p-0 text-sm placeholder-gray-400 focus:outline-none focus:ring-0"
+            class="min-w-30 flex-1 border-0 bg-transparent p-0 text-sm placeholder-ink-3 focus:outline-none focus:ring-0"
             @focus="openDropdown"
             @keydown="onNavigationKey"
             @keydown.enter.prevent="selectHighlighted"
@@ -83,7 +83,7 @@
       >
         <div
           v-show="isOpen && !disabled"
-          class="absolute z-10 mt-0 w-full rounded-b-lg border border-t-0 border-gray-300 bg-white shadow-lg"
+          class="absolute z-10 mt-0 w-full rounded-b-lg border border-t-0 border-line-strong bg-surface shadow-lg"
         >
           <div :id="listboxId" role="listbox" aria-multiselectable="true" class="max-h-60 overflow-auto py-1">
             <!-- Options -->
@@ -98,8 +98,8 @@
                 class="flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors"
                 :class="[
                   highlightedIndex === index
-                    ? 'bg-primary-50 text-primary-900'
-                    : 'text-gray-900 hover:bg-gray-50',
+                    ? 'bg-primary-surface text-primary-on-surface'
+                    : 'text-ink hover:bg-hover',
                   isSelected(option.value) ? 'font-medium' : 'font-normal',
                 ]"
                 @click="toggleValue(option.value)"
@@ -108,7 +108,7 @@
                 <span>{{ option.label }}</span>
                 <svg
                   v-if="isSelected(option.value)"
-                  class="h-5 w-5 text-primary-600"
+                  class="h-5 w-5 text-primary"
                   fill="currentColor"
                   viewBox="0 0 20 20"
                 >
@@ -124,7 +124,7 @@
             <!-- No Results -->
             <div
               v-else
-              class="px-3 py-8 text-center text-sm text-gray-500"
+              class="px-3 py-8 text-center text-sm text-ink-3"
             >
               {{ searchQuery ? 'No results found' : 'No options available' }}
             </div>
@@ -137,7 +137,7 @@
           -->
           <div
             v-if="remoteTruncated"
-            class="border-t border-gray-200 px-3 py-2 text-xs text-gray-500"
+            class="border-t border-line px-3 py-2 text-xs text-ink-3"
           >
             Showing the first {{ filteredOptions.length }} matches — keep typing to narrow it down.
           </div>
@@ -145,7 +145,7 @@
           <!-- Select All / Clear All -->
           <div
             v-if="filteredOptions.length > 0"
-            class="border-t border-gray-200 bg-gray-50 px-3 py-2"
+            class="border-t border-line bg-surface-sunken px-3 py-2"
           >
             <div class="flex items-center justify-between text-xs">
               <!--
@@ -155,7 +155,7 @@
               <button
                 v-if="!searchUrl && selectedValues.length < normalizedOptions.length"
                 type="button"
-                class="font-medium text-primary-600 hover:text-primary-700"
+                class="font-medium text-primary hover:underline"
                 @click="selectAll"
               >
                 Select All
@@ -163,7 +163,7 @@
               <button
                 v-if="selectedValues.length > 0"
                 type="button"
-                class="font-medium text-gray-600 hover:text-gray-700"
+                class="font-medium text-ink-2 hover:text-ink"
                 @click="clearAll"
               >
                 Clear All
@@ -175,7 +175,7 @@
     </div>
 
     <!-- Selected Count -->
-    <p v-if="selectedValues.length > 0 && !error" class="text-xs text-gray-500">
+    <p v-if="selectedValues.length > 0 && !error" class="text-xs text-ink-3">
       {{ selectedValues.length }} item{{ selectedValues.length !== 1 ? 's' : '' }} selected
     </p>
   </FieldPrimitive>

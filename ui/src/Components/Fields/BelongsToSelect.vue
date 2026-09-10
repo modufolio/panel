@@ -25,8 +25,8 @@
           :required="required"
           class="ui-input ui-belongs-to-input block w-full"
           :class="{
-            'border-danger-300': error,
-            'bg-gray-50 cursor-not-allowed': disabled,
+            'border-danger': error,
+            'bg-surface-sunken cursor-not-allowed': disabled,
           }"
           @focus="handleFocus"
           @input="handleSearch"
@@ -37,7 +37,7 @@
 
         <!-- Loading Spinner -->
         <div v-if="loading" class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-          <svg class="animate-spin h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <svg class="animate-spin h-4 w-4 text-ink-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
@@ -47,7 +47,7 @@
         <button
           v-else-if="clearable && selectedValue !== null && selectedValue !== ''"
           type="button"
-          class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+          class="absolute inset-y-0 right-0 flex items-center pr-3 text-ink-3 hover:text-ink-2"
           title="Clear selection"
           @click.stop="clearSelection"
         >
@@ -58,7 +58,7 @@
 
         <!-- Dropdown Icon -->
         <div v-else class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-          <svg class="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <svg class="h-4 w-4 text-ink-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
           </svg>
         </div>
@@ -67,7 +67,7 @@
       <!-- Dropdown List -->
       <div
         v-if="showDropdown && (filteredOptions.length > 0 || allowCreate || searchUrl)"
-        class="ui-belongs-to-dropdown absolute z-50 mt-1 w-full max-h-60 overflow-auto rounded-lg bg-white shadow-lg ring-1 ring-black ring-opacity-5"
+        class="ui-belongs-to-dropdown absolute z-50 mt-1 w-full max-h-60 overflow-auto rounded-lg bg-surface-raised shadow-lg ring-1 ring-hairline"
       >
         <!-- Options List -->
         <ul :id="listboxId" role="listbox" class="py-1">
@@ -77,10 +77,10 @@
             :key="valueOf(option) ?? index"
             role="option"
             :aria-selected="option[valueKey] === selectedValue"
-            class="ui-belongs-to-option cursor-pointer px-4 py-2 text-sm hover:bg-gray-100 transition-colors"
+            class="ui-belongs-to-option cursor-pointer px-4 py-2 text-sm hover:bg-hover transition-colors"
             :class="{
-              'bg-primary-50 text-primary-900': index === highlightedIndex,
-              'bg-gray-100': option[valueKey] === selectedValue,
+              'bg-primary-surface text-primary-on-surface': index === highlightedIndex,
+              'bg-pressed': option[valueKey] === selectedValue,
             }"
             @click="selectOption(option)"
             @mouseenter="highlightedIndex = index"
@@ -94,7 +94,7 @@
           </li>
 
           <!-- No Results -->
-          <li v-if="filteredOptions.length === 0 && !allowCreate" role="presentation" class="px-4 py-2 text-sm text-gray-500">
+          <li v-if="filteredOptions.length === 0 && !allowCreate" role="presentation" class="px-4 py-2 text-sm text-ink-3">
             No results found
           </li>
 
@@ -106,7 +106,7 @@
           <li
             v-if="remoteTruncated"
             role="presentation"
-            class="border-t border-gray-200 px-4 py-2 text-xs text-gray-500"
+            class="border-t border-line px-4 py-2 text-xs text-ink-3"
           >
             Showing the first {{ filteredOptions.length }} matches — keep typing to narrow it down.
           </li>
@@ -118,10 +118,10 @@
             :id="optionId(filteredOptions.length)"
             role="option"
             :aria-selected="highlightedIndex === filteredOptions.length"
-            class="ui-belongs-to-create cursor-pointer px-4 py-2 text-sm text-primary-600 hover:bg-primary-50 border-t border-gray-200 transition-colors"
+            class="ui-belongs-to-create cursor-pointer px-4 py-2 text-sm text-primary hover:bg-primary-surface border-t border-line transition-colors"
             :class="[
               { 'opacity-50 pointer-events-none': creating },
-              highlightedIndex === filteredOptions.length ? 'bg-primary-50' : '',
+              highlightedIndex === filteredOptions.length ? 'bg-primary-surface' : '',
             ]"
             @click="handleCreate"
             @mouseenter="highlightedIndex = filteredOptions.length"

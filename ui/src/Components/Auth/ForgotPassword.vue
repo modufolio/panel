@@ -1,6 +1,6 @@
 <template>
   <Head title="Forgot Password" />
-  <div class="flex items-center justify-center p-6 min-h-screen bg-gray-50">
+  <div class="flex items-center justify-center p-6 min-h-screen bg-app">
     <div class="w-full max-w-md">
       <!-- Logo -->
       <div class="mb-8 text-center">
@@ -12,11 +12,11 @@
       <FlashMessages class="mb-4" />
 
       <!-- Card -->
-      <div class="bg-white rounded-lg shadow-sm ring-1 ring-gray-950/5">
+      <div class="bg-surface rounded-lg shadow-sm ring-1 ring-hairline">
         <form @submit.prevent="submit" class="p-8 space-y-6">
           <div>
-            <h2 class="text-xl font-semibold text-gray-950">Reset your password</h2>
-            <p class="mt-1 text-sm text-gray-600">
+            <h2 class="text-xl font-semibold text-ink">Reset your password</h2>
+            <p class="mt-1 text-sm text-ink-2">
               Enter your email address and an administrator will review your request and send you a reset link.
             </p>
           </div>
@@ -45,9 +45,9 @@
       </div>
 
       <!-- Back to login -->
-      <p class="mt-6 text-center text-sm text-gray-600">
+      <p class="mt-6 text-center text-sm text-ink-2">
         Remember your password?
-        <a :href="panelUrl('/login')" class="font-medium text-primary-600 hover:text-primary-700">Sign in</a>
+        <a :href="panelUrl('/login')" class="font-medium text-primary hover:text-primary-hover">Sign in</a>
       </p>
     </div>
   </div>

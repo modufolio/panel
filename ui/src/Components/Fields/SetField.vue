@@ -39,7 +39,7 @@ function update(key: string, value: unknown): void {
 <template>
   <FieldPrimitive
     v-bind="{ width, help }"
-    wrapper-class="ui-field-set rounded-lg border border-gray-300 bg-white p-4"
+    wrapper-class="ui-field-set rounded-lg border border-line bg-surface p-4"
     as="fieldset"
   >
     <!-- The legend sits on the border rather than above it, so it is placed

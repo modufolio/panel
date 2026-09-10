@@ -13,24 +13,24 @@
       >
         <div class="space-y-6">
           <!-- Status Badge -->
-          <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div class="flex items-center justify-between p-4 bg-surface-sunken rounded-lg">
             <div class="flex items-center gap-3">
               <div :class="[
                 'flex items-center justify-center w-10 h-10 rounded-full',
-                isEnabled ? 'bg-success-100' : 'bg-warning-100'
+                isEnabled ? 'bg-success-surface' : 'bg-warning-surface'
               ]">
-                <svg v-if="isEnabled" class="w-5 h-5 text-success-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <svg v-if="isEnabled" class="w-5 h-5 text-success" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <svg v-else class="w-5 h-5 text-warning-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <svg v-else class="w-5 h-5 text-warning" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                 </svg>
               </div>
               <div>
-                <h3 class="text-sm font-semibold text-gray-900">
+                <h3 class="text-sm font-semibold text-ink">
                   {{ isEnabled ? 'Enabled' : 'Disabled' }}
                 </h3>
-                <p class="text-xs text-gray-600">
+                <p class="text-xs text-ink-2">
                   {{ isEnabled ? 'Your account is protected with 2FA' : 'Your account is not protected with 2FA' }}
                 </p>
               </div>
@@ -55,15 +55,15 @@
           </div>
 
           <!-- Enabled Date -->
-          <div v-if="isEnabled && status.enabled_at" class="text-sm text-gray-600">
+          <div v-if="isEnabled && status.enabled_at" class="text-sm text-ink-2">
             <span class="font-medium">Enabled on:</span> {{ formatDate(status.enabled_at) }}
           </div>
 
           <!-- Backup Codes Section -->
           <div v-if="isEnabled">
-            <div class="border-t border-gray-200 pt-6">
-              <h4 class="text-sm font-semibold text-gray-900 mb-2">Backup Codes</h4>
-              <p class="text-sm text-gray-600 mb-4">
+            <div class="border-t border-line pt-6">
+              <h4 class="text-sm font-semibold text-ink mb-2">Backup Codes</h4>
+              <p class="text-sm text-ink-2 mb-4">
                 Backup codes can be used to access your account if you lose access to your authenticator app.
                 Store them in a safe place.
               </p>
@@ -89,13 +89,13 @@
         <div class="space-y-4">
           <div class="flex gap-4">
             <div class="shrink-0">
-              <div class="flex items-center justify-center w-8 h-8 bg-primary-100 rounded-full text-primary-600 font-semibold text-sm">
+              <div class="flex items-center justify-center w-8 h-8 bg-primary-surface rounded-full text-primary font-semibold text-sm">
                 1
               </div>
             </div>
             <div>
-              <h5 class="text-sm font-semibold text-gray-900">Install an Authenticator App</h5>
-              <p class="text-sm text-gray-600 mt-1">
+              <h5 class="text-sm font-semibold text-ink">Install an Authenticator App</h5>
+              <p class="text-sm text-ink-2 mt-1">
                 Download and install Google Authenticator, Authy, or any TOTP-compatible app on your mobile device.
               </p>
             </div>
@@ -103,13 +103,13 @@
 
           <div class="flex gap-4">
             <div class="shrink-0">
-              <div class="flex items-center justify-center w-8 h-8 bg-primary-100 rounded-full text-primary-600 font-semibold text-sm">
+              <div class="flex items-center justify-center w-8 h-8 bg-primary-surface rounded-full text-primary font-semibold text-sm">
                 2
               </div>
             </div>
             <div>
-              <h5 class="text-sm font-semibold text-gray-900">Scan QR Code</h5>
-              <p class="text-sm text-gray-600 mt-1">
+              <h5 class="text-sm font-semibold text-ink">Scan QR Code</h5>
+              <p class="text-sm text-ink-2 mt-1">
                 When you enable 2FA, scan the QR code with your authenticator app to add your account.
               </p>
             </div>
@@ -117,13 +117,13 @@
 
           <div class="flex gap-4">
             <div class="shrink-0">
-              <div class="flex items-center justify-center w-8 h-8 bg-primary-100 rounded-full text-primary-600 font-semibold text-sm">
+              <div class="flex items-center justify-center w-8 h-8 bg-primary-surface rounded-full text-primary font-semibold text-sm">
                 3
               </div>
             </div>
             <div>
-              <h5 class="text-sm font-semibold text-gray-900">Enter Verification Code</h5>
-              <p class="text-sm text-gray-600 mt-1">
+              <h5 class="text-sm font-semibold text-ink">Enter Verification Code</h5>
+              <p class="text-sm text-ink-2 mt-1">
                 Each time you log in, you'll need to enter a 6-digit code from your authenticator app.
               </p>
             </div>
@@ -131,13 +131,13 @@
 
           <div class="flex gap-4">
             <div class="shrink-0">
-              <div class="flex items-center justify-center w-8 h-8 bg-primary-100 rounded-full text-primary-600 font-semibold text-sm">
+              <div class="flex items-center justify-center w-8 h-8 bg-primary-surface rounded-full text-primary font-semibold text-sm">
                 4
               </div>
             </div>
             <div>
-              <h5 class="text-sm font-semibold text-gray-900">Save Backup Codes</h5>
-              <p class="text-sm text-gray-600 mt-1">
+              <h5 class="text-sm font-semibold text-ink">Save Backup Codes</h5>
+              <p class="text-sm text-ink-2 mt-1">
                 Store your backup codes in a safe place. You can use them to access your account if you lose your device.
               </p>
             </div>
@@ -156,21 +156,21 @@
       <div v-if="setupStep === 'qr'" class="space-y-6">
         <!-- QR Code Display -->
         <div class="text-center">
-          <div class="inline-block p-4 bg-white rounded-lg border-2 border-gray-200">
+          <div class="inline-block p-4 bg-scan-paper rounded-lg border-2 border-line">
             <img v-if="qrCode" :src="qrCode" alt="QR Code" class="w-64 h-64" />
             <div v-else class="w-64 h-64 flex items-center justify-center">
-              <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+              <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
             </div>
           </div>
-          <p class="mt-4 text-sm text-gray-600">
+          <p class="mt-4 text-sm text-ink-2">
             Scan this QR code with your authenticator app
           </p>
         </div>
 
         <!-- Manual Entry Option -->
-        <div class="bg-gray-50 rounded-lg p-4">
-          <h4 class="text-sm font-semibold text-gray-900 mb-2">Can't scan the code?</h4>
-          <p class="text-xs text-gray-600 mb-2">Enter this secret key manually in your authenticator app:</p>
+        <div class="bg-surface-sunken rounded-lg p-4">
+          <h4 class="text-sm font-semibold text-ink mb-2">Can't scan the code?</h4>
+          <p class="text-xs text-ink-2 mb-2">Enter this secret key manually in your authenticator app:</p>
           <!--
             min-w-0 lets the code block shrink below its content width: a
             base32 secret is one unbreakable token, and a flex item's default
@@ -178,13 +178,13 @@
             dialog. break-all wraps it; shrink-0 keeps the button intact.
           -->
           <div class="flex items-start gap-2">
-            <code class="min-w-0 flex-1 px-3 py-2 bg-white border border-gray-300 rounded text-sm font-mono break-all">
+            <code class="min-w-0 flex-1 px-3 py-2 bg-surface border border-line-strong rounded text-sm font-mono text-ink break-all">
               {{ secret }}
             </code>
             <button
               type="button"
               @click="copySecret"
-              class="shrink-0 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors"
+              class="shrink-0 px-3 py-2 text-sm font-medium text-ink-2 bg-surface border border-line-strong rounded hover:bg-hover transition-colors"
             >
               {{ secretCopied ? 'Copied!' : 'Copy' }}
             </button>
@@ -222,14 +222,14 @@
 
       <!-- Backup Codes Display -->
       <div v-else-if="setupStep === 'backup'" class="space-y-6">
-        <div class="bg-warning-50 border border-warning-200 rounded-lg p-4">
+        <div class="bg-warning-surface border border-warning/30 rounded-lg p-4">
           <div class="flex gap-3">
-            <svg class="w-5 h-5 text-warning-600 shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <svg class="w-5 h-5 text-warning shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
             </svg>
             <div>
-              <h4 class="text-sm font-semibold text-warning-900">Save These Backup Codes</h4>
-              <p class="text-sm text-warning-700 mt-1">
+              <h4 class="text-sm font-semibold text-warning-on-surface">Save These Backup Codes</h4>
+              <p class="text-sm text-warning-on-surface mt-1">
                 Store these backup codes in a safe place. Each code can only be used once.
                 You won't be able to see them again after closing this dialog.
               </p>
@@ -237,12 +237,12 @@
           </div>
         </div>
 
-        <div class="bg-gray-50 rounded-lg p-4">
+        <div class="bg-surface-sunken rounded-lg p-4">
           <div class="grid grid-cols-2 gap-3">
             <code
               v-for="(code, index) in backupCodes"
               :key="index"
-              class="px-3 py-2 bg-white border border-gray-300 rounded text-sm font-mono text-center"
+              class="px-3 py-2 bg-surface border border-line-strong rounded text-sm font-mono text-ink text-center"
             >
               {{ code }}
             </code>
@@ -273,13 +273,13 @@
       width="md"
     >
       <div class="space-y-4">
-        <div class="bg-info-50 border border-info-200 rounded-lg p-4">
+        <div class="bg-info-surface border border-info/30 rounded-lg p-4">
           <div class="flex gap-3">
-            <svg class="w-5 h-5 text-info-600 shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <svg class="w-5 h-5 text-info shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
             </svg>
             <div>
-              <p class="text-sm text-info-700">
+              <p class="text-sm text-info-on-surface">
                 For security reasons, we don't store your backup codes in plain text.
                 You'll need to regenerate new codes if you've lost the original ones.
               </p>
@@ -306,14 +306,14 @@
       width="md"
     >
       <div class="space-y-4">
-        <div class="bg-danger-50 border border-danger-200 rounded-lg p-4">
+        <div class="bg-danger-surface border border-danger/30 rounded-lg p-4">
           <div class="flex gap-3">
-            <svg class="w-5 h-5 text-danger-600 shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <svg class="w-5 h-5 text-danger shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
             </svg>
             <div>
-              <h4 class="text-sm font-semibold text-danger-900">Warning</h4>
-              <p class="text-sm text-danger-700 mt-1">
+              <h4 class="text-sm font-semibold text-danger-on-surface">Warning</h4>
+              <p class="text-sm text-danger-on-surface mt-1">
                 Disabling two-factor authentication will make your account less secure.
                 Are you sure you want to continue?
               </p>

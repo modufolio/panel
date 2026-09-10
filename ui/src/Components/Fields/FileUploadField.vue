@@ -15,11 +15,11 @@
       >
         <!-- Upload Icon & Text -->
         <div v-if="!preview && !file" class="space-y-2">
-          <svg class="mx-auto w-12 h-12 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <svg class="mx-auto w-12 h-12 text-ink-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
           </svg>
-          <div class="text-sm text-gray-600">
-            <label :for="id" class="relative cursor-pointer rounded-md font-medium text-primary-600 hover:text-primary-500">
+          <div class="text-sm text-ink-2">
+            <label :for="id" class="relative cursor-pointer rounded-md font-medium text-primary hover:underline">
               <span>Upload a file</span>
               <input
                 :id="id"
@@ -36,40 +36,43 @@
             </label>
             <span class="pl-1">or drag and drop</span>
           </div>
-          <p v-if="help" class="text-xs text-gray-500">{{ help }}</p>
+          <p v-if="help" class="text-xs text-ink-3">{{ help }}</p>
         </div>
 
         <!-- Image Preview -->
         <div v-if="preview" class="relative">
-          <img :src="preview" :alt="file?.name" class="mx-auto max-h-48 rounded-lg" />
+          <!-- The mat behind a transparent or letterboxed preview is the
+               constant media grey, not chrome: judging an image against a
+               backdrop that flips with the theme judges two exposures. -->
+          <img :src="preview" :alt="file?.name" class="mx-auto max-h-48 rounded-lg bg-media-placeholder" />
           <button
             type="button"
             @click="removeFile"
-            class="absolute top-2 right-2 p-1 bg-danger-600 text-white rounded-full hover:bg-danger-700 transition-colors"
+            class="absolute top-2 right-2 p-1 bg-danger-fill text-danger-on-fill rounded-full hover:opacity-90 transition-opacity"
           >
             <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-          <p class="mt-2 text-sm text-gray-700 truncate">{{ file?.name }}</p>
-          <p class="text-xs text-gray-500">{{ formatFileSize(file?.size) }}</p>
+          <p class="mt-2 text-sm text-label truncate">{{ file?.name }}</p>
+          <p class="text-xs text-ink-3">{{ formatFileSize(file?.size) }}</p>
         </div>
 
         <!-- File Info (non-image) -->
-        <div v-else-if="file" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+        <div v-else-if="file" class="flex items-center justify-between p-3 bg-surface-sunken rounded-lg">
           <div class="flex items-center gap-3">
-            <svg class="w-8 h-8 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <svg class="w-8 h-8 text-ink-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
             </svg>
             <div class="text-left">
-              <p class="text-sm font-medium text-gray-900 truncate max-w-xs">{{ file.name }}</p>
-              <p class="text-xs text-gray-500">{{ formatFileSize(file.size) }}</p>
+              <p class="text-sm font-medium text-ink truncate max-w-xs">{{ file.name }}</p>
+              <p class="text-xs text-ink-3">{{ formatFileSize(file.size) }}</p>
             </div>
           </div>
           <button
             type="button"
             @click="removeFile"
-            class="p-1 text-gray-400 hover:text-danger-600 transition-colors"
+            class="p-1 text-ink-3 hover:text-danger transition-colors"
           >
             <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -143,11 +146,11 @@ const dropZoneClasses = computed(() => {
   const classes = []
 
   if (isDragging.value) {
-    classes.push('border-primary-500 bg-primary-50')
+    classes.push('border-primary bg-primary-surface')
   } else if (props.error) {
-    classes.push('border-danger-300 bg-danger-50')
+    classes.push('border-danger bg-danger-surface')
   } else {
-    classes.push('border-gray-300 hover:border-gray-400')
+    classes.push('border-line hover:border-line-strong')
   }
 
   if (props.disabled) {

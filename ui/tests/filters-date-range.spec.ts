@@ -143,14 +143,14 @@ describe('DateRangeFilter', () => {
     it('marks the one whose range is currently in force', () => {
       const wrapper = filter({ start: '2026-09-01', end: TODAY })
 
-      expect(preset(wrapper, 'This month').classes()).toContain('border-primary-600')
-      expect(preset(wrapper, 'Today').classes()).not.toContain('border-primary-600')
+      expect(preset(wrapper, 'This month').classes()).toContain('border-primary')
+      expect(preset(wrapper, 'Today').classes()).not.toContain('border-primary')
     })
 
     it('marks none when the range was typed by hand', () => {
       const wrapper = filter({ start: '2026-09-03', end: '2026-09-05' })
 
-      const active = wrapper.findAll('.flex-wrap button').filter((b) => b.classes().includes('border-primary-600'))
+      const active = wrapper.findAll('.flex-wrap button').filter((b) => b.classes().includes('border-primary'))
       expect(active).toHaveLength(0)
     })
 

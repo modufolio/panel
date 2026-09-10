@@ -3,10 +3,10 @@
     <!-- Trigger button -->
     <button
       type="button"
-      class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
+      class="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-0"
       :class="hasValue
-        ? 'bg-primary-50 text-primary-700 border-primary-200 hover:bg-primary-100'
-        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'"
+        ? 'bg-primary-surface text-primary-on-surface border-primary/25 hover:bg-primary-surface-strong'
+        : 'bg-surface text-ink-2 border-line-strong hover:bg-hover'"
       @click="isOpen = !isOpen"
     >
       <svg class="w-4 h-4 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -16,19 +16,19 @@
 
       <!-- Active selection pills (up to 2, then "+N more") -->
       <template v-if="selectedOptions.length > 0">
-        <span class="h-px w-px bg-primary-300 mx-0.5" aria-hidden="true" />
+        <span class="h-4 w-px bg-primary/40 mx-0.5" aria-hidden="true" />
         <template v-if="selectedOptions.length <= 2">
           <span
             v-for="opt in selectedOptions"
             :key="String(opt.value)"
-            class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-primary-100 text-primary-700"
+            class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-primary-surface-strong text-primary-on-surface"
           >
             {{ opt.label }}
           </span>
         </template>
         <span
           v-else
-          class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-primary-100 text-primary-700"
+          class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium bg-primary-surface-strong text-primary-on-surface"
         >
           {{ selectedOptions.length }} selected
         </span>
@@ -46,7 +46,7 @@
     >
       <div
         v-show="isOpen"
-        class="absolute left-0 z-50 mt-1 w-52 origin-top-left rounded-lg border border-gray-200 bg-white shadow-lg"
+        class="absolute left-0 z-50 mt-1 w-52 origin-top-left rounded-lg border border-line bg-surface-raised shadow-lg"
       >
         <!-- Search within options (only when many options) -->
         <div v-if="options.length > 6" class="px-2 pt-2">
@@ -60,25 +60,25 @@
 
         <!-- Options list -->
         <ul class="max-h-64 overflow-y-auto py-1.5 px-1">
-          <li v-if="filteredOptions.length === 0" class="px-3 py-2 text-sm text-gray-400 text-center">
+          <li v-if="filteredOptions.length === 0" class="px-3 py-2 text-sm text-ink-3 text-center">
             No results
           </li>
           <li v-for="option in filteredOptions" :key="String(option.value)">
             <button
               type="button"
-              class="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-left transition-colors hover:bg-gray-50"
+              class="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-left transition-colors hover:bg-hover"
               @click="toggle(option.value)"
             >
               <!-- Checkbox indicator -->
               <span
                 class="flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors"
                 :class="isSelected(option.value)
-                  ? 'border-primary-600 bg-primary-600'
-                  : 'border-gray-300 bg-white'"
+                  ? 'border-primary bg-primary-fill'
+                  : 'border-line-strong bg-surface'"
               >
                 <svg
                   v-if="isSelected(option.value)"
-                  class="h-2.5 w-2.5 text-white"
+                  class="h-2.5 w-2.5 text-primary-on-fill"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -87,12 +87,12 @@
                 </svg>
               </span>
 
-              <span class="flex-1 truncate font-medium text-gray-700">{{ option.label }}</span>
+              <span class="flex-1 truncate font-medium text-ink-2">{{ option.label }}</span>
 
               <!-- Count badge -->
               <span
                 v-if="option.count !== undefined"
-                class="ml-auto shrink-0 text-xs tabular-nums text-gray-400"
+                class="ml-auto shrink-0 text-xs tabular-nums text-ink-3"
               >
                 {{ option.count }}
               </span>
@@ -101,10 +101,10 @@
         </ul>
 
         <!-- Footer: clear -->
-        <div v-if="hasValue" class="border-t border-gray-100 px-3 py-1.5">
+        <div v-if="hasValue" class="border-t border-line px-3 py-1.5">
           <button
             type="button"
-            class="text-xs text-gray-500 hover:text-gray-900 transition-colors"
+            class="text-xs text-ink-3 hover:text-ink transition-colors"
             @click="clear"
           >
             Clear filter

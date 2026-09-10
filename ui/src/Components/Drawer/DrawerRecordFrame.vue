@@ -52,8 +52,8 @@
             @add="emit('add', section)"
           >
             <template #row="{ item: row }">
-              <span class="truncate text-sm text-gray-800">{{ primaryOf(row, section) }}</span>
-              <span v-if="section.secondary" class="truncate text-xs text-gray-500">
+              <span class="truncate text-sm text-ink">{{ primaryOf(row, section) }}</span>
+              <span v-if="section.secondary" class="truncate text-xs text-ink-3">
                 {{ row[section.secondary] ?? '—' }}
               </span>
             </template>
@@ -84,8 +84,8 @@
           >
             <template #row="{ item: row }">
               <div class="min-w-0">
-                <div class="truncate text-sm text-gray-800">{{ primaryOf(row, tab) }}</div>
-                <div v-if="tab.secondary" class="truncate text-xs text-gray-500">
+                <div class="truncate text-sm text-ink">{{ primaryOf(row, tab) }}</div>
+                <div v-if="tab.secondary" class="truncate text-xs text-ink-3">
                   {{ row[tab.secondary] ?? '—' }}
                 </div>
               </div>
@@ -122,8 +122,8 @@
       >
         <template #row="{ item: row }">
           <div class="min-w-0">
-            <div class="truncate text-sm text-gray-800">{{ primaryOf(row, tab) }}</div>
-            <div v-if="tab.secondary" class="truncate text-xs text-gray-500">
+            <div class="truncate text-sm text-ink">{{ primaryOf(row, tab) }}</div>
+            <div v-if="tab.secondary" class="truncate text-xs text-ink-3">
               {{ row[tab.secondary] ?? '—' }}
             </div>
           </div>

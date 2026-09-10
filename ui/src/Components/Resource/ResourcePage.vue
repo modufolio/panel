@@ -37,7 +37,7 @@
     -->
     <p
       v-if="moveError"
-      class="mb-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+      class="mb-3 rounded-md border border-warning/30 bg-warning-surface px-4 py-3 text-sm text-warning-on-surface"
       role="status"
     >
       {{ moveError }}
@@ -217,7 +217,7 @@
         dimmed page did nothing.
       -->
       <div
-        class="fixed inset-0 z-[60] bg-gray-900/25"
+        class="fixed inset-0 z-[60] bg-overlay"
         data-overlay-backdrop
         data-testid="add-panel-scrim"
         @click="dismissEverything"
@@ -233,24 +233,24 @@
         ref="addPanelRef"
         role="dialog"
         aria-modal="true"
-        class="fixed inset-y-0 right-0 z-[61] flex w-full max-w-xl flex-col bg-white shadow-2xl"
+        class="fixed inset-y-0 right-0 z-[61] flex w-full max-w-xl flex-col bg-surface shadow-2xl"
         data-testid="add-panel"
       >
         <!-- Close on the left, as every drawer in the stack has it. -->
-        <div class="flex items-center gap-3 border-b border-gray-200 px-6 py-4">
+        <div class="flex items-center gap-3 border-b border-line px-6 py-4">
           <button
             type="button"
-            class="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            class="shrink-0 rounded-lg p-1.5 text-ink-3 hover:bg-hover hover:text-ink-2"
             aria-label="Close"
             @click="closeAddForm"
           >
             <Icon name="x" class="h-5 w-5" />
           </button>
-          <h2 class="truncate text-lg font-semibold text-gray-900">{{ addForm.tab.addLabel?.replace(/^\+\s*/, '') || 'Add' }} {{ addForm.tab.label }}</h2>
+          <h2 class="truncate text-lg font-semibold text-ink">{{ addForm.tab.addLabel?.replace(/^\+\s*/, '') || 'Add' }} {{ addForm.tab.label }}</h2>
         </div>
 
         <div class="flex-1 overflow-y-auto p-6">
-          <p v-if="addErrors._" class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <p v-if="addErrors._" class="mb-4 rounded-md border border-danger/30 bg-danger-surface px-4 py-3 text-sm text-danger-on-surface">
             {{ addErrors._ }}
           </p>
 
@@ -262,7 +262,7 @@
           />
         </div>
 
-        <div class="border-t border-gray-200 bg-gray-50 px-6 py-4">
+        <div class="border-t border-line bg-surface-sunken px-6 py-4">
           <div class="flex justify-end gap-3">
             <Action label="Cancel" color="gray" variant="outlined" @click="closeAddForm" />
             <Action

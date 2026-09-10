@@ -7,10 +7,10 @@
     ]">
       <slot name="header">
         <div :class="{ 'flex-1': $slots.headerActions }">
-          <h2 v-if="heading" class="text-lg font-semibold text-gray-900">
+          <h2 v-if="heading" class="text-lg font-semibold text-ink">
             {{ heading }}
           </h2>
-          <p v-if="description" class="mt-1 text-sm text-gray-600">
+          <p v-if="description" class="mt-1 text-sm text-ink-2">
             {{ description }}
           </p>
         </div>
@@ -62,7 +62,7 @@ const sectionClasses = computed(() => {
   const classes = []
 
   if (props.card) {
-    classes.push('bg-white rounded-lg shadow-sm ring-1 ring-gray-950/5')
+    classes.push('bg-surface rounded-lg shadow-sm ring-1 ring-hairline')
   }
 
   if (props.aside) {
@@ -76,7 +76,7 @@ const headerClasses = computed(() => {
   const classes = []
 
   if (props.card) {
-    classes.push('px-6 py-4 border-b border-gray-200')
+    classes.push('px-6 py-4 border-b border-line')
   }
 
   return classes
@@ -100,7 +100,7 @@ const footerClasses = computed(() => {
   const classes = []
 
   if (props.card) {
-    classes.push('px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl')
+    classes.push('px-6 py-4 border-t border-line bg-surface-sunken rounded-b-xl')
   }
 
   return classes

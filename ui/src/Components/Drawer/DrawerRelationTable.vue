@@ -1,25 +1,25 @@
 <template>
-  <section class="ui-drawer-relation-table" :class="bordered ? 'border-t border-gray-200 pt-4' : undefined">
+  <section class="ui-drawer-relation-table" :class="bordered ? 'border-t border-line pt-4' : undefined">
     <div v-if="heading || addable" class="mb-3 flex items-center justify-between">
-      <h4 class="text-sm font-medium text-gray-700">
+      <h4 class="text-sm font-medium text-ink-2">
         {{ heading }}
-        <span v-if="rows.length" class="ml-1 text-xs font-normal text-gray-400" aria-label="rows">{{ rows.length }}</span>
+        <span v-if="rows.length" class="ml-1 text-xs font-normal text-ink-3" aria-label="rows">{{ rows.length }}</span>
       </h4>
       <button
         v-if="addable"
         type="button"
-        class="text-xs font-medium text-primary-600 hover:text-primary-800"
+        class="text-xs font-medium text-primary hover:text-primary-on-surface"
         @click="$emit('add')"
       >
         {{ addLabel }}
       </button>
     </div>
 
-    <div v-if="rows.length === 0" class="py-8 text-center text-sm text-gray-400">
+    <div v-if="rows.length === 0" class="py-8 text-center text-sm text-ink-3">
       {{ emptyText }}
     </div>
 
-    <div v-else class="overflow-hidden rounded-lg border border-gray-200 bg-white">
+    <div v-else class="overflow-hidden rounded-lg border border-line bg-surface">
       <Table
         nested
         :columns="columns"

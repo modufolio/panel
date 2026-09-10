@@ -9,7 +9,7 @@
       :aria-label="action.label"
       :disabled="isDisabled(action) || undefined"
       :aria-disabled="isDisabled(action) || undefined"
-      class="ui-cell-action inline-flex items-center justify-center rounded-xs p-1 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-600 aria-disabled:pointer-events-none aria-disabled:opacity-40 disabled:pointer-events-none disabled:opacity-40"
+      class="ui-cell-action inline-flex items-center justify-center rounded-xs p-1 text-ink-3 transition-colors hover:bg-hover hover:text-ink focus:outline-none focus:ring-2 focus:ring-focus aria-disabled:pointer-events-none aria-disabled:opacity-40 disabled:pointer-events-none disabled:opacity-40"
       :class="colorClass(action)"
       @click="onActivate(action, $event)"
     >
@@ -60,11 +60,11 @@ function isDisabled(action: SchemaColumnAction): boolean {
 
 function colorClass(action: SchemaColumnAction): string {
   const colors: Record<string, string> = {
-    primary: 'hover:text-primary-700 hover:bg-primary-50',
-    success: 'hover:text-success-700 hover:bg-success-50',
-    danger: 'hover:text-danger-700 hover:bg-danger-50',
-    warning: 'hover:text-warning-700 hover:bg-warning-50',
-    info: 'hover:text-info-700 hover:bg-info-50',
+    primary: 'hover:text-primary-on-surface hover:bg-primary-surface',
+    success: 'hover:text-success-on-surface hover:bg-success-surface',
+    danger: 'hover:text-danger-on-surface hover:bg-danger-surface',
+    warning: 'hover:text-warning-on-surface hover:bg-warning-surface',
+    info: 'hover:text-info-on-surface hover:bg-info-surface',
   }
 
   return action.color ? (colors[action.color] ?? '') : ''

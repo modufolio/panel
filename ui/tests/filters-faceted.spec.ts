@@ -78,8 +78,8 @@ describe('FacetedFilter', () => {
   })
 
   it('marks the trigger as carrying a value', () => {
-    expect(trigger(filter()).classes()).toContain('bg-white')
-    expect(trigger(filter(['draft'])).classes()).toContain('bg-primary-50')
+    expect(trigger(filter()).classes()).toContain('bg-surface')
+    expect(trigger(filter(['draft'])).classes()).toContain('bg-primary-surface')
   })
 
   it('adds a value that was not selected', async () => {

@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-3 p-4">
-    <label class="block text-sm font-medium text-gray-900">
+    <label class="block text-sm font-medium text-label">
       {{ label }}
     </label>
 
@@ -36,7 +36,7 @@
     <!-- Range Inputs (for "between") -->
     <div v-else class="grid grid-cols-2 gap-2">
       <div>
-        <label class="block text-xs text-gray-600 mb-1">Min</label>
+        <label class="block text-xs text-ink-2 mb-1">Min</label>
         <input
           v-model.number="rangeMin"
           type="number"
@@ -49,7 +49,7 @@
         />
       </div>
       <div>
-        <label class="block text-xs text-gray-600 mb-1">Max</label>
+        <label class="block text-xs text-ink-2 mb-1">Max</label>
         <input
           v-model.number="rangeMax"
           type="number"
@@ -67,7 +67,7 @@
     <button
       v-if="hasValue"
       type="button"
-      class="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+      class="w-full rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink-2 hover:bg-hover"
       @click="clear"
     >
       Clear Filter

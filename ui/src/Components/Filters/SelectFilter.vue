@@ -1,6 +1,6 @@
 <template>
   <div class="ui-select-filter">
-    <label v-if="label" class="block text-sm font-medium text-gray-700 mb-1.5">
+    <label v-if="label" class="block text-sm font-medium text-label mb-1.5">
       {{ label }}
     </label>
     <select
@@ -22,7 +22,7 @@
       capped the option list, say so rather than letting the dropdown end
       early and look complete.
     -->
-    <p v-if="optionsTruncated" class="mt-1 text-xs text-gray-500">
+    <p v-if="optionsTruncated" class="mt-1 text-xs text-ink-3">
       Showing the first {{ options.length }} — search the table to narrow further.
     </p>
   </div>

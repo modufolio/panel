@@ -1,13 +1,13 @@
 <template>
   <div class="space-y-3 p-4">
-    <label class="block text-sm font-medium text-gray-900">
+    <label class="block text-sm font-medium text-label">
       {{ label }}
     </label>
 
     <div class="grid grid-cols-2 gap-2">
       <!-- Start Date -->
       <div>
-        <label class="block text-xs text-gray-600 mb-1">From</label>
+        <label class="block text-xs text-ink-2 mb-1">From</label>
         <input
           v-model="start"
           type="date"
@@ -20,7 +20,7 @@
 
       <!-- End Date -->
       <div>
-        <label class="block text-xs text-gray-600 mb-1">To</label>
+        <label class="block text-xs text-ink-2 mb-1">To</label>
         <input
           v-model="end"
           type="date"
@@ -41,8 +41,8 @@
         class="rounded-md border px-2 py-1 text-xs transition-colors"
         :class="[
           isActivePreset(preset)
-            ? 'border-primary-600 bg-primary-50 text-primary-700 font-medium'
-            : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50',
+            ? 'border-primary bg-primary-surface text-primary-on-surface font-medium'
+            : 'border-line-strong bg-surface text-ink-2 hover:bg-hover',
         ]"
         @click="applyPreset(preset)"
       >
@@ -54,7 +54,7 @@
     <button
       v-if="start || end"
       type="button"
-      class="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+      class="w-full rounded-md border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink-2 hover:bg-hover"
       @click="clear"
     >
       Clear Filter

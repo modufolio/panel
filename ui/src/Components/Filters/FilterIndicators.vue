@@ -8,22 +8,22 @@
   -->
   <div
     v-if="indicators.length > 0"
-    class="ui-filter-indicators flex flex-wrap items-center gap-2 border-b border-gray-200 px-4 py-2.5"
+    class="ui-filter-indicators flex flex-wrap items-center gap-2 border-b border-line px-4 py-2.5"
     role="region"
     :aria-label="`${indicators.length} active ${indicators.length === 1 ? 'filter' : 'filters'}`"
   >
-    <span class="text-xs font-medium text-gray-500">Filtered by</span>
+    <span class="text-xs font-medium text-ink-3">Filtered by</span>
 
     <span
       v-for="indicator in indicators"
       :key="indicator.key"
-      class="inline-flex items-center gap-1 rounded-full bg-primary-50 py-1 pl-2.5 pr-1 text-xs font-medium text-primary-700 ring-1 ring-inset ring-primary-200"
+      class="inline-flex items-center gap-1 rounded-full bg-primary-surface py-1 pl-2.5 pr-1 text-xs font-medium text-primary-on-surface ring-1 ring-inset ring-primary/25"
     >
-      <span class="text-primary-500">{{ indicator.label }}:</span>
+      <span class="text-primary">{{ indicator.label }}:</span>
       <span :title="indicator.value">{{ truncate(indicator.value) }}</span>
       <button
         type="button"
-        class="ml-0.5 rounded-full p-0.5 text-primary-400 transition-colors hover:bg-primary-100 hover:text-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600"
+        class="ml-0.5 rounded-full p-0.5 text-primary transition-colors hover:bg-pressed hover:text-primary-on-surface focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         :aria-label="`Remove ${indicator.label} filter`"
         @click="$emit('remove', indicator.key)"
       >
@@ -36,7 +36,7 @@
     <button
       v-if="indicators.length > 1"
       type="button"
-      class="ml-1 text-xs font-medium text-gray-500 underline-offset-2 hover:text-gray-900 hover:underline"
+      class="ml-1 text-xs font-medium text-ink-3 underline-offset-2 hover:text-ink hover:underline"
       @click="$emit('clear')"
     >
       Clear all

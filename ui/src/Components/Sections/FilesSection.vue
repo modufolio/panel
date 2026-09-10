@@ -6,7 +6,7 @@
         <button
           v-if="uploadable"
           type="button"
-          class="inline-flex items-center gap-1.5 text-xs font-medium text-primary-600 hover:text-primary-700 transition-colors"
+          class="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary-hover transition-colors"
           @click="$emit('upload')"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -20,10 +20,15 @@
     <!-- File grid -->
     <div v-if="files && files.length > 0" class="ui-files-grid grid gap-3" :class="gridColsClass">
       <slot name="file" v-for="file in files" :file="file">
-        <!-- Default file card -->
+        <!--
+          Default file card. The cell behind the thumbnail is a media token, so
+          it stays the same grey in both themes: it is the surround an image is
+          judged against, and a backdrop that flips would flip how the image
+          reads with it.
+        -->
         <div
           :key="file.id"
-          class="ui-file-card group relative aspect-square rounded-lg overflow-hidden bg-gray-100 cursor-pointer ring-1 ring-gray-200 hover:ring-primary-400 transition-all"
+          class="ui-file-card group relative aspect-square rounded-lg overflow-hidden bg-media-placeholder cursor-pointer ring-1 ring-line hover:ring-primary transition-all"
           @click="$emit('select', file)"
         >
           <img
@@ -32,7 +37,7 @@
             :alt="file.original_filename || file.title || ''"
             class="w-full h-full object-cover"
           />
-          <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
+          <div v-else class="w-full h-full flex items-center justify-center text-ink-3">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>

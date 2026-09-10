@@ -14,11 +14,11 @@
         @click="toggle"
         :disabled="disabled"
         :class="toggleClasses"
-        class="ui-field-toggle-switch relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-600 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        class="ui-field-toggle-switch relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-2 focus:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50"
       >
         <span
           :class="modelValue ? 'translate-x-5' : 'translate-x-0'"
-          class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+          class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-surface-raised shadow ring-0 transition duration-200 ease-in-out"
         />
       </button>
 
@@ -35,7 +35,7 @@
           {{ label }}
         </FieldLabel>
 
-        <p v-if="description" :id="`${id}-description`" class="ui-field-description text-sm text-gray-600">
+        <p v-if="description" :id="`${id}-description`" class="ui-field-description text-sm text-ink-2">
           {{ description }}
         </p>
 
@@ -104,19 +104,21 @@ const ariaDescribedby = computed(() => {
 })
 
 const toggleClasses = computed(() => {
+  // Spelled out rather than built from `props.color`: Tailwind only emits a
+  // class it can see as a literal in the source.
   const colors: Record<string, string> = {
-    primary: 'bg-primary-600',
-    success: 'bg-success-600',
-    danger: 'bg-danger-600',
-    warning: 'bg-warning-600',
-    info: 'bg-info-600',
+    primary: 'bg-primary-fill',
+    success: 'bg-success-fill',
+    danger: 'bg-danger-fill',
+    warning: 'bg-warning-fill',
+    info: 'bg-info-fill',
   }
 
   if (props.modelValue) {
     return colors[props.color]
   }
 
-  return 'bg-gray-200'
+  return 'bg-track-off'
 })
 
 function toggle() {

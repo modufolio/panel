@@ -7,13 +7,13 @@
   >
     <div
       class="ui-input overflow-hidden p-0"
-      :class="{ 'border-danger-600': error, 'bg-gray-50': disabled && !error }"
+      :class="{ 'border-danger': error, 'bg-surface-sunken': disabled && !error }"
     >
       <!-- Toolbar -->
-      <div class="border-b border-gray-200 bg-gray-50 px-3 py-2">
+      <div class="border-b border-line bg-surface-sunken px-3 py-2">
         <div class="flex flex-wrap items-center gap-1">
           <!-- Text Formatting -->
-          <div class="flex items-center gap-0.5 border-r border-gray-300 pr-2">
+          <div class="flex items-center gap-0.5 border-r border-line-strong pr-2">
             <ToolbarButton
               title="Bold"
               :disabled="disabled"
@@ -53,7 +53,7 @@
           </div>
 
           <!-- Headings -->
-          <div class="flex items-center gap-0.5 border-r border-gray-300 pr-2">
+          <div class="flex items-center gap-0.5 border-r border-line-strong pr-2">
             <ToolbarButton
               title="Heading 1"
               :disabled="disabled"
@@ -78,7 +78,7 @@
           </div>
 
           <!-- Lists -->
-          <div class="flex items-center gap-0.5 border-r border-gray-300 pr-2">
+          <div class="flex items-center gap-0.5 border-r border-line-strong pr-2">
             <ToolbarButton
               title="Bullet List"
               :disabled="disabled"
@@ -108,7 +108,7 @@
           </div>
 
           <!-- Links & Code -->
-          <div class="flex items-center gap-0.5 border-r border-gray-300 pr-2">
+          <div class="flex items-center gap-0.5 border-r border-line-strong pr-2">
             <ToolbarButton
               title="Link"
               :disabled="disabled"
@@ -194,7 +194,7 @@
         :rows="rows"
         class="block w-full resize-y border-0 p-4 text-sm focus:outline-none focus:ring-0"
         :class="[
-          disabled ? 'bg-gray-50 text-gray-500' : 'bg-white text-gray-900',
+          disabled ? 'bg-surface-sunken text-ink-3' : 'bg-surface text-ink',
         ]"
         @input="handleInput"
       />
@@ -202,7 +202,7 @@
       <!-- Footer with character count -->
       <div
         v-if="showCharCount"
-        class="border-t border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500"
+        class="border-t border-line bg-surface-sunken px-3 py-2 text-xs text-ink-3"
       >
         {{ characterCount }} character{{ characterCount !== 1 ? 's' : '' }}
         <span v-if="maxLength">/ {{ maxLength }}</span>
@@ -470,7 +470,7 @@ export const ToolbarButton = defineComponent({
           title: props.title,
           disabled: props.disabled,
           class:
-            'rounded p-1.5 text-gray-600 transition-colors duration-200 hover:bg-gray-200 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent',
+            'rounded p-1.5 text-ink-2 transition-colors duration-200 hover:bg-hover hover:text-ink disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent',
         },
         slots.default?.(),
       )

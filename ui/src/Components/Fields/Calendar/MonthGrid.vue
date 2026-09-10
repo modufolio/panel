@@ -9,7 +9,7 @@
         <th
           v-for="weekday in weekdayLabels"
           :key="weekday"
-          class="pb-1 text-center text-xs font-medium text-gray-400"
+          class="pb-1 text-center text-xs font-medium text-ink-3"
           scope="col"
         >{{ weekday }}</th>
       </tr>
@@ -83,15 +83,15 @@ const allowed = (date: Date) => dateAllowed(date, props.min, props.max)
 
 const cellClass = (date: Date) => {
   if (isSelected(date)) {
-    return 'bg-primary-600 font-semibold text-white'
+    return 'bg-primary-fill font-semibold text-primary-on-fill'
   }
   if (!allowed(date)) {
-    return 'cursor-default text-gray-300'
+    return 'cursor-default text-ink-3'
   }
   if (isToday(date)) {
-    return 'font-semibold text-primary-600 hover:bg-primary-50'
+    return 'font-semibold text-primary hover:bg-primary-surface'
   }
-  return 'text-gray-700 hover:bg-gray-100'
+  return 'text-label hover:bg-hover'
 }
 
 const cellLabel = (date: Date) => {

@@ -112,8 +112,8 @@ describe('the partition card', () => {
   it('uses the declared colour, and the default where none was declared', () => {
     const bars = mount(MetricPartition, { props: { metric } }).findAll('li div div')
 
-    expect(bars[0].classes()).toContain('bg-success-500')
-    expect(bars[1].classes()).toContain('bg-primary-500')
+    expect(bars[0].classes()).toContain('bg-success-fill')
+    expect(bars[1].classes()).toContain('bg-primary-fill')
   })
 
   it('says so when there is nothing to break down', () => {

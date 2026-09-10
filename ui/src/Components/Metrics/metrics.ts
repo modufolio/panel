@@ -82,9 +82,9 @@ export function formatBucketLabel(label: string, bucket?: string): string {
 
 /** Text colour for a change: up is good, down is not, flat is neither. */
 export function changeClass(change: number | null | undefined): string {
-  if (change === null || change === undefined || change === 0) return 'text-gray-500'
+  if (change === null || change === undefined || change === 0) return 'text-ink-3'
 
-  return change > 0 ? 'text-success-700' : 'text-danger-700'
+  return change > 0 ? 'text-success' : 'text-danger'
 }
 
 /** Bar heights as percentages of the largest value in the series. */

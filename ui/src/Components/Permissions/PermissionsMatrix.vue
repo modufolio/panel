@@ -1,6 +1,6 @@
 <template>
   <div class="ui-permissions-matrix">
-    <p v-if="description" class="max-w-3xl text-sm text-gray-600">{{ description }}</p>
+    <p v-if="description" class="max-w-3xl text-sm text-ink-2">{{ description }}</p>
 
     <div class="mt-6 space-y-8">
       <Section
@@ -19,7 +19,7 @@
             <template v-for="column in matrixColumns(resource)" :key="column.key" #[`cell-${column.key}`]="{ value }">
               <span v-if="column.key === 'role'" class="font-mono text-xs">{{ value }}</span>
               <Tag v-else-if="value === 'partial'" color="warning">partial</Tag>
-              <span v-else-if="value === '—'" class="text-gray-300">—</span>
+              <span v-else-if="value === '—'" class="text-ink-3">—</span>
               <!-- A refused route is neutral: most roles rightly reach few. A refusing hook is a decision. -->
               <BooleanColumn
                 v-else
@@ -41,7 +41,7 @@
             <template v-for="key in ['readable', 'readDenied', 'writeDenied']" :key="key" #[`cell-${key}`]="{ value }">
               <div class="flex flex-wrap gap-1">
                 <Badge v-for="field in asList(value)" :key="field" :label="field" :color="badgeColor(key)" size="sm" />
-                <span v-if="asList(value).length === 0" class="text-gray-300">—</span>
+                <span v-if="asList(value).length === 0" class="text-ink-3">—</span>
               </div>
             </template>
           </Table>
@@ -49,11 +49,11 @@
       </Section>
 
       <Section heading="Divergences" description="Where one layer says yes and another says no, or a check cannot be answered for the type." card>
-        <p v-if="report.notes.length === 0" class="text-sm text-gray-500">None: every layer agrees for every role.</p>
-        <ul v-else class="divide-y divide-gray-100">
+        <p v-if="report.notes.length === 0" class="text-sm text-ink-3">None: every layer agrees for every role.</p>
+        <ul v-else class="divide-y divide-line">
           <li v-for="(note, index) in report.notes" :key="index" class="flex items-start gap-3 py-2 text-sm">
             <Tag :color="noteColor(note.kind)" class="shrink-0">{{ note.kind.replace(/_/g, ' ') }}</Tag>
-            <span class="text-gray-700">{{ note.message }}</span>
+            <span class="text-ink-2">{{ note.message }}</span>
           </li>
         </ul>
       </Section>

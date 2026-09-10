@@ -11,7 +11,7 @@
     </div>
 
     <!-- Color Label (optional) -->
-    <span v-if="showLabel" class="ui-color-label text-sm text-gray-900">
+    <span v-if="showLabel" class="ui-color-label text-sm text-ink">
       {{ label || color }}
     </span>
 
@@ -20,7 +20,7 @@
       v-if="copyable"
       @click="copyToClipboard"
       type="button"
-      class="ui-color-copy-btn text-gray-400 hover:text-gray-600 transition-colors"
+      class="ui-color-copy-btn text-ink-3 hover:text-ink-2 transition-colors"
       :title="`Copy ${color}`"
     >
       <svg
@@ -36,7 +36,7 @@
       </svg>
       <svg
         v-else
-        class="w-5 h-5 text-success-600"
+        class="w-5 h-5 text-success"
         xmlns="http://www.w3.org/2000/svg"
         fill="none"
         viewBox="0 0 24 24"

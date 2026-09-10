@@ -1,17 +1,17 @@
 <template>
   <div class="ui-empty flex flex-col items-center justify-center py-12 px-6 text-center">
     <!-- Icon -->
-    <div class="mb-4 rounded-full bg-gray-100 p-4" :class="iconWrapperClass">
+    <div class="mb-4 rounded-full bg-surface-sunken p-4" :class="iconWrapperClass">
       <component
         v-if="icon"
         :is="icon"
-        class="text-gray-400"
+        class="text-ink-3"
         :class="iconSizeClass"
         aria-hidden="true"
       />
       <svg
         v-else
-        class="text-gray-400"
+        class="text-ink-3"
         :class="iconSizeClass"
         fill="none"
         stroke="currentColor"
@@ -23,12 +23,12 @@
     </div>
 
     <!-- Heading -->
-    <h3 v-if="heading" class="text-sm font-semibold text-gray-900 mb-1">
+    <h3 v-if="heading" class="text-sm font-semibold text-ink mb-1">
       {{ heading }}
     </h3>
 
     <!-- Text -->
-    <p v-if="text" class="text-sm text-gray-500 max-w-sm">
+    <p v-if="text" class="text-sm text-ink-3 max-w-sm">
       {{ text }}
     </p>
 

@@ -1,19 +1,19 @@
 <template>
   <tr v-for="n in rows" :key="`skeleton-${n}`" class="ui-table-row animate-pulse">
     <td v-if="expandable" class="ui-table-cell px-4 py-3">
-      <div class="h-4 w-4 bg-gray-200 rounded"></div>
+      <div class="h-4 w-4 bg-surface-sunken rounded"></div>
     </td>
 
     <td v-if="selectable" class="ui-table-cell px-4 py-3">
-      <div class="h-4 w-4 bg-gray-200 rounded"></div>
+      <div class="h-4 w-4 bg-surface-sunken rounded"></div>
     </td>
 
     <td v-for="(_column, colIndex) in columns" :key="colIndex" class="ui-table-cell px-4 py-3">
-      <div class="h-4 bg-gray-200 rounded" :style="{ width: skeletonWidth(colIndex) }"></div>
+      <div class="h-4 bg-surface-sunken rounded" :style="{ width: skeletonWidth(colIndex) }"></div>
     </td>
 
     <td v-if="hasActions" class="ui-table-cell px-4 py-3">
-      <div class="h-4 w-16 bg-gray-200 rounded ml-auto"></div>
+      <div class="h-4 w-16 bg-surface-sunken rounded ml-auto"></div>
     </td>
   </tr>
 </template>

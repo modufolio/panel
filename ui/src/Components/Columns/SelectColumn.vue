@@ -15,7 +15,7 @@
         value=""
         disabled
         selected
-        class="text-gray-500"
+        class="text-ink-3"
       >
         {{ placeholder }}
       </option>
@@ -32,7 +32,7 @@
     <!-- Loading indicator -->
     <span
       v-if="loading"
-      class="ml-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary-600 border-r-transparent align-middle"
+      class="ml-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent align-middle"
     />
   </div>
 </template>

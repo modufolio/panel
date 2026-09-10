@@ -5,19 +5,19 @@
       class="fixed bottom-6 right-6 z-[150] w-80 pointer-events-auto"
     >
       <!-- Panel -->
-      <div class="rounded-lg shadow-xl ring-1 ring-black ring-opacity-5 bg-white overflow-hidden">
+      <div class="rounded-lg shadow-xl ring-1 ring-hairline bg-surface-raised overflow-hidden">
 
         <!-- Header -->
-        <div class="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+        <div class="flex items-center justify-between px-4 py-3 bg-surface-sunken border-b border-line">
           <button
             type="button"
-            class="flex items-center gap-2 hover:bg-gray-100 transition-colors rounded px-2 py-1 -mx-2"
+            class="flex items-center gap-2 hover:bg-hover transition-colors rounded px-2 py-1 -mx-2"
             @click="collapsed = !collapsed"
           >
             <!-- Spinner when any upload is active -->
             <svg
               v-if="hasActiveUploads"
-              class="w-4 h-4 text-info-600 animate-spin"
+              class="w-4 h-4 text-info animate-spin"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
@@ -28,7 +28,7 @@
             <!-- Error icon when any upload failed -->
             <svg
               v-else-if="hasErrors"
-              class="w-4 h-4 text-danger-500"
+              class="w-4 h-4 text-danger"
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
               fill="currentColor"
@@ -38,7 +38,7 @@
             <!-- Check icon when all done -->
             <svg
               v-else
-              class="w-4 h-4 text-success-500"
+              class="w-4 h-4 text-success"
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
               fill="currentColor"
@@ -46,7 +46,7 @@
               <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clip-rule="evenodd" />
             </svg>
 
-            <span class="text-sm font-medium text-gray-700">
+            <span class="text-sm font-medium text-label">
               {{ headerLabel }}
             </span>
           </button>
@@ -57,7 +57,7 @@
             <button
               v-if="hasActiveUploads"
               type="button"
-              class="text-xs font-medium text-danger-600 hover:text-danger-700 px-2 py-1 rounded hover:bg-danger-50 transition-colors"
+              class="text-xs font-medium text-danger px-2 py-1 rounded hover:bg-danger-surface hover:text-danger-on-surface transition-colors"
               @click="onCancelAll"
               title="Stop all uploads"
             >
@@ -67,7 +67,7 @@
             <!-- Collapse chevron -->
             <button
               type="button"
-              class="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100 transition-colors"
+              class="text-ink-3 hover:text-ink-2 p-1 rounded hover:bg-hover transition-colors"
               @click="collapsed = !collapsed"
             >
               <svg
@@ -95,7 +95,7 @@
           leave-active-class="transition ease-in duration-150"
           leave-from-class="opacity-100"
           leave-to-class="opacity-0"
-          class="divide-y divide-gray-100 max-h-72 overflow-y-auto"
+          class="divide-y divide-line max-h-72 overflow-y-auto"
         >
           <li
             v-for="item in uploads"
@@ -109,7 +109,7 @@
                 <!-- Spinner -->
                 <svg
                   v-if="item.status === 'uploading' || item.status === 'pending'"
-                  class="w-5 h-5 text-info-500 animate-spin"
+                  class="w-5 h-5 text-info animate-spin"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -120,7 +120,7 @@
                 <!-- Paused -->
                 <svg
                   v-else-if="item.status === 'paused'"
-                  class="w-5 h-5 text-warning-500"
+                  class="w-5 h-5 text-warning"
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="currentColor"
@@ -130,7 +130,7 @@
                 <!-- Restored (interrupted upload) -->
                 <svg
                   v-else-if="item.isRestored"
-                  class="w-5 h-5 text-gray-500"
+                  class="w-5 h-5 text-ink-3"
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="currentColor"
@@ -140,7 +140,7 @@
                 <!-- Error -->
                 <svg
                   v-else-if="item.status === 'error'"
-                  class="w-5 h-5 text-danger-500"
+                  class="w-5 h-5 text-danger"
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="currentColor"
@@ -150,7 +150,7 @@
                 <!-- Completed -->
                 <svg
                   v-else
-                  class="w-5 h-5 text-success-500"
+                  class="w-5 h-5 text-success"
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="currentColor"
@@ -161,7 +161,7 @@
 
               <!-- Content -->
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 truncate" :title="item.file?.name || item.fileName">
+                <p class="text-sm font-medium text-ink truncate" :title="item.file?.name || item.fileName">
                   {{ item.file?.name || item.fileName }}
                 </p>
 
@@ -170,34 +170,34 @@
                   v-if="item.status === 'uploading' || item.status === 'pending'"
                   class="mt-1.5"
                 >
-                  <div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                  <div class="w-full bg-surface-sunken rounded-full h-1.5 overflow-hidden">
                     <div
-                      class="h-1.5 rounded-full bg-info-500 transition-all duration-300 ease-out"
+                      class="h-1.5 rounded-full bg-info-fill transition-all duration-300 ease-out"
                       :style="{ width: (item.progress ?? 0) + '%' }"
                     ></div>
                   </div>
-                  <p class="text-xs text-gray-500 mt-0.5">
+                  <p class="text-xs text-ink-3 mt-0.5">
                     {{ Math.round(item.progress ?? 0) }}%
                   </p>
                 </div>
 
                 <!-- Error message -->
-                <p v-else-if="item.status === 'error'" class="text-xs text-danger-600 mt-0.5">
+                <p v-else-if="item.status === 'error'" class="text-xs text-danger mt-0.5">
                   {{ item.error || 'Upload failed' }}
                 </p>
 
                 <!-- Restored (interrupted) -->
-                <p v-else-if="item.isRestored" class="text-xs text-gray-500 mt-0.5">
+                <p v-else-if="item.isRestored" class="text-xs text-ink-3 mt-0.5">
                   {{ item.error || 'Upload was interrupted' }}
                 </p>
 
                 <!-- Paused -->
-                <p v-else-if="item.status === 'paused'" class="text-xs text-warning-600 mt-0.5">
+                <p v-else-if="item.status === 'paused'" class="text-xs text-warning mt-0.5">
                   Paused at {{ Math.round(item.progress ?? 0) }}%
                 </p>
 
                 <!-- Completed -->
-                <p v-else class="text-xs text-success-600 mt-0.5">Uploaded</p>
+                <p v-else class="text-xs text-success mt-0.5">Uploaded</p>
               </div>
 
               <!-- Action buttons -->
@@ -206,7 +206,7 @@
                 <button
                   v-if="item.status === 'error' && !item.isRestored"
                   type="button"
-                  class="text-xs font-medium text-info-600 hover:text-info-700 px-2 py-1 rounded hover:bg-info-50 transition-colors"
+                  class="text-xs font-medium text-info px-2 py-1 rounded hover:bg-info-surface hover:text-info-on-surface transition-colors"
                   @click="onRetry(item)"
                 >
                   Retry
@@ -216,7 +216,7 @@
                 <button
                   v-if="(item.status === 'uploading' || item.status === 'pending' || item.status === 'paused') && !item.isRestored"
                   type="button"
-                  class="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100 transition-colors"
+                  class="text-ink-3 hover:text-ink-2 p-1 rounded hover:bg-hover transition-colors"
                   title="Cancel"
                   @click="onCancel(item)"
                 >
@@ -229,7 +229,7 @@
                 <button
                   v-if="item.isRestored || item.status === 'error' || item.status === 'completed'"
                   type="button"
-                  class="text-gray-400 hover:text-gray-600 p-1 rounded hover:bg-gray-100 transition-colors"
+                  class="text-ink-3 hover:text-ink-2 p-1 rounded hover:bg-hover transition-colors"
                   title="Remove from queue"
                   @click="onCancel(item)"
                 >

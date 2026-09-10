@@ -49,3 +49,19 @@ export function semanticColor(value: unknown): SemanticColor {
     ? value as SemanticColor
     : HUES[value.toLowerCase()] ?? 'gray'
 }
+
+/**
+ * Whether `semanticColor` can place this value, as opposed to falling back.
+ *
+ * For `color` prop validators. Listing the six tokens inline is the obvious
+ * thing and the wrong one: a component that renders through `semanticColor`
+ * accepts the hues too, so a validator naming only the tokens warns in dev
+ * about a value it then displays perfectly well.
+ */
+export function isSemanticColorInput(value: unknown): boolean {
+  if (typeof value !== 'string') {
+    return false
+  }
+
+  return (SEMANTIC as readonly string[]).includes(value) || value.toLowerCase() in HUES
+}

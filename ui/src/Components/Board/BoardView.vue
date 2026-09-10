@@ -13,13 +13,13 @@
             class="h-2.5 w-2.5 rounded-full"
             :style="{ backgroundColor: column.color }"
           />
-          <span class="text-sm font-semibold text-gray-700">{{ column.label }}</span>
-          <span class="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600">
+          <span class="text-sm font-semibold text-label">{{ column.label }}</span>
+          <span class="inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-surface-sunken px-2 py-0.5 text-xs font-medium text-ink-2">
             {{ column.total }}
           </span>
         </header>
 
-        <div class="flex min-h-[200px] flex-1 flex-col gap-2 rounded-xl bg-gray-100/70 p-2">
+        <div class="flex min-h-[200px] flex-1 flex-col gap-2 rounded-xl bg-surface-sunken/70 p-2">
           <Draggable
             :list="lists[column.value]"
             :group="groupName"
@@ -31,12 +31,12 @@
           >
             <template #item="{ element }">
               <article
-                class="group rounded-lg bg-white p-3.5 shadow-sm ring-1 ring-gray-200 transition-shadow hover:ring-primary-400"
+                class="group rounded-lg bg-surface-raised p-3.5 shadow-sm ring-1 ring-line transition-shadow hover:ring-primary"
                 :class="canMove ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'"
                 @click="$emit('open', element)"
               >
                 <slot name="card" :card="element" :column="column">
-                  <p class="text-sm font-medium leading-snug text-gray-800">
+                  <p class="text-sm font-medium leading-snug text-ink">
                     {{ title(element) }}
                   </p>
 
@@ -44,7 +44,7 @@
                     <div
                       v-for="field in view.cardFields"
                       :key="field"
-                      class="text-xs text-gray-400"
+                      class="text-xs text-ink-3"
                     >
                       <dd>{{ display(element[field]) }}</dd>
                     </div>
@@ -64,7 +64,7 @@
                       v-for="target in targetsFor(column, element)"
                       :key="target.value"
                       type="button"
-                      class="rounded-md border border-gray-300 px-2 py-0.5 text-xs font-medium text-gray-600 transition-colors hover:border-primary-400 hover:bg-primary-50 hover:text-primary-700"
+                      class="rounded-md border border-line-strong px-2 py-0.5 text-xs font-medium text-ink-2 transition-colors hover:border-primary hover:bg-primary-surface hover:text-primary-on-surface"
                       @click.stop="$emit('move', { card: element, column: target.value, after: null, before: null })"
                     >
                       {{ target.label }}
@@ -82,7 +82,7 @@
           -->
           <p
             v-if="column.total > (lists[column.value]?.length ?? 0)"
-            class="px-1 py-1 text-xs text-gray-400"
+            class="px-1 py-1 text-xs text-ink-3"
           >
             Showing {{ lists[column.value]?.length ?? 0 }} of {{ column.total }}.
           </p>
@@ -90,7 +90,7 @@
           <button
             v-if="canCreate"
             type="button"
-            class="rounded-lg px-2 py-1.5 text-left text-sm text-gray-500 transition-colors hover:bg-gray-200/60 hover:text-gray-700"
+            class="rounded-lg px-2 py-1.5 text-left text-sm text-ink-3 transition-colors hover:bg-hover hover:text-ink"
             @click="$emit('add', column)"
           >
             + Add
@@ -224,6 +224,6 @@ function display(value: unknown): string {
 
 <style scoped>
 .ui-board-ghost {
-  @apply opacity-40 ring-2 ring-dashed ring-primary-400;
+  @apply opacity-40 ring-2 ring-dashed ring-primary;
 }
 </style>

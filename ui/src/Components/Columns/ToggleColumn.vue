@@ -5,20 +5,26 @@
       role="switch"
       :aria-checked="isChecked"
       :disabled="disabled || loading"
-      class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+      class="relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50"
       :class="[
         isChecked
           ? checkedClasses
-          : 'bg-gray-200 focus:ring-gray-400',
+          : 'bg-line-strong focus:ring-focus',
         loading ? 'cursor-wait' : '',
       ]"
       @click="handleToggle"
     >
+      <!--
+        The knob rides on the track, so on it takes the checked role's
+        `-on-fill` — the token that exists precisely to say what is legible on
+        that fill. `gray` is why: its fill is a light grey in the dark theme,
+        where a fixed near-white knob would vanish into its own track.
+      -->
       <span
         aria-hidden="true"
-        class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+        class="pointer-events-none inline-block h-4 w-4 transform rounded-full shadow ring-0 transition duration-200 ease-in-out"
         :class="[
-          isChecked ? 'translate-x-4' : 'translate-x-0',
+          isChecked ? `translate-x-4 ${knobClasses}` : 'translate-x-0 bg-control-knob',
         ]"
       />
     </button>
@@ -26,7 +32,7 @@
     <!-- Optional Label -->
     <span
       v-if="showLabel"
-      class="text-sm text-gray-700"
+      class="text-sm text-ink-2"
     >
       {{ isChecked ? onLabel : offLabel }}
     </span>
@@ -34,7 +40,7 @@
     <!-- Loading indicator -->
     <span
       v-if="loading"
-      class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary-600 border-r-transparent"
+      class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"
     />
   </div>
 </template>
@@ -89,15 +95,26 @@ const emit = defineEmits(['update'])
 const loading = ref(false)
 
 const colorClassMap: Record<string, string> = {
-  primary: 'bg-primary-600 focus:ring-primary-600',
-  success: 'bg-success-600 focus:ring-success-600',
-  danger: 'bg-danger-600 focus:ring-danger-600',
-  warning: 'bg-warning-600 focus:ring-warning-600',
-  info: 'bg-info-600 focus:ring-info-600',
-  gray: 'bg-gray-600 focus:ring-gray-600',
+  primary: 'bg-primary-fill focus:ring-primary',
+  success: 'bg-success-fill focus:ring-success',
+  danger: 'bg-danger-fill focus:ring-danger',
+  warning: 'bg-warning-fill focus:ring-warning',
+  info: 'bg-info-fill focus:ring-info',
+  gray: 'bg-gray-fill focus:ring-gray',
+}
+
+const knobClassMap: Record<string, string> = {
+  primary: 'bg-primary-on-fill',
+  success: 'bg-success-on-fill',
+  danger: 'bg-danger-on-fill',
+  warning: 'bg-warning-on-fill',
+  info: 'bg-info-on-fill',
+  gray: 'bg-gray-on-fill',
 }
 
 const checkedClasses = computed(() => colorClassMap[props.color] ?? colorClassMap.primary)
+
+const knobClasses = computed(() => knobClassMap[props.color] ?? knobClassMap.primary)
 
 const isChecked = computed(() => {
   // Handle different types of truthy values

@@ -13,14 +13,14 @@
       <div
         v-if="field.separator"
         class="ui-drawer-field-separator"
-        :class="field.separator === 'line' ? 'border-t border-gray-200' : 'h-2'"
+        :class="field.separator === 'line' ? 'border-t border-line' : 'h-2'"
         role="separator"
         aria-hidden="true"
       />
       <template v-else>
-      <dt class="text-sm font-medium text-gray-500">{{ field.label }}</dt>
+      <dt class="text-sm font-medium text-ink-3">{{ field.label }}</dt>
       <dd
-        class="mt-1 text-sm text-gray-900 whitespace-pre-line"
+        class="mt-1 text-sm text-ink whitespace-pre-line"
         :class="field.rows ? 'relative flex-1 min-h-0' : undefined"
       >
         <slot :name="`field-${field.key}`" :field="field" :value="field.raw">
@@ -36,7 +36,7 @@
             <button
               v-if="field.image && field.pickUrl"
               type="button"
-              class="group absolute inset-y-0 left-0 h-full max-w-full aspect-square overflow-hidden rounded-lg ring-1 ring-gray-200 hover:ring-2 hover:ring-primary-500 transition-all"
+              class="group absolute inset-y-0 left-0 h-full max-w-full aspect-square overflow-hidden rounded-lg ring-1 ring-line hover:ring-2 hover:ring-primary transition-all"
               :aria-label="`Choose ${field.label}`"
               @click="emit('pick-image', field)"
             >
@@ -46,28 +46,28 @@
               v-else-if="field.image"
               :src="field.image"
               :alt="field.label"
-              class="absolute inset-y-0 left-0 h-full max-w-full aspect-square rounded-lg object-cover bg-gray-100"
+              class="absolute inset-y-0 left-0 h-full max-w-full aspect-square rounded-lg object-cover bg-surface-sunken"
             />
             <button
               v-else-if="field.pickUrl"
               type="button"
-              class="group absolute inset-y-0 left-0 h-full max-w-full aspect-square flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100 transition-colors"
+              class="group absolute inset-y-0 left-0 h-full max-w-full aspect-square flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-line-strong bg-surface-sunken hover:border-primary transition-colors"
               :aria-label="`Choose ${field.label}`"
               @click="emit('pick-image', field)"
             >
-              <Icon name="photo" class="h-8 w-8 text-gray-400 group-hover:text-gray-500" />
-              <span class="text-sm text-gray-500 group-hover:text-gray-600">{{ field.pickLabel ?? 'Choose image' }}</span>
+              <Icon name="photo" class="h-8 w-8 text-ink-3 group-hover:text-ink-2" />
+              <span class="text-sm text-ink-3 group-hover:text-ink-2">{{ field.pickLabel ?? 'Choose image' }}</span>
             </button>
             <div
               v-else
-              class="absolute inset-y-0 left-0 h-full max-w-full aspect-square rounded-lg bg-gray-100"
+              class="absolute inset-y-0 left-0 h-full max-w-full aspect-square rounded-lg bg-surface-sunken"
               aria-hidden="true"
             />
           </template>
           <button
             v-else-if="field.image && field.pickUrl"
             type="button"
-            class="group w-24 aspect-square overflow-hidden rounded-lg ring-1 ring-gray-200 hover:ring-2 hover:ring-primary-500 transition-all"
+            class="group w-24 aspect-square overflow-hidden rounded-lg ring-1 ring-line hover:ring-2 hover:ring-primary transition-all"
             :aria-label="`Choose ${field.label}`"
             @click="emit('pick-image', field)"
           >
@@ -77,17 +77,17 @@
             v-else-if="field.image"
             :src="field.image"
             :alt="field.label"
-            class="w-24 aspect-square rounded-lg object-cover bg-gray-100"
+            class="w-24 aspect-square rounded-lg object-cover bg-surface-sunken"
           />
           <button
             v-else-if="field.pickUrl"
             type="button"
-            class="group w-24 aspect-square flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100 transition-colors"
+            class="group w-24 aspect-square flex flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-line-strong bg-surface-sunken hover:border-primary transition-colors"
             :aria-label="`Choose ${field.label}`"
             @click="emit('pick-image', field)"
           >
-            <Icon name="photo" class="h-6 w-6 text-gray-400 group-hover:text-gray-500" />
-            <span class="text-xs text-gray-500 group-hover:text-gray-600">{{ field.pickLabel ?? 'Choose image' }}</span>
+            <Icon name="photo" class="h-6 w-6 text-ink-3 group-hover:text-ink-2" />
+            <span class="text-xs text-ink-3 group-hover:text-ink-2">{{ field.pickLabel ?? 'Choose image' }}</span>
           </button>
           <!--
             A reference the presenter gave an `href` — another record worth
@@ -107,7 +107,7 @@
           -->
           <span v-else-if="field.color" class="inline-flex items-center gap-2">
             <span
-              class="h-4 w-4 shrink-0 rounded border border-gray-200"
+              class="h-4 w-4 shrink-0 rounded ring-1 ring-inset ring-line"
               :style="{ backgroundColor: field.color }"
               aria-hidden="true"
             />

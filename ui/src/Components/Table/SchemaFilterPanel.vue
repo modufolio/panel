@@ -11,7 +11,7 @@
     />
 
     <!-- Ad-hoc conditions: declared fields, operators from their type -->
-    <div v-if="constraints.length > 0" class="border-b border-gray-200 pb-3">
+    <div v-if="constraints.length > 0" class="border-b border-line pb-3">
       <QueryBuilder
         :constraints="constraints"
         :model-value="(values.constraints as QueryCondition[]) ?? []"

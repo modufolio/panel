@@ -3,7 +3,7 @@
     <button
       ref="triggerRef"
       type="button"
-      class="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:ring-offset-0"
+      class="inline-flex items-center gap-2 rounded-lg border border-line-strong bg-surface px-3 py-2 text-sm font-medium text-ink-2 shadow-sm transition-colors hover:bg-hover focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-0"
       @click="toggleDropdown"
     >
       <svg
@@ -22,7 +22,7 @@
       <span>Columns</span>
       <span
         v-if="hiddenCount > 0"
-        class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600"
+        class="inline-flex items-center rounded-full bg-surface-sunken px-2 py-0.5 text-xs font-medium text-ink-2"
       >
         {{ hiddenCount }} hidden
       </span>
@@ -41,16 +41,16 @@
       <div
         v-show="isOpen"
         ref="dropdownRef"
-        class="z-50 flex w-64 flex-col origin-top-right rounded-lg border border-gray-200 bg-white shadow-lg"
+        class="z-50 flex w-64 flex-col origin-top-right rounded-lg border border-line bg-surface-raised shadow-lg"
         :style="floatingStyles"
       >
         <div class="flex min-h-0 flex-1 flex-col p-3">
           <div class="mb-2 flex items-center justify-between">
-            <h3 class="text-sm font-medium text-gray-900">Toggle Columns</h3>
+            <h3 class="text-sm font-medium text-ink">Toggle Columns</h3>
             <button
               v-if="hiddenCount > 0"
               type="button"
-              class="text-xs font-medium text-primary-600 hover:text-primary-700"
+              class="text-xs font-medium text-primary hover:underline"
               @click="showAll"
             >
               Show All
@@ -61,7 +61,7 @@
             <label
               v-for="column in columns"
               :key="column.key"
-              class="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-gray-50"
+              class="flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-hover"
               :class="{ 'opacity-50': !canToggle(column) }"
             >
               <input
@@ -69,14 +69,14 @@
                 :checked="isVisible(column)"
                 :disabled="!canToggle(column)"
                 @change="toggleColumn(column)"
-                class="rounded border-gray-300 text-primary-600 focus:ring-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
+                class="rounded border-line-strong accent-primary focus:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
               />
-              <span class="flex-1 text-sm text-gray-700">
+              <span class="flex-1 text-sm text-ink-2">
                 {{ column.label }}
               </span>
               <span
                 v-if="!canToggle(column)"
-                class="text-xs text-gray-400"
+                class="text-xs text-ink-3"
               >
                 Required
               </span>
@@ -84,13 +84,13 @@
           </div>
         </div>
 
-        <div class="border-t border-gray-200 bg-gray-50 px-3 py-2">
-          <div class="flex items-center justify-between text-xs text-gray-500">
+        <div class="border-t border-line bg-surface-sunken px-3 py-2">
+          <div class="flex items-center justify-between text-xs text-ink-3">
             <span>{{ visibleCount }} of {{ columns.length }} visible</span>
             <button
               v-if="hasChanges"
               type="button"
-              class="font-medium text-primary-600 hover:text-primary-700"
+              class="font-medium text-primary hover:underline"
               @click="reset"
             >
               Reset

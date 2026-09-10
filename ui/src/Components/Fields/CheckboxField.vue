@@ -16,15 +16,15 @@
           :aria-describedby="ariaDescribedby"
           :aria-invalid="!!error"
           :aria-required="required"
-          class="rounded border-gray-300 text-primary-600 shadow-sm focus:ring-2 focus:ring-primary-600/20 focus:border-primary-600 disabled:bg-gray-50 disabled:cursor-not-allowed transition-colors"
-          :class="{ 'border-danger-600 focus:border-danger-600 focus:ring-danger-600/20': error }"
+          class="rounded border-line-strong accent-primary shadow-sm focus:ring-2 focus:ring-focus/20 focus:border-focus disabled:bg-surface-sunken disabled:cursor-not-allowed transition-colors"
+          :class="{ 'border-danger focus:border-danger focus:ring-danger/20': error }"
         />
       </div>
       <div class="ml-3 text-sm leading-6">
         <FieldLabel :for="id" :required="required" spacing="none" class="cursor-pointer">
           {{ label }}
         </FieldLabel>
-        <p v-if="description" :id="`${id}-description`" class="text-gray-500 mt-0.5">
+        <p v-if="description" :id="`${id}-description`" class="text-ink-3 mt-0.5">
           {{ description }}
         </p>
       </div>

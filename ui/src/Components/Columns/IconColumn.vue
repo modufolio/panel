@@ -51,22 +51,22 @@ const iconWrapperClasses = computed(() => {
   // Color & Variant
   if (props.variant === 'solid') {
     const colors: Record<string, string> = {
-      primary: 'bg-primary-100 text-primary-600',
-      success: 'bg-success-100 text-success-600',
-      danger: 'bg-danger-100 text-danger-600',
-      warning: 'bg-warning-100 text-warning-600',
-      info: 'bg-info-100 text-info-600',
-      gray: 'bg-gray-100 text-gray-600',
+      primary: 'bg-primary-surface text-primary-on-surface',
+      success: 'bg-success-surface text-success-on-surface',
+      danger: 'bg-danger-surface text-danger-on-surface',
+      warning: 'bg-warning-surface text-warning-on-surface',
+      info: 'bg-info-surface text-info-on-surface',
+      gray: 'bg-gray-surface text-gray-on-surface',
     }
     classes.push(colors[props.color])
   } else {
     const colors: Record<string, string> = {
-      primary: 'ring-1 ring-inset ring-primary-600/20 text-primary-600',
-      success: 'ring-1 ring-inset ring-success-600/20 text-success-600',
-      danger: 'ring-1 ring-inset ring-danger-600/20 text-danger-600',
-      warning: 'ring-1 ring-inset ring-warning-600/20 text-warning-600',
-      info: 'ring-1 ring-inset ring-info-600/20 text-info-600',
-      gray: 'ring-1 ring-inset ring-gray-600/20 text-gray-600',
+      primary: 'ring-1 ring-inset ring-primary/20 text-primary',
+      success: 'ring-1 ring-inset ring-success/20 text-success',
+      danger: 'ring-1 ring-inset ring-danger/20 text-danger',
+      warning: 'ring-1 ring-inset ring-warning/20 text-warning',
+      info: 'ring-1 ring-inset ring-info/20 text-info',
+      gray: 'ring-1 ring-inset ring-gray/20 text-gray',
     }
     classes.push(colors[props.color])
   }
@@ -86,12 +86,12 @@ const iconClasses = computed(() => {
 
 const labelClasses = computed(() => {
   const colors: Record<string, string> = {
-    primary: 'text-primary-700',
-    success: 'text-success-700',
-    danger: 'text-danger-700',
-    warning: 'text-warning-700',
-    info: 'text-info-700',
-    gray: 'text-gray-700',
+    primary: 'text-primary',
+    success: 'text-success',
+    danger: 'text-danger',
+    warning: 'text-warning',
+    info: 'text-info',
+    gray: 'text-gray',
   }
   return ['text-sm font-medium', colors[props.color]]
 })

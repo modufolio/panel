@@ -3,9 +3,10 @@
  *
  * The `ui-*` classes below are the markup hooks the package's own components
  * emit (PageHeader, Table, the column renderers, BelongsToSelect,
- * RelationManager, StatsWidget, Wizard); without this file those components
- * render unstyled. Import inside the components layer — `styles/index.css`
- * already does — and override any rule from your own stylesheet after it.
+ * RelationManager, StatsWidget, Wizard, and the small controls at the foot of
+ * this file); without this file those components render unstyled. Import
+ * inside the components layer — `styles/index.css` already does — and
+ * override any rule from your own stylesheet after it.
  */
 
 /* Sidebar nav icons — override Heroicons' default stroke-width="1.5" */
@@ -65,15 +66,15 @@
 
 /* Table */
 .ui-table-wrapper {
-  @apply bg-white rounded-xl shadow-sm ring-1 ring-gray-950/5;
+  @apply bg-surface rounded-xl shadow-sm ring-1 ring-hairline;
 }
 
 .ui-table-header-ctn {
-  @apply border-b border-gray-200;
+  @apply border-b border-line;
 }
 
 .ui-table-header {
-  @apply bg-white;
+  @apply bg-surface;
 }
 
 .ui-table-search input {
@@ -122,7 +123,9 @@
 
 .ui-table-sticky-header {
   @apply sticky top-0 z-10;
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  /* Tokenised so the header's lift tracks the theme; a fixed black at 10%
+     vanishes against a dark surface. */
+  box-shadow: var(--shadow-sm);
 }
 
 .ui-table-expand-btn {
@@ -143,12 +146,18 @@
 }
 
 .ui-color-swatch {
-  @apply relative rounded border-2 border-gray-300 flex-shrink-0;
+  @apply relative rounded border-2 border-line-strong flex-shrink-0;
   @apply shadow-sm;
 }
 
+/* Deliberately not --hairline: this outlines a user-chosen swatch colour, not a
+   themed surface. A hairline that turns white in dark vanishes against a pale
+   swatch, which is the exact case the outline was added for. */
 .ui-color-swatch-border {
-  @apply absolute inset-0 rounded border border-black/10;
+  /* Inner edge over the swatch's own colour, which is user data: without it a
+     swatch the same value as the surface has no visible boundary in one theme
+     or the other. */
+  @apply absolute inset-0 rounded border border-hairline;
   pointer-events: none;
 }
 
@@ -165,7 +174,7 @@
 }
 
 .ui-image-column-placeholder {
-  @apply flex items-center justify-center bg-gray-100;
+  @apply flex items-center justify-center bg-surface-sunken;
 }
 
 .ui-text-column {
@@ -203,11 +212,11 @@
 
 /* RelationManager */
 .ui-relation-manager {
-  @apply bg-white rounded-xl shadow-sm ring-1 ring-gray-950/5 overflow-hidden;
+  @apply bg-surface rounded-xl shadow-sm ring-1 ring-hairline overflow-hidden;
 }
 
 .ui-relation-header {
-  @apply border-b border-gray-200;
+  @apply border-b border-line;
 }
 
 .ui-relation-table .ui-table-wrapper {
@@ -233,11 +242,11 @@
 }
 
 .ui-wizard-header-step-btn:not(:disabled):hover .ui-wizard-header-step-icon-ctn {
-  @apply border-primary-600;
+  @apply border-primary;
 }
 
 .ui-wizard-header-step-btn:not(:disabled):hover .ui-wizard-header-step-label {
-  @apply text-primary-600;
+  @apply text-primary;
 }
 
 /*
@@ -262,4 +271,222 @@
   .ui-belongs-to-dropdown {
     animation: none;
   }
+}
+
+/**
+ * The small controls — buttons, badges, tags, menu items.
+ *
+ * These used to be class-string maps in <script>: variant × colour, written
+ * out. Six colours times three button variants is eighteen strings that all
+ * say the same thing, and a theme doubles every one of them.
+ *
+ * So the shape here is: a control declares each property exactly once, reading
+ * a custom property; a variant or a colour only ever *reassigns* those custom
+ * properties. Adding a colour is four lines, adding a variant is three, and
+ * neither multiplies the other.
+ *
+ * The reassigning selectors are wrapped in :where(), which zeroes their
+ * specificity so they resolve by source order alone. That is what lets a
+ * caller restyle a nested control with one declaration —
+ *
+ *   .toolbar { --btn-role: var(--info); }
+ *
+ * — instead of out-specifying a compiled utility class.
+ */
+
+/* ---------------------------------------------------------------------------
+ * Buttons — Core/Button.vue and Actions/Action.vue, the same skin on
+ * different elements.
+ * ------------------------------------------------------------------------ */
+
+:where(.ui-btn, .ui-action-btn) {
+  /* The role, in the forms a button needs it. Only the colour blocks touch
+     these; `primary` is the default because both components default to it. */
+  --btn-role: var(--primary);
+  --btn-on-role: var(--primary-on-fill);
+  --btn-tint: var(--primary-surface);
+  --btn-line: var(--btn-role);
+  --btn-text: var(--btn-role);
+  --btn-focus: var(--btn-role);
+
+  /* What the variant blocks repoint. These defaults are the `filled` variant,
+     so `filled` needs no block of its own. */
+  --btn-bg: var(--btn-role);
+  --btn-fg: var(--btn-on-role);
+  --btn-border: transparent;
+  --btn-bg-hover: color-mix(in oklab, var(--btn-role) calc(100% - var(--role-hover)), var(--role-fg-toward));
+}
+
+:where(.ui-btn[data-variant='outlined'], .ui-action-btn[data-variant='outlined']) {
+  --btn-bg: transparent;
+  --btn-fg: var(--btn-text);
+  --btn-border: var(--btn-line);
+  --btn-bg-hover: var(--btn-tint);
+}
+
+:where(.ui-btn[data-variant='text'], .ui-action-btn[data-variant='text']) {
+  --btn-bg: transparent;
+  --btn-fg: var(--btn-text);
+  --btn-border: transparent;
+  --btn-bg-hover: var(--btn-tint);
+}
+
+:where(.ui-btn[data-color='success'], .ui-action-btn[data-color='success']) {
+  --btn-role: var(--success);
+  --btn-on-role: var(--success-on-fill);
+  --btn-tint: var(--success-surface);
+}
+
+:where(.ui-btn[data-color='danger'], .ui-action-btn[data-color='danger']) {
+  --btn-role: var(--danger);
+  --btn-on-role: var(--danger-on-fill);
+  --btn-tint: var(--danger-surface);
+}
+
+:where(.ui-btn[data-color='warning'], .ui-action-btn[data-color='warning']) {
+  --btn-role: var(--warning);
+  --btn-on-role: var(--warning-on-fill);
+  --btn-tint: var(--warning-surface);
+}
+
+:where(.ui-btn[data-color='info'], .ui-action-btn[data-color='info']) {
+  --btn-role: var(--info);
+  --btn-on-role: var(--info-on-fill);
+  --btn-tint: var(--info-surface);
+}
+
+/* Grey is the secondary button, not a grey-hued primary: unfilled it wants the
+   ordinary field border and body text rather than a grey outline in grey type,
+   and its focus ring stays the accent so "what is focused" reads the same
+   everywhere. Only these three lines diverge — the rest is the shared shape. */
+:where(.ui-btn[data-color='gray'], .ui-action-btn[data-color='gray']) {
+  --btn-role: var(--gray);
+  --btn-on-role: var(--gray-on-fill);
+  --btn-tint: var(--hover);
+  --btn-line: var(--line-strong);
+  --btn-text: var(--ink-2);
+  --btn-focus: var(--focus);
+}
+
+/* The properties, declared once. The transparent border is deliberate: without
+   it a filled button is 2px shorter than the outlined one beside it. */
+.ui-btn,
+.ui-action-btn {
+  border: 1px solid var(--btn-border);
+  background-color: var(--btn-bg);
+  color: var(--btn-fg);
+}
+
+.ui-btn:hover:not(:disabled),
+.ui-action-btn:hover:not(:disabled) {
+  background-color: var(--btn-bg-hover);
+}
+
+/* focus-visible, not focus: the ring is for keyboard navigation, and a mouse
+   click that leaves a ring behind reads as an unfinished interaction. */
+.ui-btn:focus-visible,
+.ui-action-btn:focus-visible {
+  outline: 2px solid var(--btn-focus);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Badges and tags. Both are a role tint with its matching foreground; the tag
+ * adds an inset hairline and an optional status dot.
+ *
+ * The `[data-color]` in the selector is load-bearing — `.ui-badge` is also the
+ * markup hook BadgeColumn emits with its own colours, and it must not inherit
+ * a default from here.
+ * ------------------------------------------------------------------------ */
+
+:where(.ui-badge[data-color], .ui-tag[data-color]) {
+  --chip-bg: var(--gray-surface);
+  --chip-fg: var(--gray-on-surface);
+  --chip-dot: var(--ink-3);
+}
+
+:where(.ui-badge[data-color='primary'], .ui-tag[data-color='primary']) {
+  --chip-bg: var(--primary-surface);
+  --chip-fg: var(--primary-on-surface);
+  --chip-dot: var(--primary);
+}
+
+:where(.ui-badge[data-color='success'], .ui-tag[data-color='success']) {
+  --chip-bg: var(--success-surface);
+  --chip-fg: var(--success-on-surface);
+  --chip-dot: var(--success);
+}
+
+:where(.ui-badge[data-color='danger'], .ui-tag[data-color='danger']) {
+  --chip-bg: var(--danger-surface);
+  --chip-fg: var(--danger-on-surface);
+  --chip-dot: var(--danger);
+}
+
+:where(.ui-badge[data-color='warning'], .ui-tag[data-color='warning']) {
+  --chip-bg: var(--warning-surface);
+  --chip-fg: var(--warning-on-surface);
+  --chip-dot: var(--warning);
+}
+
+:where(.ui-badge[data-color='info'], .ui-tag[data-color='info']) {
+  --chip-bg: var(--info-surface);
+  --chip-fg: var(--info-on-surface);
+  --chip-dot: var(--info);
+}
+
+.ui-badge[data-color],
+.ui-tag[data-color] {
+  background-color: var(--chip-bg);
+  color: var(--chip-fg);
+}
+
+/* An inset box-shadow rather than a ring utility, so the hairline derives from
+   the same --chip-fg the text does and no fourth token is needed for it. */
+.ui-tag[data-color] {
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--chip-fg) 20%, transparent);
+}
+
+.ui-tag-dot {
+  background-color: var(--chip-dot);
+}
+
+/* ---------------------------------------------------------------------------
+ * Action group menu items — Actions/ActionGroupItem.vue.
+ * ------------------------------------------------------------------------ */
+
+:where(.ui-action-group-item) {
+  --item-fg: var(--ink-2);
+  --item-icon: var(--ink-3);
+  --item-hover-bg: var(--hover);
+  --item-hover-fg: var(--item-fg);
+}
+
+:where(.ui-action-group-item[data-color='primary']) { --item-icon: var(--primary); }
+:where(.ui-action-group-item[data-color='success']) { --item-icon: var(--success); }
+:where(.ui-action-group-item[data-color='warning']) { --item-icon: var(--warning); }
+:where(.ui-action-group-item[data-color='info']) { --item-icon: var(--info); }
+
+/* Destructive items tint the whole row on hover, not just the icon — the one
+   place in the menu where the colour is a warning rather than a category. */
+:where(.ui-action-group-item[data-color='danger']) {
+  --item-icon: var(--danger);
+  --item-hover-bg: var(--danger-surface);
+  --item-hover-fg: var(--danger-on-surface);
+}
+
+/* The base colour is set here rather than with a `text-*` utility on the
+   element: utilities outrank this layer, so a utility would win over the
+   hover rule below and the danger row could never tint its label. */
+.ui-action-group-item {
+  color: var(--item-fg);
+}
+
+.ui-action-group-item:hover:not(:disabled) {
+  background-color: var(--item-hover-bg);
+  color: var(--item-hover-fg);
+}
+
+.ui-action-group-item-icon {
+  color: var(--item-icon);
 }

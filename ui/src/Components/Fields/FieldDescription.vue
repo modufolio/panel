@@ -13,7 +13,7 @@ defineProps({
 </script>
 
 <template>
-  <p :id="id" class="ui-field-help mt-1.5 text-sm text-gray-600 dark:text-gray-400">
+  <p :id="id" class="ui-field-help mt-1.5 text-sm text-ink-2">
     <slot />
   </p>
 </template>

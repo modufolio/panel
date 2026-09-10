@@ -46,6 +46,13 @@ function builder(modelValue: QueryCondition[] = []) {
   return mount(QueryBuilder, { props: { constraints, modelValue } })
 }
 
+/** The "add condition" button, found by its words rather than its styling. */
+function addButton(wrapper: ReturnType<typeof builder>) {
+  const button = wrapper.findAll('button').find((b) => b.text().includes('Add condition'))
+  expect(button, 'expected an add-condition button').toBeTruthy()
+  return button!
+}
+
 /** The single payload a v-model emission carried. */
 function emitted(wrapper: ReturnType<typeof builder>): QueryCondition[] {
   const events = wrapper.emitted('update:modelValue')
@@ -61,7 +68,7 @@ describe('QueryBuilder', () => {
   it('adds a condition on the first constraint, with its first operator', async () => {
     const wrapper = builder()
 
-    await wrapper.find('button.text-primary-600').trigger('click')
+    await addButton(wrapper).trigger('click')
 
     expect(emitted(wrapper)).toEqual([{ key: 'title', operator: 'contains', value: '' }])
   })
@@ -69,7 +76,7 @@ describe('QueryBuilder', () => {
   it('adds nothing when the schema declared no constraints', async () => {
     const wrapper = mount(QueryBuilder, { props: { constraints: [], modelValue: [] } })
 
-    await wrapper.find('button.text-primary-600').trigger('click')
+    await addButton(wrapper).trigger('click')
 
     expect(wrapper.emitted('update:modelValue')).toBeUndefined()
   })
@@ -77,7 +84,7 @@ describe('QueryBuilder', () => {
   it('appends rather than replaces, so a second condition keeps the first', async () => {
     const wrapper = builder([{ key: 'seats', operator: 'eq', value: '3' }])
 
-    await wrapper.find('button.text-primary-600').trigger('click')
+    await addButton(wrapper).trigger('click')
 
     expect(emitted(wrapper)).toEqual([
       { key: 'seats', operator: 'eq', value: '3' },
@@ -168,7 +175,7 @@ describe('QueryBuilder', () => {
       props: { constraints: [constraints[2]!], modelValue: [] },
     })
 
-    await wrapper.find('button.text-primary-600').trigger('click')
+    await addButton(wrapper).trigger('click')
 
     expect(emitted(wrapper)).toEqual([{ key: 'published', operator: 'is', value: '1' }])
   })
@@ -240,7 +247,7 @@ describe('QueryBuilder', () => {
     const modelValue: QueryCondition[] = [{ key: 'title', operator: 'contains', value: 'a' }]
     const wrapper = builder(modelValue)
 
-    await wrapper.find('button.text-primary-600').trigger('click')
+    await addButton(wrapper).trigger('click')
     await wrapper.find('[aria-label="Remove condition 1"]').trigger('click')
 
     expect(modelValue).toEqual([{ key: 'title', operator: 'contains', value: 'a' }])

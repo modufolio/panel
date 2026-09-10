@@ -50,7 +50,7 @@
         class="whitespace-nowrap"
         :class="cellClasses({ ...(column as SchemaColumn), align: (column as SchemaColumn).align ?? 'right' })"
       >
-        <span class="text-xs text-gray-500">{{ summary.label }}</span>
+        <span class="text-xs text-ink-3">{{ summary.label }}</span>
         <span class="ml-1 font-medium">{{ formatSummary(column as SchemaColumn, summary) }}</span>
       </div>
     </template>

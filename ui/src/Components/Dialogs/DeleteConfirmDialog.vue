@@ -1,38 +1,47 @@
 <template>
   <Dialog :is-open="state.open" :title="heading" width="md" @close="$emit('close')">
     <!-- Waiting on the server's answer: promise nothing yet. -->
-    <p v-if="state.loading" class="text-sm text-gray-600">Checking what depends on this record…</p>
+    <p v-if="state.loading" class="text-sm text-ink-2">Checking what depends on this record…</p>
 
     <!-- Something is in the way. Naming it is the whole point: "cannot delete"
          without saying why leaves the user with nowhere to go. -->
     <template v-else-if="plan?.blocked">
-      <p class="text-sm text-gray-700">
+      <p class="text-sm text-ink-2">
         It is referenced by the following, which must be changed or removed first:
       </p>
-      <ul class="mt-3 space-y-1 text-sm text-gray-900">
-        <li v-for="entry in plan.protected ?? []" :key="entry" class="rounded bg-red-50 px-3 py-2">
+      <ul class="mt-3 space-y-1 text-sm">
+        <li v-for="entry in plan.protected ?? []" :key="entry" class="rounded bg-danger-surface px-3 py-2 text-danger-on-surface">
           {{ entry }}
         </li>
       </ul>
     </template>
 
     <!-- Reversible, so there is no blast radius to show. -->
-    <p v-else-if="plan?.soft" class="text-sm text-gray-700">
+    <p v-else-if="plan?.soft" class="text-sm text-ink-2">
       This moves the record to the trash, where it can be restored.
     </p>
 
     <!-- The consequences, stated. -->
     <template v-else-if="plan">
-      <p class="text-sm text-gray-700">This cannot be undone. The following will be deleted:</p>
+      <p class="text-sm text-ink-2">This cannot be undone. The following will be deleted:</p>
 
-      <h3 class="mt-4 text-xs font-semibold uppercase tracking-wide text-gray-500">Summary</h3>
-      <ul class="mt-2 space-y-1 text-sm text-gray-900">
-        <li v-for="[name, count] in summary" :key="name">{{ name }}: {{ count }}</li>
+      <h3 class="mt-4 text-xs font-semibold uppercase tracking-wide text-ink-3">Summary</h3>
+      <!-- Cascades and nullifies are both "affected", but only one of them
+           loses data. The word carries that, not the colour — a monochrome or
+           colour-blind reader must not read a cleared link as a deleted row. -->
+      <ul class="mt-2 space-y-1 text-sm">
+        <li
+          v-for="(entry, index) in summary"
+          :key="`${entry.name}-${index}`"
+          :class="entry.destructive ? 'text-danger' : 'text-ink-2'"
+        >
+          {{ entry.name }}: {{ entry.count }}<template v-if="!entry.destructive"> (unlinked, not deleted)</template>
+        </li>
       </ul>
 
       <template v-if="rows.length > 0">
-        <h3 class="mt-4 text-xs font-semibold uppercase tracking-wide text-gray-500">Objects</h3>
-        <ul class="mt-2 max-h-56 space-y-1 overflow-y-auto text-sm text-gray-900">
+        <h3 class="mt-4 text-xs font-semibold uppercase tracking-wide text-ink-3">Objects</h3>
+        <ul class="mt-2 max-h-56 space-y-1 overflow-y-auto text-sm text-ink">
           <li
             v-for="(row, index) in rows"
             :key="`${row.label}-${index}`"
@@ -45,9 +54,9 @@
     </template>
 
     <!-- No preview endpoint: the plain confirmation, at least consistent. -->
-    <p v-else class="text-sm text-gray-700">{{ message }}</p>
+    <p v-else class="text-sm text-ink-2">{{ message }}</p>
 
-    <p v-if="state.error" class="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+    <p v-if="state.error" class="mt-4 rounded-md border border-danger/30 bg-danger-surface px-3 py-2 text-sm text-danger-on-surface">
       {{ state.error }}
     </p>
 
@@ -55,7 +64,7 @@
       <div class="flex justify-end gap-3">
         <button
           type="button"
-          class="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
+          class="rounded-lg px-4 py-2 text-sm font-medium text-ink-2 transition-colors hover:bg-hover"
           @click="$emit('close')"
         >
           {{ plan?.blocked ? 'Close' : 'Cancel' }}
@@ -63,7 +72,7 @@
         <button
           v-if="!plan?.blocked && !state.loading"
           type="button"
-          class="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+          class="inline-flex items-center gap-2 rounded-lg bg-danger-fill px-4 py-2 text-sm font-medium text-danger-on-fill transition-colors hover:bg-danger-hover disabled:opacity-50"
           :disabled="state.deleting"
           @click="$emit('confirm')"
         >
@@ -114,10 +123,15 @@ const heading = computed(() =>
     : `Delete this ${props.label}?`,
 )
 
-const summary = computed<Array<[string, number]>>(() => [
-  ...Object.entries(plan.value?.counts ?? {}),
-  ...Object.entries(plan.value?.linkCounts ?? {}),
-] as Array<[string, number]>)
+/**
+ * The blast radius, in one list. `counts` are records that go; `linkCounts`
+ * are references that get cleared — the row survives. `destructive` is what
+ * lets the dialog colour the two differently.
+ */
+const summary = computed<Array<{ name: string; count: number; destructive: boolean }>>(() => [
+  ...Object.entries(plan.value?.counts ?? {}).map(([name, count]) => ({ name, count, destructive: true })),
+  ...Object.entries(plan.value?.linkCounts ?? {}).map(([name, count]) => ({ name, count, destructive: false })),
+])
 
 /** Flatten the nested plan depth-first, keeping the indent level. */
 function flatten(nodes: DeletionNode[], depth = 0): Array<{ label: string; depth: number }> {

@@ -26,11 +26,11 @@ const props = defineProps({
 })
 
 const classes = computed(() => [
-  'ui-field-label block text-sm font-medium text-gray-700 dark:text-gray-300',
+  'ui-field-label block text-sm font-medium text-label',
   props.spacing === 'default' ? 'mb-1.5' : '',
   // Marked in CSS rather than in the text so the asterisk is never read out as
   // part of the label; `aria-required` on the control is what announces it.
-  props.required ? "after:content-['*'] after:ml-0.5 after:text-danger-600" : '',
+  props.required ? "after:content-['*'] after:ml-0.5 after:text-danger" : '',
 ])
 </script>
 

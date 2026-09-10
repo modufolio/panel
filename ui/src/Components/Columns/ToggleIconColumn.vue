@@ -16,7 +16,7 @@
   <button
     v-else
     type="button"
-    class="ui-toggle-icon-column inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
+    class="ui-toggle-icon-column inline-flex h-7 w-7 items-center justify-center rounded-full transition-colors hover:bg-hover focus:outline-none focus:ring-2 focus:ring-focus focus:ring-offset-1 focus:ring-offset-surface disabled:cursor-not-allowed disabled:opacity-50"
     :class="[colorClasses, loading ? 'cursor-wait' : '']"
     :disabled="disabled || loading"
     :aria-pressed="isOn"
@@ -108,12 +108,12 @@ const iconName = computed(() => (isOn.value ? props.onIcon : props.offIcon))
 const stateLabel = computed(() => (isOn.value ? props.onLabel : props.offLabel))
 
 const colorMap: Record<string, string> = {
-  primary: 'text-primary-600',
-  success: 'text-success-600',
-  danger: 'text-danger-600',
-  warning: 'text-warning-600',
-  info: 'text-info-600',
-  gray: 'text-gray-400',
+  primary: 'text-primary',
+  success: 'text-success',
+  danger: 'text-danger',
+  warning: 'text-warning',
+  info: 'text-info',
+  gray: 'text-ink-3',
 }
 
 const colorClasses = computed(() => {

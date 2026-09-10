@@ -1,11 +1,11 @@
 <template>
   <section class="ui-child-table">
     <header class="flex items-baseline gap-2 px-1 pb-2">
-      <h4 class="text-xs font-semibold uppercase tracking-wider text-gray-500">{{ child.label }}</h4>
-      <span class="ui-child-table-count text-xs text-gray-400" aria-label="rows">{{ rows.length }}</span>
+      <h4 class="text-xs font-semibold uppercase tracking-wider text-ink-2">{{ child.label }}</h4>
+      <span class="ui-child-table-count text-xs text-ink-3" aria-label="rows">{{ rows.length }}</span>
     </header>
 
-    <div class="overflow-hidden rounded-lg border border-gray-200 bg-white">
+    <div class="overflow-hidden rounded-lg border border-line bg-surface">
       <Table
         nested
         :columns="child.columns"

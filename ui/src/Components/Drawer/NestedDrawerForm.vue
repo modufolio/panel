@@ -3,7 +3,7 @@
        the only path to saving. -->
   <form class="space-y-4" @submit.prevent="emit('submit')">
     <!-- Server-side error banner -->
-    <div v-if="serverError" class="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+    <div v-if="serverError" class="rounded-md bg-danger-surface border border-danger/30 px-4 py-3 text-sm text-danger-on-surface">
       {{ serverError }}
     </div>
 
@@ -19,10 +19,10 @@
       <label
         v-if="field.type !== 'checkbox'"
         :for="field.name"
-        class="block text-sm font-medium text-gray-700"
+        class="block text-sm font-medium text-label"
       >
         {{ field.label }}
-        <span v-if="field.required" class="text-red-500">*</span>
+        <span v-if="field.required" class="text-danger">*</span>
       </label>
 
       <!-- Text inputs -->
@@ -34,7 +34,7 @@
         :placeholder="field.placeholder"
         :maxlength="field.maxlength"
         class="ui-input w-full"
-        :class="{ 'border-red-500 bg-red-50': errors[field.name] }"
+        :class="{ 'border-danger bg-danger-surface': errors[field.name] }"
         @input="(e) => setFieldValue(field.name, (e.target as HTMLInputElement).value)"
       />
 
@@ -52,7 +52,7 @@
         :min="field.min"
         :max="field.max"
         class="ui-input w-full"
-        :class="{ 'border-red-500 bg-red-50': errors[field.name] }"
+        :class="{ 'border-danger bg-danger-surface': errors[field.name] }"
         @input="(e) => setFieldValue(field.name, (e.target as HTMLInputElement).value)"
       />
 
@@ -62,12 +62,12 @@
           :id="field.name"
           type="checkbox"
           :checked="state[field.name] === true || state[field.name] === 1 || state[field.name] === '1'"
-          class="rounded border-gray-300 text-primary-600 focus:ring-primary-600"
+          class="rounded border-line-strong accent-primary-fill focus:ring-focus"
           @change="(e) => setFieldValue(field.name, (e.target as HTMLInputElement).checked)"
         />
-        <span class="text-sm font-medium text-gray-700">
+        <span class="text-sm font-medium text-label">
           {{ field.label }}
-          <span v-if="field.required" class="text-red-500">*</span>
+          <span v-if="field.required" class="text-danger">*</span>
         </span>
       </label>
 
@@ -77,7 +77,7 @@
         :id="field.name"
         :value="String(state[field.name] ?? '')"
         class="ui-input w-full"
-        :class="{ 'border-red-500 bg-red-50': errors[field.name] }"
+        :class="{ 'border-danger bg-danger-surface': errors[field.name] }"
         @change="(e) => setFieldValue(field.name, (e.target as HTMLSelectElement).value)"
       >
         <option value="">Select {{ field.label }}</option>
@@ -95,12 +95,12 @@
         :maxlength="field.maxlength"
         rows="3"
         class="ui-input w-full"
-        :class="{ 'border-red-500 bg-red-50': errors[field.name] }"
+        :class="{ 'border-danger bg-danger-surface': errors[field.name] }"
         @input="(e) => setFieldValue(field.name, (e.target as HTMLTextAreaElement).value)"
       />
 
       <!-- Error message -->
-      <p v-if="errors[field.name]" class="text-xs text-red-600 mt-1">
+      <p v-if="errors[field.name]" class="text-xs text-danger mt-1">
         {{ errors[field.name] }}
       </p>
     </div>

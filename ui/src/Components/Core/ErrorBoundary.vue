@@ -1,10 +1,12 @@
 <template>
   <slot v-if="!error" />
   <slot v-else name="fallback" :error="error" :reset="reset">
-    <div class="rounded-lg border border-danger-300 bg-danger-50 p-4 text-sm text-danger-800">
+    <div class="rounded-lg border border-danger/30 bg-danger-surface p-4 text-sm text-danger-on-surface">
       <p class="font-medium">{{ label }}</p>
-      <p v-if="error?.message" class="mt-1 break-words text-danger-700">{{ error.message }}</p>
-      <button type="button" class="mt-2 font-medium text-danger-700 underline" @click="reset">
+      <!-- The raw message is supporting detail under the label, so it steps
+           back with opacity rather than a second, paler danger token. -->
+      <p v-if="error?.message" class="mt-1 break-words opacity-80">{{ error.message }}</p>
+      <button type="button" class="mt-2 font-medium text-danger-on-surface underline" @click="reset">
         Try again
       </button>
     </div>

@@ -18,7 +18,7 @@
       <div
         v-for="(item, index) in items"
         :key="rowKey(item, index, `new-${index}`)"
-        class="ui-repeater-item relative rounded-lg border border-gray-300 bg-white p-4 shadow-sm"
+        class="ui-repeater-item relative rounded-lg border border-line-strong bg-surface p-4 shadow-sm"
       >
         <div class="grid grid-cols-12 gap-4 pr-16">
           <component
@@ -38,7 +38,7 @@
         <div class="absolute top-3 right-3 flex items-center gap-1">
           <button
             type="button"
-            class="rounded p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"
+            class="rounded p-1 text-ink-3 hover:text-ink disabled:opacity-30"
             :disabled="disabled || index === 0"
             title="Move up"
             @click="moveItem(index, -1)"
@@ -47,7 +47,7 @@
           </button>
           <button
             type="button"
-            class="rounded p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30"
+            class="rounded p-1 text-ink-3 hover:text-ink disabled:opacity-30"
             :disabled="disabled || index === items.length - 1"
             title="Move down"
             @click="moveItem(index, 1)"
@@ -56,7 +56,7 @@
           </button>
           <button
             type="button"
-            class="rounded p-1 text-danger-600 hover:text-danger-800 disabled:opacity-30"
+            class="rounded p-1 text-danger hover:bg-danger-surface disabled:opacity-30"
             :disabled="disabled"
             title="Delete"
             @click="deleteItem(index)"
@@ -66,34 +66,34 @@
         </div>
       </div>
 
-      <div v-if="items.length === 0" class="rounded-lg border border-dashed border-gray-300 py-6 text-center text-sm text-gray-500">
+      <div v-if="items.length === 0" class="rounded-lg border border-dashed border-line-strong py-6 text-center text-sm text-ink-3">
         {{ emptyMessage }}
       </div>
     </div>
 
     <!-- Table Repeater -->
-    <div v-else-if="layout === 'table'" class="ui-repeater-table overflow-x-auto rounded-lg border border-gray-300 shadow-sm">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
+    <div v-else-if="layout === 'table'" class="ui-repeater-table overflow-x-auto rounded-lg border border-line-strong shadow-sm">
+      <table class="min-w-full divide-y divide-line">
+        <thead class="bg-surface-sunken">
           <tr>
             <th
               v-for="(column, index) in columns"
               :key="index"
-              class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+              class="px-4 py-3 text-left text-xs font-medium text-ink-3 uppercase tracking-wider"
               :style="column.width ? `width: ${column.width}` : ''"
             >
               {{ column.label }}
-              <span v-if="column.required" class="text-danger-600">*</span>
+              <span v-if="column.required" class="text-danger">*</span>
             </th>
             <th class="w-16"></th>
           </tr>
         </thead>
 
-        <tbody class="bg-white divide-y divide-gray-200">
+        <tbody class="bg-surface divide-y divide-line">
           <tr
             v-for="(item, index) in items"
             :key="rowKey(item, index)"
-            class="hover:bg-gray-50 transition-colors"
+            class="hover:bg-hover transition-colors"
           >
             <td
               v-for="(column, colIndex) in columns"
@@ -119,7 +119,7 @@
             <td class="px-4 py-3 text-right">
               <button
                 type="button"
-                class="text-danger-600 hover:text-danger-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="rounded p-1 text-danger hover:bg-danger-surface disabled:opacity-50 disabled:cursor-not-allowed"
                 :disabled="disabled"
                 @click="deleteItem(index)"
                 title="Delete"
@@ -142,7 +142,7 @@
 
           <!-- Empty State -->
           <tr v-if="items.length === 0">
-            <td :colspan="columns.length + 1" class="px-4 py-8 text-center text-gray-500">
+            <td :colspan="columns.length + 1" class="px-4 py-8 text-center text-ink-3">
               {{ emptyMessage }}
             </td>
           </tr>
@@ -155,11 +155,11 @@
       <div
         v-for="(item, index) in items"
         :key="rowKey(item, index)"
-        class="ui-repeater-item relative rounded-lg border border-gray-300 bg-white p-4 shadow-sm"
+        class="ui-repeater-item relative rounded-lg border border-line-strong bg-surface p-4 shadow-sm"
       >
         <button
           type="button"
-          class="absolute top-4 right-4 text-danger-600 hover:text-danger-900 disabled:opacity-50 disabled:cursor-not-allowed"
+          class="absolute top-4 right-4 rounded p-1 text-danger hover:bg-danger-surface disabled:opacity-50 disabled:cursor-not-allowed"
           :disabled="disabled"
           @click="deleteItem(index)"
           title="Delete"
@@ -182,7 +182,7 @@
       </div>
 
       <!-- Empty State -->
-      <div v-if="items.length === 0" class="text-center py-8 text-gray-500">
+      <div v-if="items.length === 0" class="text-center py-8 text-ink-3">
         {{ emptyMessage }}
       </div>
     </div>
@@ -191,7 +191,7 @@
     <div class="ui-repeater-add mt-4">
       <button
         type="button"
-        class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg border border-line-strong bg-surface text-label hover:bg-hover focus:outline-none focus:ring-2 focus:ring-focus disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         :disabled="disabled || !!(maxItems && items.length >= maxItems)"
         @click="addItem"
       >

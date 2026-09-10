@@ -8,7 +8,7 @@
     <div class="grid grid-cols-2 gap-3">
       <!-- Start Date -->
       <div class="relative">
-        <label class="block text-xs font-medium text-gray-600 mb-1">
+        <label class="block text-xs font-medium text-label mb-1">
           Start Date
         </label>
         <div class="relative">
@@ -21,10 +21,10 @@
             class="ui-input block w-full"
             :class="[
               error
-                ? 'border-danger-600 focus:border-danger-600 focus:ring-danger-600/20'
+                ? 'border-danger focus:border-danger focus:ring-danger/20'
                 : disabled
-                ? 'border-gray-300 bg-gray-50 text-gray-500'
-                : 'border-gray-300 focus:border-primary-600 focus:ring-primary-600/20',
+                ? 'border-line-strong bg-surface-sunken text-ink-3'
+                : 'border-line-strong focus:border-primary focus:ring-primary/20',
               'pl-3 pr-10 py-2 text-sm',
             ]"
             @change="handleStartDateChange"
@@ -33,7 +33,7 @@
             class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3"
           >
             <svg
-              class="h-5 w-5 text-gray-400"
+              class="h-5 w-5 text-ink-3"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -51,7 +51,7 @@
 
       <!-- End Date -->
       <div class="relative">
-        <label class="block text-xs font-medium text-gray-600 mb-1">
+        <label class="block text-xs font-medium text-label mb-1">
           End Date
         </label>
         <div class="relative">
@@ -64,10 +64,10 @@
             class="ui-input block w-full"
             :class="[
               error
-                ? 'border-danger-600 focus:border-danger-600 focus:ring-danger-600/20'
+                ? 'border-danger focus:border-danger focus:ring-danger/20'
                 : disabled
-                ? 'border-gray-300 bg-gray-50 text-gray-500'
-                : 'border-gray-300 focus:border-primary-600 focus:ring-primary-600/20',
+                ? 'border-line-strong bg-surface-sunken text-ink-3'
+                : 'border-line-strong focus:border-primary focus:ring-primary/20',
               'pl-3 pr-10 py-2 text-sm',
             ]"
             @change="handleEndDateChange"
@@ -76,7 +76,7 @@
             class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3"
           >
             <svg
-              class="h-5 w-5 text-gray-400"
+              class="h-5 w-5 text-ink-3"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -94,9 +94,9 @@
     </div>
 
     <!-- Date Range Display -->
-    <div v-if="startDate && endDate" class="text-xs text-gray-600">
+    <div v-if="startDate && endDate" class="text-xs text-ink-2">
       <span class="font-medium">{{ formatDateRange() }}</span>
-      <span class="ml-2 text-gray-500">({{ getDayCount() }} days)</span>
+      <span class="ml-2 text-ink-3">({{ getDayCount() }} days)</span>
     </div>
 
     <!-- Quick Presets -->
@@ -105,11 +105,11 @@
         v-for="preset in presets"
         :key="preset.label"
         type="button"
-        class="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium transition-colors duration-200"
+        class="rounded-md border border-line-strong px-3 py-1.5 text-xs font-medium transition-colors duration-200"
         :class="[
           isActivePreset(preset)
-            ? 'border-primary-600 bg-primary-50 text-primary-700'
-            : 'bg-white text-gray-700 hover:bg-gray-50',
+            ? 'border-primary bg-primary-surface text-primary-on-surface'
+            : 'bg-surface text-label hover:bg-hover',
           disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
         ]"
         :disabled="disabled"

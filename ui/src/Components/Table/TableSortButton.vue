@@ -1,7 +1,7 @@
 <template>
   <button
     type="button"
-    class="ui-table-sort-btn text-gray-400 hover:text-gray-600"
+    class="ui-table-sort-btn text-ink-3 hover:text-ink-2"
     :aria-label="ariaLabel"
     :aria-sort="state"
     @click="$emit('sort', name)"
@@ -20,7 +20,7 @@
     </svg>
     <svg
       v-else-if="state === 'ascending'"
-      class="w-4 h-4 text-primary-600"
+      class="w-4 h-4 text-primary"
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"
@@ -32,7 +32,7 @@
     </svg>
     <svg
       v-else
-      class="w-4 h-4 text-primary-600"
+      class="w-4 h-4 text-primary"
       xmlns="http://www.w3.org/2000/svg"
       fill="none"
       viewBox="0 0 24 24"

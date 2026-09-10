@@ -36,12 +36,12 @@ const props = defineProps({
 
 const badgeClasses = computed(() => {
   const colorClasses: Record<string, string> = {
-    primary: 'bg-primary-100 text-primary-700 ring-primary-600/20',
-    success: 'bg-success-100 text-success-700 ring-success-600/20',
-    danger: 'bg-danger-100 text-danger-700 ring-danger-600/20',
-    warning: 'bg-warning-100 text-warning-700 ring-warning-600/20',
-    info: 'bg-info-100 text-info-700 ring-info-600/20',
-    gray: 'bg-gray-100 text-gray-700 ring-gray-600/20',
+    primary: 'bg-primary-surface text-primary-on-surface ring-primary/20',
+    success: 'bg-success-surface text-success-on-surface ring-success/20',
+    danger: 'bg-danger-surface text-danger-on-surface ring-danger/20',
+    warning: 'bg-warning-surface text-warning-on-surface ring-warning/20',
+    info: 'bg-info-surface text-info-on-surface ring-info/20',
+    gray: 'bg-gray-surface text-gray-on-surface ring-gray/20',
   }
 
   return [

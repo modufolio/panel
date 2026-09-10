@@ -10,7 +10,7 @@
     >
       <div
         v-if="isOpen"
-        class="ui-dialog-overlay fixed inset-0 z-50 bg-gray-950/50 backdrop-blur-sm"
+        class="ui-dialog-overlay fixed inset-0 z-50 bg-overlay backdrop-blur-sm"
         @click="handleOverlayClick"
       />
     </Transition>
@@ -35,7 +35,7 @@
             aria-modal="true"
             :aria-labelledby="title ? titleId : undefined"
             :aria-describedby="description ? descriptionId : undefined"
-            class="ui-dialog relative bg-white rounded-xl shadow-xl ring-1 ring-gray-950/5"
+            class="ui-dialog relative bg-surface-raised rounded-xl shadow-xl ring-1 ring-hairline"
           >
             <!-- Close Button -->
             <button
@@ -43,7 +43,7 @@
               type="button"
               @click="close"
               aria-label="Close dialog"
-              class="absolute top-4 right-4 text-gray-400 hover:text-gray-500 transition-colors"
+              class="absolute top-4 right-4 text-ink-3 hover:text-ink-2 transition-colors"
             >
               <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -51,10 +51,10 @@
             </button>
 
             <!-- Header -->
-            <div v-if="$slots.header || title" class="ui-dialog-header px-6 py-4 border-b border-gray-200">
+            <div v-if="$slots.header || title" class="ui-dialog-header px-6 py-4 border-b border-line">
               <slot name="header">
-                <h3 :id="titleId" class="text-lg font-semibold text-gray-900 pr-8">{{ title }}</h3>
-                <p v-if="description" :id="descriptionId" class="mt-1 text-sm text-gray-600">{{ description }}</p>
+                <h3 :id="titleId" class="text-lg font-semibold text-ink pr-8">{{ title }}</h3>
+                <p v-if="description" :id="descriptionId" class="mt-1 text-sm text-ink-2">{{ description }}</p>
               </slot>
             </div>
 
@@ -64,7 +64,7 @@
             </div>
 
             <!-- Footer -->
-            <div v-if="$slots.footer" class="ui-dialog-footer px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl">
+            <div v-if="$slots.footer" class="ui-dialog-footer px-6 py-4 border-t border-line bg-surface-sunken rounded-b-xl">
               <slot name="footer" />
             </div>
           </div>

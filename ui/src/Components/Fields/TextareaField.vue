@@ -82,7 +82,7 @@ const textareaClasses = computed(() => {
   const classes = ['px-3 py-2']
 
   if (props.error) {
-    classes.push('border-danger-600 focus:border-danger-600 focus:ring-danger-600/20')
+    classes.push('border-danger focus:border-danger focus:ring-danger/20')
   }
 
   return classes

@@ -1,12 +1,12 @@
 <template>
-  <div class="ui-metric-card rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-950/5">
+  <div class="ui-metric-card rounded-lg bg-surface p-5 shadow-sm ring-1 ring-hairline">
     <div class="flex items-center justify-between gap-2">
-      <span class="truncate text-sm font-medium text-gray-600">{{ metric.label }}</span>
-      <Icon v-if="metric.icon" :name="metric.icon" class="h-5 w-5 shrink-0 text-gray-400" />
+      <span class="truncate text-sm font-medium text-ink-2">{{ metric.label }}</span>
+      <Icon v-if="metric.icon" :name="metric.icon" class="h-5 w-5 shrink-0 text-ink-3" />
     </div>
 
     <div class="mt-2 flex items-baseline gap-2">
-      <span class="text-3xl font-semibold text-gray-900">{{ formatted }}</span>
+      <span class="text-3xl font-semibold text-ink">{{ formatted }}</span>
 
       <!--
         Only when there is something to compare with. A metric that declared
@@ -19,7 +19,7 @@
       </span>
     </div>
 
-    <p v-if="comparison" class="mt-1 text-xs text-gray-500">{{ comparison }}</p>
+    <p v-if="comparison" class="mt-1 text-xs text-ink-3">{{ comparison }}</p>
   </div>
 </template>
 

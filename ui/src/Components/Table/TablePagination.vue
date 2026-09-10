@@ -3,7 +3,7 @@
     <div class="flex items-center gap-4">
       <!-- Per Page Selector -->
       <div class="flex items-center gap-2">
-        <label for="per-page" class="text-sm text-gray-700">
+        <label for="per-page" class="text-sm text-ink-2">
           Show
         </label>
         <select
@@ -16,11 +16,11 @@
             {{ option }}
           </option>
         </select>
-        <span class="text-sm text-gray-700">per page</span>
+        <span class="text-sm text-ink-2">per page</span>
       </div>
 
       <!-- Records Info -->
-      <div class="text-sm text-gray-700">
+      <div class="text-sm text-ink-2">
         Showing <span class="font-medium">{{ from }}</span> to <span class="font-medium">{{ to }}</span> of <span class="font-medium">{{ total }}</span> results
       </div>
     </div>
@@ -33,7 +33,7 @@
         @click="$emit('goto', 1)"
         :disabled="currentPage === 1"
         class="ui-pagination-btn inline-flex items-center justify-center w-8 h-8 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        :class="currentPage === 1 ? 'text-gray-400' : 'text-gray-700 hover:bg-gray-100'"
+        :class="currentPage === 1 ? 'text-ink-3' : 'text-ink-2 hover:bg-hover'"
       >
         <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" />
@@ -46,7 +46,7 @@
         @click="$emit('goto', currentPage - 1)"
         :disabled="currentPage === 1"
         class="ui-pagination-btn inline-flex items-center justify-center w-8 h-8 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        :class="currentPage === 1 ? 'text-gray-400' : 'text-gray-700 hover:bg-gray-100'"
+        :class="currentPage === 1 ? 'text-ink-3' : 'text-ink-2 hover:bg-hover'"
       >
         <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
@@ -61,13 +61,13 @@
           @click="$emit('goto', page)"
           class="ui-pagination-btn inline-flex items-center justify-center min-w-[2rem] h-8 px-2 text-sm font-medium rounded-lg transition-colors"
           :class="currentPage === page
-            ? 'bg-primary-600 text-white'
-            : 'text-gray-700 hover:bg-gray-100'
+            ? 'bg-primary-fill text-primary-on-fill'
+            : 'text-ink-2 hover:bg-hover'
           "
         >
           {{ page }}
         </button>
-        <span v-else class="inline-flex items-center justify-center w-8 h-8 text-gray-500">
+        <span v-else class="inline-flex items-center justify-center w-8 h-8 text-ink-3">
           ...
         </span>
       </template>
@@ -78,7 +78,7 @@
         @click="$emit('goto', currentPage + 1)"
         :disabled="currentPage === lastPage"
         class="ui-pagination-btn inline-flex items-center justify-center w-8 h-8 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        :class="currentPage === lastPage ? 'text-gray-400' : 'text-gray-700 hover:bg-gray-100'"
+        :class="currentPage === lastPage ? 'text-ink-3' : 'text-ink-2 hover:bg-hover'"
       >
         <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -91,7 +91,7 @@
         @click="$emit('goto', lastPage)"
         :disabled="currentPage === lastPage"
         class="ui-pagination-btn inline-flex items-center justify-center w-8 h-8 text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        :class="currentPage === lastPage ? 'text-gray-400' : 'text-gray-700 hover:bg-gray-100'"
+        :class="currentPage === lastPage ? 'text-ink-3' : 'text-ink-2 hover:bg-hover'"
       >
         <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" />

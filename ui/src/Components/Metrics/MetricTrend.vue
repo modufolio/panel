@@ -1,11 +1,11 @@
 <template>
-  <div class="ui-metric-trend rounded-lg bg-white p-5 shadow-sm ring-1 ring-gray-950/5">
+  <div class="ui-metric-trend rounded-lg bg-surface p-5 shadow-sm ring-1 ring-hairline">
     <div class="flex items-center justify-between gap-2">
-      <span class="truncate text-sm font-medium text-gray-600">{{ metric.label }}</span>
-      <Icon v-if="metric.icon" :name="metric.icon" class="h-5 w-5 shrink-0 text-gray-400" />
+      <span class="truncate text-sm font-medium text-ink-2">{{ metric.label }}</span>
+      <Icon v-if="metric.icon" :name="metric.icon" class="h-5 w-5 shrink-0 text-ink-3" />
     </div>
 
-    <div class="mt-2 text-3xl font-semibold text-gray-900">{{ formatted }}</div>
+    <div class="mt-2 text-3xl font-semibold text-ink">{{ formatted }}</div>
 
     <!--
       Bars rather than a line: the series is counts per bucket, and a line
@@ -21,14 +21,14 @@
       <div
         v-for="(point, index) in series"
         :key="point.label"
-        class="flex-1 rounded-sm bg-primary-500/80 transition-[height]"
-        :class="heights[index] === 0 ? 'bg-gray-100' : ''"
+        class="flex-1 rounded-sm bg-primary-fill/80 transition-[height]"
+        :class="heights[index] === 0 ? 'bg-surface-sunken' : ''"
         :style="{ height: `${Math.max(heights[index], 2)}%` }"
         :title="`${formatBucketLabel(point.label, metric.bucket)}: ${formatMetricValue(metric, point.value)}`"
       />
     </div>
 
-    <div class="mt-2 flex justify-between text-xs text-gray-400">
+    <div class="mt-2 flex justify-between text-xs text-ink-3">
       <span>{{ first }}</span>
       <span>{{ last }}</span>
     </div>

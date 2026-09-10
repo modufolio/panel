@@ -66,7 +66,7 @@ const stackClass = computed(() => {
 
   // Divider
   if (props.divider) {
-    classes.push('divide-y', 'divide-gray-200')
+    classes.push('divide-y', 'divide-line')
   }
 
   return classes.join(' ')

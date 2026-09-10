@@ -1,6 +1,6 @@
 <template>
   <Head title="Set New Password" />
-  <div class="flex items-center justify-center p-6 min-h-screen bg-gray-50">
+  <div class="flex items-center justify-center p-6 min-h-screen bg-app">
     <div class="w-full max-w-md">
       <!-- Logo -->
       <div class="mb-8 text-center">
@@ -9,30 +9,30 @@
       </div>
 
       <!-- Invalid / expired link -->
-      <div v-if="!valid" class="bg-white rounded-xl shadow-sm ring-1 ring-gray-950/5 p-8 text-center space-y-4">
-        <div class="flex items-center justify-center w-12 h-12 mx-auto rounded-full bg-danger-50">
-          <svg class="w-6 h-6 text-danger-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+      <div v-if="!valid" class="bg-surface rounded-xl shadow-sm ring-1 ring-hairline p-8 text-center space-y-4">
+        <div class="flex items-center justify-center w-12 h-12 mx-auto rounded-full bg-danger-surface">
+          <svg class="w-6 h-6 text-danger" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
           </svg>
         </div>
         <div>
-          <h2 class="text-xl font-semibold text-gray-950">Link invalid or expired</h2>
-          <p class="mt-2 text-sm text-gray-600">
+          <h2 class="text-xl font-semibold text-ink">Link invalid or expired</h2>
+          <p class="mt-2 text-sm text-ink-2">
             This password reset link is no longer valid. It may have already been used or has expired (links are valid for 24 hours).
           </p>
         </div>
-        <a :href="panelUrl('/forgot-password')" class="inline-block text-sm font-medium text-primary-600 hover:text-primary-700">
+        <a :href="panelUrl('/forgot-password')" class="inline-block text-sm font-medium text-primary hover:text-primary-hover">
           Request a new link
         </a>
       </div>
 
       <!-- Reset form -->
-      <div v-else class="bg-white rounded-xl shadow-sm ring-1 ring-gray-950/5">
+      <div v-else class="bg-surface rounded-xl shadow-sm ring-1 ring-hairline">
         <form @submit.prevent="submit" class="p-8 space-y-6">
           <div>
-            <h2 class="text-xl font-semibold text-gray-950">Set new password</h2>
-            <p class="mt-1 text-sm text-gray-600">
-              Setting a new password for <span class="font-medium text-gray-800">{{ email }}</span>
+            <h2 class="text-xl font-semibold text-ink">Set new password</h2>
+            <p class="mt-1 text-sm text-ink-2">
+              Setting a new password for <span class="font-medium text-ink">{{ email }}</span>
             </p>
           </div>
 
@@ -57,20 +57,20 @@
           />
 
           <!-- Password requirements hint -->
-          <ul class="text-xs text-gray-500 space-y-1">
-            <li :class="form.password.length >= 12 ? 'text-success-600' : ''">
+          <ul class="text-xs text-ink-2 space-y-1">
+            <li :class="form.password.length >= 12 ? 'text-success' : ''">
               ✓ At least 12 characters
             </li>
-            <li :class="/[A-Z]/.test(form.password) ? 'text-success-600' : ''">
+            <li :class="/[A-Z]/.test(form.password) ? 'text-success' : ''">
               ✓ One uppercase letter
             </li>
-            <li :class="/[a-z]/.test(form.password) ? 'text-success-600' : ''">
+            <li :class="/[a-z]/.test(form.password) ? 'text-success' : ''">
               ✓ One lowercase letter
             </li>
-            <li :class="/[0-9]/.test(form.password) ? 'text-success-600' : ''">
+            <li :class="/[0-9]/.test(form.password) ? 'text-success' : ''">
               ✓ One number
             </li>
-            <li :class="/[^A-Za-z0-9]/.test(form.password) ? 'text-success-600' : ''">
+            <li :class="/[^A-Za-z0-9]/.test(form.password) ? 'text-success' : ''">
               ✓ One special character
             </li>
           </ul>
@@ -89,8 +89,8 @@
         </form>
       </div>
 
-      <p class="mt-6 text-center text-sm text-gray-600">
-        <a :href="panelUrl('/login')" class="font-medium text-primary-600 hover:text-primary-700">Back to sign in</a>
+      <p class="mt-6 text-center text-sm text-ink-2">
+        <a :href="panelUrl('/login')" class="font-medium text-primary hover:text-primary-hover">Back to sign in</a>
       </p>
     </div>
   </div>

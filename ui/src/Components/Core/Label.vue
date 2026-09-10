@@ -1,7 +1,7 @@
 <template>
   <label
-    class="ui-label block text-sm font-medium text-gray-700"
-    :class="[required && 'after:content-[\'*\'] after:ml-0.5 after:text-danger-600', labelClass]"
+    class="ui-label block text-sm font-medium text-label"
+    :class="[required && 'after:content-[\'*\'] after:ml-0.5 after:text-danger', labelClass]"
     :for="forId"
   >
     <slot>{{ text }}</slot>

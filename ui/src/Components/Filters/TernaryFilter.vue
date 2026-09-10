@@ -1,6 +1,6 @@
 <template>
   <div class="ui-ternary-filter">
-    <label v-if="label" class="block text-sm font-medium text-gray-700 mb-1.5">
+    <label v-if="label" class="block text-sm font-medium text-label mb-1.5">
       {{ label }}
     </label>
     <select

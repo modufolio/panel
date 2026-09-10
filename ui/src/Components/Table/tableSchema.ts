@@ -128,13 +128,17 @@ export function cellClasses(column: SchemaColumn): string {
   if (column.align === 'right') classes.push('text-right')
   else if (column.align === 'center') classes.push('text-center')
 
+  // Written out rather than interpolated: Tailwind scans source for literal
+  // class names, so `text-${column.color}` would generate nothing. Keys are the
+  // role names the server sends (see semanticColor), values their semantic
+  // token, which is what lets a coloured cell flip with the theme.
   const colors: Record<string, string> = {
-    primary: 'text-primary-600',
-    success: 'text-success-700',
-    danger: 'text-danger-700',
-    warning: 'text-warning-700',
-    info: 'text-info-700',
-    gray: 'text-gray-500',
+    primary: 'text-primary',
+    success: 'text-success',
+    danger: 'text-danger',
+    warning: 'text-warning',
+    info: 'text-info',
+    gray: 'text-gray',
   }
   if (column.color && colors[column.color]) classes.push(colors[column.color])
 

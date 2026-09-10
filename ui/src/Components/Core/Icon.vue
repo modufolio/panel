@@ -23,6 +23,7 @@ import {
   ClipboardDocumentListIcon,
   ClockIcon,
   Cog6ToothIcon,
+  ComputerDesktopIcon,
   CubeIcon,
   DocumentTextIcon,
   EnvelopeIcon,
@@ -40,6 +41,7 @@ import {
   LinkIcon,
   LockClosedIcon,
   MagnifyingGlassIcon,
+  MoonIcon,
   PencilIcon,
   PhotoIcon,
   PlusIcon,
@@ -52,6 +54,7 @@ import {
   Square2StackIcon,
   StarIcon,
   SparklesIcon,
+  SunIcon,
   SwatchIcon,
   TagIcon,
   TrashIcon,
@@ -122,6 +125,12 @@ const iconMap: Record<string, unknown> = {
   'bell': BellIcon,
   'settings': Cog6ToothIcon,
   'shield': ShieldCheckIcon,
+
+  // Theme. Built in rather than app-registered: ThemeSwitcher ships with the
+  // panel, so its three icons cannot depend on a consumer calling registerIcons.
+  'sun': SunIcon,
+  'moon': MoonIcon,
+  'monitor': ComputerDesktopIcon,
 
   // Users
   'user': UserCircleIcon,

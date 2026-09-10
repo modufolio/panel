@@ -99,7 +99,7 @@ describe('Pagination Component', () => {
         }
       })
       
-      const activeDiv = wrapper.find('.bg-white')
+      const activeDiv = wrapper.find('.bg-surface')
       expect(activeDiv.exists()).toBe(true)
     })
   })
@@ -175,7 +175,7 @@ describe('Pagination Component', () => {
       })
       
       const divs = wrapper.findAll('div').filter(div => 
-        div.classes().includes('text-gray-400')
+        div.classes().includes('text-ink-3')
       )
       expect(divs.length).toBeGreaterThan(0)
     })
@@ -202,7 +202,7 @@ describe('Pagination Component', () => {
         }
       })
       
-      const disabledLink = wrapper.find('.text-gray-400')
+      const disabledLink = wrapper.find('.text-ink-3')
       expect(disabledLink.exists()).toBe(true)
     })
 
@@ -226,7 +226,7 @@ describe('Pagination Component', () => {
         }
       })
       
-      const activeLink = wrapper.find('.bg-white')
+      const activeLink = wrapper.find('.bg-surface')
       expect(activeLink.exists()).toBe(true)
     })
 
@@ -251,7 +251,7 @@ describe('Pagination Component', () => {
       })
       
       const link = wrapper.find('a')
-      expect(link.classes()).toContain('hover:bg-white')
+      expect(link.classes()).toContain('hover:bg-surface')
     })
   })
 

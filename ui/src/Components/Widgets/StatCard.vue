@@ -1,11 +1,11 @@
 <template>
-  <div class="ui-stat-card bg-white rounded-lg shadow-sm ring-1 ring-gray-950/5 p-6">
+  <div class="ui-stat-card bg-surface rounded-lg shadow-sm ring-1 ring-hairline p-6">
     <!-- Label -->
     <div class="flex items-center justify-between">
-      <div class="text-sm font-medium text-gray-600">
+      <div class="text-sm font-medium text-ink-2">
         {{ label }}
       </div>
-      <div v-if="icon" class="text-gray-400">
+      <div v-if="icon" class="text-ink-3">
         <Icon v-if="typeof icon === 'string'" :name="icon" class="w-5 h-5" />
         <component v-else :is="icon" class="w-5 h-5" />
       </div>
@@ -13,7 +13,7 @@
 
     <!-- Value -->
     <div class="mt-2 flex items-baseline gap-2">
-      <div class="text-3xl font-semibold text-gray-900">
+      <div class="text-3xl font-semibold text-ink">
         {{ formattedValue }}
       </div>
 
@@ -50,12 +50,12 @@
     </div>
 
     <!-- Description -->
-    <div v-if="description" class="mt-2 text-sm text-gray-600">
+    <div v-if="description" class="mt-2 text-sm text-ink-2">
       {{ description }}
     </div>
 
     <!-- Extra Content -->
-    <div v-if="$slots.default" class="mt-4 pt-4 border-t border-gray-100">
+    <div v-if="$slots.default" class="mt-4 pt-4 border-t border-line">
       <slot />
     </div>
   </div>
@@ -117,12 +117,12 @@ const changeColorClass = computed(() => {
   const isPositive = props.change > 0
 
   const colors: Record<string, string> = {
-    primary: isPositive ? 'text-primary-600' : 'text-danger-600',
-    success: 'text-success-600',
-    danger: 'text-danger-600',
-    warning: 'text-warning-600',
-    info: 'text-info-600',
-    gray: 'text-gray-600',
+    primary: isPositive ? 'text-primary' : 'text-danger',
+    success: 'text-success',
+    danger: 'text-danger',
+    warning: 'text-warning',
+    info: 'text-info',
+    gray: 'text-gray',
   }
 
   return colors[props.color]

@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-950">
+  <div class="flex h-screen overflow-hidden bg-app">
     <!-- Dropdown Portal Container -->
     <div id="dropdown" />
 
@@ -21,7 +21,7 @@
     >
       <div
         v-if="mobileMenuOpen"
-        class="fixed inset-0 z-40 bg-gray-950/50 md:hidden dark:bg-gray-950/75"
+        class="fixed inset-0 z-40 bg-overlay md:hidden"
         @click="mobileMenuOpen = false"
       />
     </Transition>
@@ -74,7 +74,7 @@
       </TopNavigation>
 
       <!-- Main Content -->
-      <main class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-950">
+      <main class="flex-1 overflow-y-auto bg-app">
         <div class="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 md:py-8">
           <!-- Page Content -->
           <slot />
@@ -82,7 +82,7 @@
       </main>
 
       <!-- Footer (optional) -->
-      <footer v-if="$slots.footer" class="border-t ring-1 ring-gray-950/5 bg-white dark:bg-gray-900 dark:ring-white/10">
+      <footer v-if="$slots.footer" class="border-t border-line ring-1 ring-hairline bg-surface">
         <slot name="footer" />
       </footer>
     </div>
@@ -103,7 +103,7 @@
 import type { MenuItem } from '../../types/menu'
 import { computed, ref, onMounted, onUnmounted, provide, watch, type PropType } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
-import { SidebarCollapsedKey } from '../../injectionKeys'
+import { SidebarCollapsedKey, ThemeKey } from '../../injectionKeys'
 import Sidebar from './Sidebar.vue'
 import type { SidebarEntry } from './Sidebar.vue'
 import TopNavigation from './TopNavigation.vue'
@@ -112,6 +112,7 @@ import GlobalSearchDialog from '../Search/GlobalSearchDialog.vue'
 import ErrorModal from '../Dialogs/ErrorModal.vue'
 import ChangePasswordDialog from '../Dialogs/ChangePasswordDialog.vue'
 import { panelUrl } from '../../Utils/url'
+import { useTheme } from '../../Composables/useTheme'
 import { useToast } from '../../Components/Notifications/useToast'
 import { showToast, type PageToast } from '../../Components/Notifications/pageToasts'
 import { notifyHttpError, notifyNetworkError, notifyPrefetchedError, type ServerError } from '../../Components/Notifications/httpErrors'
@@ -286,6 +287,12 @@ onUnmounted(() => {
 
 // Share collapsed state with deeply nested components (e.g. AlbumSidebar via teleport)
 provide(SidebarCollapsedKey, sidebarCollapsed)
+
+// The resolved theme, for the few things that cannot be a CSS variant — a
+// canvas the component paints, a third-party widget with its own light/dark
+// prop. Provided from the shell so those components stay decoupled from the
+// composable's module state.
+provide(ThemeKey, useTheme().theme)
 
 // Load sidebar state from localStorage on mount
 onMounted(() => {

@@ -6,10 +6,15 @@
   -->
   <div
     v-if="views.length > 1"
-    class="ui-view-switcher inline-flex rounded-lg bg-gray-100 p-0.5"
+    class="ui-view-switcher inline-flex rounded-lg bg-surface-sunken p-0.5"
     role="tablist"
     :aria-label="ariaLabel"
   >
+    <!--
+      The selected tab is raised, not merely a different surface: in the dark
+      theme the sunken track and the base surface are a shade apart, so the
+      pill has to lift above the track to read as selected at all.
+    -->
     <button
       v-for="view in views"
       :key="view.key"
@@ -19,8 +24,8 @@
       :title="view.label"
       class="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium transition-colors"
       :class="view.key === active
-        ? 'bg-white text-gray-900 shadow-sm'
-        : 'text-gray-500 hover:text-gray-700'"
+        ? 'bg-surface-raised text-ink shadow-sm'
+        : 'text-ink-3 hover:text-ink'"
       @click="$emit('select', view.key)"
     >
       <Icon v-if="view.icon" :name="view.icon" class="h-4 w-4" />

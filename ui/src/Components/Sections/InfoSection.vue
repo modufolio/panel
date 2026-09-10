@@ -5,22 +5,22 @@
     </template>
 
     <!-- Items from prop -->
-    <dl v-if="items && items.length > 0" class="ui-info-list divide-y divide-gray-100">
+    <dl v-if="items && items.length > 0" class="ui-info-list divide-y divide-line">
       <div
         v-for="item in items"
         :key="item.label"
         class="ui-info-item py-3 flex gap-4 text-sm"
         :class="stacked ? 'flex-col gap-1' : 'sm:flex-row'"
       >
-        <dt class="font-medium text-gray-500 shrink-0" :class="stacked ? '' : 'sm:w-40'">
+        <dt class="font-medium text-ink-3 shrink-0" :class="stacked ? '' : 'sm:w-40'">
           {{ item.label }}
         </dt>
-        <dd class="text-gray-900">
+        <dd class="text-ink">
           <slot :name="`item-${item.key}`">
             <span v-if="item.value !== null && item.value !== undefined && item.value !== ''">
               {{ item.value }}
             </span>
-            <span v-else class="text-gray-400">—</span>
+            <span v-else class="text-ink-3">—</span>
           </slot>
         </dd>
       </div>

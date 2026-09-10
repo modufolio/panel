@@ -8,7 +8,7 @@
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
     >
-      <div v-if="form.state.visible" class="fixed inset-0 z-[60] bg-gray-900/25" @click="form.closeForm()" />
+      <div v-if="form.state.visible" class="fixed inset-0 z-[60] bg-overlay" @click="form.closeForm()" />
     </Transition>
 
     <Transition
@@ -25,13 +25,13 @@
         role="dialog"
         aria-modal="true"
         :aria-label="title"
-        class="fixed inset-y-0 right-0 z-[61] flex w-full max-w-md flex-col bg-white shadow-lg"
+        class="fixed inset-y-0 right-0 z-[61] flex w-full max-w-md flex-col bg-surface shadow-lg"
       >
-        <div class="flex items-center justify-between border-b border-gray-200 px-6 py-4">
-          <h2 class="text-lg font-semibold text-gray-900">{{ title }}</h2>
+        <div class="flex items-center justify-between border-b border-line px-6 py-4">
+          <h2 class="text-lg font-semibold text-ink">{{ title }}</h2>
           <button
             type="button"
-            class="text-gray-400 hover:text-gray-600"
+            class="text-ink-3 hover:text-ink-2"
             aria-label="Close"
             @click="form.closeForm()"
           >
@@ -57,12 +57,12 @@
           />
         </div>
 
-        <div class="border-t border-gray-200 bg-gray-50 px-6 py-4">
+        <div class="border-t border-line bg-surface-sunken px-6 py-4">
           <div class="flex items-center justify-between gap-3">
             <button
               v-if="form.state.mode === 'edit' && form.state.recordId"
               type="button"
-              class="text-sm text-red-600 hover:text-red-800"
+              class="text-sm text-danger hover:text-danger-on-surface"
               @click="$emit('delete', { data: { id: form.state.recordId } })"
             >
               Delete {{ noun }}
@@ -72,7 +72,7 @@
             <span v-else />
             <button
               type="button"
-              class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
+              class="rounded-lg bg-primary-fill px-4 py-2 text-sm font-medium text-primary-on-fill hover:bg-primary-fill/90 disabled:opacity-50"
               :disabled="form.state.saving"
               @click="() => form.submit(onSave)"
             >

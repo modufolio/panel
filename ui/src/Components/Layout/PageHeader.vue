@@ -16,14 +16,14 @@
             <component
               v-if="icon"
               :is="icon"
-              class="w-8 h-8 text-gray-700"
+              class="w-8 h-8 text-ink-2"
             />
           </slot>
         </div>
 
         <!-- Title and Description -->
         <div class="ui-page-header-text flex-1">
-          <h1 class="ui-page-header-title text-2xl font-bold tracking-tight text-gray-900">
+          <h1 class="ui-page-header-title text-2xl font-bold tracking-tight text-ink">
             <slot name="title">
               {{ title }}
             </slot>
@@ -31,7 +31,7 @@
 
           <p
             v-if="$slots.description || description"
-            class="ui-page-header-description mt-1 text-sm text-gray-500"
+            class="ui-page-header-description mt-1 text-sm text-ink-3"
           >
             <slot name="description">
               {{ description }}
@@ -47,7 +47,7 @@
     </div>
 
     <!-- Tabs or Additional Content -->
-    <div v-if="$slots.tabs" class="ui-page-header-tabs mt-4 border-b border-gray-200">
+    <div v-if="$slots.tabs" class="ui-page-header-tabs mt-4 border-b border-line">
       <slot name="tabs" />
     </div>
   </div>

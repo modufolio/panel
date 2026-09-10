@@ -12,7 +12,7 @@ defineProps({
 </script>
 
 <template>
-  <p :id="id" role="alert" class="ui-field-error mt-1.5 text-sm text-danger-600">
+  <p :id="id" role="alert" class="ui-field-error mt-1.5 text-sm text-danger">
     <slot />
   </p>
 </template>

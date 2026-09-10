@@ -14,7 +14,7 @@
 
       <!-- Live readout. A range input gives no visible value of its own, and
            the thumb position alone does not tell you that 260 is 260. -->
-      <span class="ui-field-range-value shrink-0 text-sm tabular-nums text-gray-500">
+      <span class="ui-field-range-value shrink-0 text-sm tabular-nums text-ink-3">
         {{ displayValue }}
       </span>
     </div>
@@ -29,7 +29,7 @@
       :disabled="disabled"
       :aria-describedby="describedBy"
       :aria-valuetext="suffix ? `${modelValue} ${suffix}` : undefined"
-      class="ui-field-range-input w-full h-2 accent-primary-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+      class="ui-field-range-input w-full h-2 accent-primary cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
       @input="onInput"
     />
   </FieldPrimitive>

@@ -4,12 +4,12 @@
     wrapper-class="ui-field-toggle-buttons border-0 p-0 m-0"
     as="fieldset"
   >
-    <div class="ui-toggle-buttons inline-flex rounded-lg overflow-hidden border border-gray-300 shadow-sm">
+    <div class="ui-toggle-buttons inline-flex rounded-lg overflow-hidden border border-line-strong shadow-sm">
       <button
         v-for="option in normalizedOptions"
         :key="String(option.value)"
         type="button"
-        class="ui-toggle-button relative px-4 py-2 text-sm font-medium transition-all focus:z-10 focus:outline-none focus:ring-2 focus:ring-primary-600"
+        class="ui-toggle-button relative px-4 py-2 text-sm font-medium transition-all focus:z-10 focus:outline-none focus:ring-2 focus:ring-focus"
         :class="buttonClasses(option)"
         :disabled="disabled || option.disabled"
         @click="selectOption(option.value)"
@@ -119,8 +119,10 @@ function buttonClasses(option: NormalizedToggleOption) {
 
   const classes = []
 
-  // Border classes
-  classes.push('border-r', 'last:border-r-0')
+  // Border classes. The colour is named because Tailwind's default border
+  // colour is currentColor, which would tint each divider with its button's
+  // own text — one grey when unselected, white when filled.
+  classes.push('border-r', 'border-line', 'last:border-r-0')
 
   if (props.disabled || option.disabled) {
     classes.push('cursor-not-allowed', 'opacity-50')
@@ -131,21 +133,24 @@ function buttonClasses(option: NormalizedToggleOption) {
   if (isSelected) {
     // Selected state with colors
     if (color) {
+      // One formula per role, written out rather than interpolated: Tailwind
+      // only emits a class it can see as a literal. `brightness` stands in for
+      // the old hand-picked hover step, which had a lighter shade per theme.
       const colorClasses: Record<string, string> = {
-        info: 'bg-info-600 dark:bg-info-600 text-white hover:bg-info-500 dark:hover:bg-info-500',
-        warning: 'bg-warning-400 dark:bg-warning-600 text-warning-900 dark:text-warning-950 hover:bg-warning-300 dark:hover:bg-warning-500',
-        success: 'bg-success-400 dark:bg-success-600 text-success-900 dark:text-success-950 hover:bg-success-300 dark:hover:bg-success-500',
-        danger: 'bg-danger-600 dark:bg-danger-600 text-white hover:bg-danger-500 dark:hover:bg-danger-500',
-        primary: 'bg-primary-600 dark:bg-primary-600 text-white hover:bg-primary-500 dark:hover:bg-primary-500',
-        gray: 'bg-gray-600 dark:bg-gray-600 text-white hover:bg-gray-500 dark:hover:bg-gray-500',
+        info: 'bg-info-fill text-info-on-fill hover:brightness-110',
+        warning: 'bg-warning-fill text-warning-on-fill hover:brightness-110',
+        success: 'bg-success-fill text-success-on-fill hover:brightness-110',
+        danger: 'bg-danger-fill text-danger-on-fill hover:brightness-110',
+        primary: 'bg-primary-fill text-primary-on-fill hover:brightness-110',
+        gray: 'bg-gray-fill text-gray-on-fill hover:brightness-110',
       }
       classes.push(colorClasses[color] || colorClasses.primary)
     } else {
-      classes.push('bg-primary-600', 'text-white', 'hover:bg-primary-500')
+      classes.push('bg-primary-fill', 'text-primary-on-fill', 'hover:brightness-110')
     }
   } else {
     // Unselected state
-    classes.push('bg-white', 'text-gray-700', 'hover:bg-gray-50')
+    classes.push('bg-surface', 'text-ink', 'hover:bg-surface-sunken')
   }
 
   return classes

@@ -7,19 +7,19 @@
   >
     <div
       class="ui-input overflow-hidden p-0"
-      :class="{ 'border-danger-600': error || readError }"
+      :class="{ 'border-danger': error || readError }"
     >
       <!-- The editor mounts here; ProseMirror owns everything inside. -->
-      <div ref="mount" class="pm-editor relative py-3 pl-9 pr-4 text-sm leading-relaxed text-gray-900" />
+      <div ref="mount" class="pm-editor relative py-3 pl-9 pr-4 text-sm leading-relaxed text-ink" />
 
       <!-- Block insert toolbar -->
-      <div v-if="!readError" class="flex flex-wrap items-center gap-1 border-t border-gray-100 bg-gray-50 px-3 py-2">
-        <span class="mr-1 text-xs text-gray-400">Add:</span>
+      <div v-if="!readError" class="flex flex-wrap items-center gap-1 border-t border-line bg-surface-sunken px-3 py-2">
+        <span class="mr-1 text-xs text-ink-3">Add:</span>
         <button
           v-for="option in BLOCK_OPTIONS"
           :key="option.label"
           type="button"
-          class="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-gray-600 transition-colors hover:bg-gray-200"
+          class="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-ink-2 transition-colors hover:bg-hover"
           @click="runOption(option)"
         >
           <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -30,11 +30,13 @@
       </div>
     </div>
 
-    <!-- Selection toolbar -->
+    <!-- Selection toolbar. A raised surface rather than the inverted chip it
+         used to be: inverting only reads as "floating" in a light theme, and
+         the slash menu below already establishes the popover treatment. -->
     <Teleport to="body">
       <div
         v-if="toolbar.visible"
-        class="fixed z-50 flex items-center gap-0.5 rounded-lg bg-gray-900 px-1.5 py-1 shadow-xl"
+        class="fixed z-50 flex items-center gap-0.5 rounded-lg border border-line bg-surface-raised px-1.5 py-1 shadow-xl"
         :style="toolbar.style"
         @mousedown.prevent
       >
@@ -44,21 +46,21 @@
             v-model="linkInput.value"
             type="url"
             placeholder="https://…"
-            class="w-40 border-0 border-b border-white/40 bg-transparent px-1 py-0.5 text-xs text-white outline-none placeholder:text-white/40"
+            class="w-40 border-0 border-b border-line-strong bg-transparent px-1 py-0.5 text-xs text-ink outline-none placeholder:text-ink-3"
             @keydown.enter.prevent="applyLink"
             @keydown.esc.prevent="cancelLink"
           />
-          <button type="button" title="Apply link" class="rounded px-1.5 py-0.5 text-white hover:bg-white/20" @mousedown.prevent="applyLink">✓</button>
-          <button type="button" title="Cancel" class="rounded px-1.5 py-0.5 text-white hover:bg-white/20" @mousedown.prevent="cancelLink">✕</button>
-          <p v-if="linkInput.error" class="ml-1 text-xs text-red-300">{{ linkInput.error }}</p>
+          <button type="button" title="Apply link" class="rounded px-1.5 py-0.5 text-ink hover:bg-hover" @mousedown.prevent="applyLink">✓</button>
+          <button type="button" title="Cancel" class="rounded px-1.5 py-0.5 text-ink hover:bg-hover" @mousedown.prevent="cancelLink">✕</button>
+          <p v-if="linkInput.error" class="ml-1 text-xs text-danger">{{ linkInput.error }}</p>
         </template>
         <template v-else>
-          <button type="button" title="Bold (⌘B)" class="rounded px-2 py-0.5 text-sm font-bold text-white hover:bg-white/20" :class="{ 'bg-white/20': active.strong }" @mousedown.prevent="run(commands.toggleStrong)">B</button>
-          <button type="button" title="Italic (⌘I)" class="rounded px-2 py-0.5 text-sm italic text-white hover:bg-white/20" :class="{ 'bg-white/20': active.em }" @mousedown.prevent="run(commands.toggleEm)">I</button>
-          <button type="button" title="Code (⌘E)" class="rounded px-2 py-0.5 font-mono text-xs text-white hover:bg-white/20" :class="{ 'bg-white/20': active.code }" @mousedown.prevent="run(commands.toggleCode)">&lt;&gt;</button>
-          <div class="mx-0.5 h-4 w-px bg-white/20" />
-          <button type="button" title="Link (⌘K)" class="rounded px-1.5 py-0.5 text-xs text-white hover:bg-white/20" :class="{ 'bg-white/20': active.link }" @mousedown.prevent="openLinkInput">Link</button>
-          <button v-if="active.link" type="button" title="Remove link" class="rounded px-1.5 py-0.5 text-xs text-white hover:bg-white/20" @mousedown.prevent="removeLink">Unlink</button>
+          <button type="button" title="Bold (⌘B)" class="rounded px-2 py-0.5 text-sm font-bold text-ink hover:bg-hover" :class="{ 'bg-primary-surface text-primary-on-surface': active.strong }" @mousedown.prevent="run(commands.toggleStrong)">B</button>
+          <button type="button" title="Italic (⌘I)" class="rounded px-2 py-0.5 text-sm italic text-ink hover:bg-hover" :class="{ 'bg-primary-surface text-primary-on-surface': active.em }" @mousedown.prevent="run(commands.toggleEm)">I</button>
+          <button type="button" title="Code (⌘E)" class="rounded px-2 py-0.5 font-mono text-xs text-ink hover:bg-hover" :class="{ 'bg-primary-surface text-primary-on-surface': active.code }" @mousedown.prevent="run(commands.toggleCode)">&lt;&gt;</button>
+          <div class="mx-0.5 h-4 w-px bg-line" />
+          <button type="button" title="Link (⌘K)" class="rounded px-1.5 py-0.5 text-xs text-ink hover:bg-hover" :class="{ 'bg-primary-surface text-primary-on-surface': active.link }" @mousedown.prevent="openLinkInput">Link</button>
+          <button v-if="active.link" type="button" title="Remove link" class="rounded px-1.5 py-0.5 text-xs text-ink hover:bg-hover" @mousedown.prevent="removeLink">Unlink</button>
         </template>
       </div>
     </Teleport>
@@ -67,12 +69,12 @@
     <Teleport to="body">
       <div
         v-if="slash.visible"
-        class="fixed z-50 min-w-60 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl"
+        class="fixed z-50 min-w-60 overflow-hidden rounded-xl border border-line bg-surface-raised shadow-xl"
         :style="slash.style"
         @mousedown.prevent
       >
-        <div class="border-b border-gray-100 px-3 pb-1.5 pt-2.5">
-          <span class="text-xs font-semibold uppercase tracking-wide text-gray-400">Block type</span>
+        <div class="border-b border-line px-3 pb-1.5 pt-2.5">
+          <span class="text-xs font-semibold uppercase tracking-wide text-ink-3">Block type</span>
         </div>
         <div class="py-1">
           <button
@@ -80,21 +82,21 @@
             :key="option.label"
             type="button"
             class="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors"
-            :class="i === slash.focus ? 'bg-primary-50 text-primary-700' : 'text-gray-700 hover:bg-gray-50'"
+            :class="i === slash.focus ? 'bg-primary-surface text-primary-on-surface' : 'text-ink-2 hover:bg-hover'"
             @mouseenter="slash.focus = i"
             @mousedown.prevent="chooseSlashOption(option)"
           >
-            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" :class="i === slash.focus ? 'bg-primary-100' : 'bg-gray-100'">
+            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" :class="i === slash.focus ? 'bg-primary-surface' : 'bg-surface-sunken'">
               <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" :d="option.iconPath" />
               </svg>
             </div>
             <div class="min-w-0">
               <div class="text-sm font-medium">{{ option.label }}</div>
-              <div class="text-xs text-gray-400">{{ option.description }}</div>
+              <div class="text-xs text-ink-3">{{ option.description }}</div>
             </div>
           </button>
-          <p v-if="slashOptions.length === 0" class="px-3 py-2 text-sm text-gray-400">No matching block</p>
+          <p v-if="slashOptions.length === 0" class="px-3 py-2 text-sm text-ink-3">No matching block</p>
         </div>
       </div>
     </Teleport>
@@ -520,21 +522,21 @@ defineExpose({
 .pm-editor .ProseMirror code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.875em;
-  background: rgb(243 244 246);
+  background: var(--surface-sunken);
   padding: 0.1em 0.3em;
   border-radius: 0.25rem;
 }
 .pm-editor .ProseMirror pre {
-  background: rgb(243 244 246);
+  background: var(--surface-sunken);
   padding: 0.75rem;
   border-radius: 0.375rem;
   overflow-x: auto;
 }
 .pm-editor .ProseMirror pre code { background: none; padding: 0; }
 .pm-editor .ProseMirror blockquote {
-  border-left: 3px solid rgb(209 213 219);
+  border-left: 3px solid var(--line);
   padding-left: 0.75rem;
-  color: rgb(75 85 99);
+  color: var(--ink-2);
 }
 .pm-editor .ProseMirror ul { list-style: disc; padding-left: 1.25rem; }
 .pm-editor .ProseMirror ol { list-style: decimal; padding-left: 1.25rem; }
@@ -542,17 +544,17 @@ defineExpose({
 
 .pm-editor .pm-placeholder::before {
   content: attr(data-placeholder);
-  color: rgb(209 213 219);
+  color: var(--ink-3);
   float: left;
   height: 0;
   pointer-events: none;
 }
 
 .pm-editor .ProseMirror-selectednode {
-  outline: 2px solid rgb(59 130 246);
+  outline: 2px solid var(--focus);
   border-radius: 0.375rem;
 }
-.pm-editor .pm-dropcursor { background: rgb(59 130 246); }
+.pm-editor .pm-dropcursor { background: var(--focus); }
 
 /* Drag handle. Sits in the gutter the editor's `pl-9` reserves, and only
    appears while a block is hovered — the plugin toggles `display`. */
@@ -567,11 +569,11 @@ defineExpose({
   width: 1rem;
   padding: 0.125rem 0.125rem;
   border-radius: 0.25rem;
-  color: rgb(209 213 219);
+  color: var(--ink-3);
   cursor: grab;
   user-select: none;
 }
-.pm-drag-handle:hover { color: rgb(107 114 128); background: rgb(243 244 246); }
+.pm-drag-handle:hover { color: var(--ink-2); background: var(--hover); }
 .pm-drag-handle:active { cursor: grabbing; }
 .pm-drag-handle svg {
   width: 0.75rem;

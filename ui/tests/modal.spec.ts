@@ -142,7 +142,7 @@ describe('Modal Component', () => {
         }
       })
 
-      const overlay = wrapper.find('.bg-black.bg-opacity-50')
+      const overlay = wrapper.find('.ui-modal-scrim')
       await overlay.trigger('click')
 
       expect(wrapper.emitted('close')).toBeTruthy()
@@ -302,18 +302,18 @@ describe('Modal Component', () => {
         }
       })
 
-      const overlay = wrapper.find('.bg-black.bg-opacity-50')
+      const overlay = wrapper.find('.ui-modal-scrim')
       expect(overlay.exists()).toBe(true)
     })
 
-    it('should have white background for content', () => {
+    it('should have a surface background for content', () => {
       const wrapper = mount(Modal, {
         props: {
           show: true
         }
       })
 
-      const content = wrapper.find('.bg-white.px-6.py-4')
+      const content = wrapper.find('.ui-modal-body')
       expect(content.exists()).toBe(true)
     })
 
@@ -324,7 +324,7 @@ describe('Modal Component', () => {
         }
       })
 
-      const header = wrapper.find('.border-b.border-gray-200')
+      const header = wrapper.find('.ui-modal-header')
       expect(header.exists()).toBe(true)
     })
   })
@@ -360,7 +360,7 @@ describe('Modal Component', () => {
       })
 
       const button = wrapper.find('button')
-      expect(button.classes()).toContain('hover:text-gray-500')
+      expect(button.classes()).toContain('hover:text-ink-2')
     })
   })
 

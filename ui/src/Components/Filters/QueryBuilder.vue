@@ -1,15 +1,15 @@
 <template>
   <div class="ui-query-builder space-y-3">
-    <div v-if="modelValue.length === 0" class="text-sm text-gray-400">
+    <div v-if="modelValue.length === 0" class="text-sm text-ink-3">
       No conditions yet.
     </div>
 
     <div
       v-for="(condition, index) in modelValue"
       :key="index"
-      class="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2"
+      class="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-surface-sunken px-3 py-2"
     >
-      <span class="text-xs font-medium text-gray-500">{{ index === 0 ? 'Where' : 'And' }}</span>
+      <span class="text-xs font-medium text-ink-3">{{ index === 0 ? 'Where' : 'And' }}</span>
 
       <!-- Field -->
       <select
@@ -57,13 +57,13 @@
         v-else-if="arity(condition) >= 1"
         :type="inputType(condition.key)"
         :value="condition.value ?? ''"
-        class="w-40 rounded-md border-gray-300 text-sm focus:border-primary-600 focus:ring-primary-600"
+        class="ui-input w-40"
         :aria-label="`Condition ${index + 1} value`"
         @input="update(index, { value: ($event.target as HTMLInputElement).value })"
       />
 
       <template v-if="arity(condition) === 2">
-        <span class="text-xs text-gray-500">and</span>
+        <span class="text-xs text-ink-3">and</span>
         <input
           :type="inputType(condition.key)"
           :value="condition.value2 ?? ''"
@@ -75,7 +75,7 @@
 
       <button
         type="button"
-        class="ml-auto rounded p-1 text-gray-400 hover:text-danger-600"
+        class="ml-auto rounded p-1 text-ink-3 hover:text-danger"
         :aria-label="`Remove condition ${index + 1}`"
         @click="remove(index)"
       >
@@ -87,7 +87,7 @@
 
     <button
       type="button"
-      class="text-sm font-medium text-primary-600 hover:text-primary-800"
+      class="text-sm font-medium text-primary hover:text-primary-hover"
       @click="add"
     >
       + Add condition

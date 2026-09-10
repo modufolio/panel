@@ -320,7 +320,7 @@ describe('CheckboxField Component', () => {
       })
       
       const input = wrapper.find('input')
-      expect(input.classes()).toContain('border-danger-600')
+      expect(input.classes()).toContain('border-danger')
     })
 
     it('should apply disabled styles when disabled', () => {
@@ -333,7 +333,7 @@ describe('CheckboxField Component', () => {
       })
       
       const input = wrapper.find('input')
-      expect(input.classes()).toContain('disabled:bg-gray-50')
+      expect(input.classes()).toContain('disabled:bg-surface-sunken')
     })
 
     it('should make label cursor pointer', () => {

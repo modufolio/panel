@@ -1,7 +1,7 @@
 <template>
   <div class="ui-drawer-tabs">
     <!-- Tab bar: bleeds to the drawer body's edges so the rule spans it fully -->
-    <div class="-mx-6 -mt-6 mb-6 border-b border-gray-200 dark:border-gray-700">
+    <div class="-mx-6 -mt-6 mb-6 border-b border-line">
       <div class="flex items-center gap-6 px-6">
         <nav
           ref="tablistRef"
@@ -21,10 +21,10 @@
             :tabindex="tab.key === activeKey ? 0 : -1"
             :disabled="tab.disabled"
             :data-tab="tab.key"
-            class="group flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
+            class="group flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
             :class="tab.key === activeKey
-              ? 'border-primary-600 text-primary-600 dark:border-primary-400 dark:text-primary-400'
-              : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:border-gray-600 dark:hover:text-gray-200'"
+              ? 'border-primary text-primary'
+              : 'border-transparent text-ink-3 hover:border-line-strong hover:text-ink-2'"
             @click="select(tab)"
           >
             <slot :name="`tab-${tab.key}`" :tab="tab" :active="tab.key === activeKey">
@@ -34,8 +34,8 @@
                 v-if="tab.badge !== undefined && tab.badge !== null && tab.badge !== ''"
                 class="ml-0.5 inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
                 :class="tab.key === activeKey
-                  ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300'
-                  : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'"
+                  ? 'bg-primary-surface text-primary-on-surface'
+                  : 'bg-gray-surface text-gray-on-surface'"
               >{{ tab.badge }}</span>
             </slot>
           </button>

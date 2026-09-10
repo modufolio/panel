@@ -12,10 +12,10 @@
         class="group relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border-2 shadow-sm transition-all duration-200"
         :class="[
           error
-            ? 'border-danger-600'
+            ? 'border-danger'
             : disabled
-            ? 'border-gray-300'
-            : 'border-gray-300 hover:border-primary-400 focus:border-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-600/20',
+            ? 'border-line-strong'
+            : 'border-line-strong hover:border-primary focus:border-focus focus:outline-none focus:ring-2 focus:ring-focus/20',
         ]"
         :disabled="disabled"
         @click="openColorPicker"
@@ -24,20 +24,12 @@
         <!-- Checkered pattern for transparency -->
         <div
           v-if="!modelValue || modelValue === 'transparent'"
-          class="absolute inset-0"
-          style="
-            background-image: linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
-              linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
-              linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
-              linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
-            background-size: 8px 8px;
-            background-position: 0 0, 0 4px, 4px -4px, -4px 0px;
-          "
+          class="ui-color-checkerboard absolute inset-0"
         />
 
         <!-- Hover overlay -->
         <div
-          class="absolute inset-0 bg-black opacity-0 transition-opacity duration-200 group-hover:opacity-10"
+          class="absolute inset-0 bg-pressed opacity-0 transition-opacity duration-200 group-hover:opacity-100"
         />
       </button>
 
@@ -63,10 +55,10 @@
               class="ui-input block w-full"
               :class="[
                 error
-                  ? 'border-danger-600 focus:border-danger-600 focus:ring-danger-600/20'
+                  ? 'border-danger focus:border-danger focus:ring-danger/20'
                   : disabled
-                  ? 'border-gray-300 bg-gray-50 text-gray-500'
-                  : 'border-gray-300 focus:border-primary-600 focus:ring-primary-600/20',
+                  ? 'border-line-strong bg-surface-sunken text-ink-3'
+                  : 'border-line-strong focus:border-focus focus:ring-focus/20',
                 'pl-3 pr-20 py-2 text-sm',
               ]"
               @input="handleHexInput"
@@ -77,7 +69,7 @@
             <div
               class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"
             >
-              <span class="text-xs font-medium text-gray-400 uppercase">
+              <span class="text-xs font-medium text-ink-3 uppercase">
                 {{ format }}
               </span>
             </div>
@@ -93,8 +85,8 @@
             class="h-6 w-6 rounded border-2 transition-all duration-200"
             :class="[
               modelValue === preset
-                ? 'border-primary-600 ring-2 ring-primary-600/20'
-                : 'border-gray-300 hover:border-gray-400',
+                ? 'border-primary ring-2 ring-focus/20'
+                : 'border-line hover:border-line-strong',
               disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
             ]"
             :style="{ backgroundColor: preset }"
@@ -250,3 +242,22 @@ watch(
   }
 )
 </script>
+
+<style scoped>
+/* The transparency checkerboard. Driven by tokens rather than the literal
+   greys it used to carry inline, which glowed on a dark panel. */
+.ui-color-checkerboard {
+  background-color: var(--checker-b);
+  background-image:
+    linear-gradient(45deg, var(--checker-a) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--checker-a) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--checker-a) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--checker-a) 75%);
+  background-size: 8px 8px;
+  background-position:
+    0 0,
+    0 4px,
+    4px -4px,
+    -4px 0;
+}
+</style>

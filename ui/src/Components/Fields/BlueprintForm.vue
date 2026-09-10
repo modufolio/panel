@@ -11,7 +11,7 @@
     -->
     <pre
       v-if="unknownTypes.length"
-      class="ui-field-unknown-types col-span-12 whitespace-pre-wrap rounded-md border border-red-200 bg-red-50 p-3 font-mono text-xs text-red-700"
+      class="ui-field-unknown-types col-span-12 whitespace-pre-wrap rounded-md border border-danger bg-danger-surface p-3 font-mono text-xs text-danger-on-surface"
       role="alert"
     >{{ unknownTypeMessage }}</pre>
 
@@ -22,10 +22,10 @@
     <template v-for="run in runs(ungroupedFields)" :key="run.key">
       <fieldset
         v-if="run.fieldset"
-        class="ui-fieldset col-span-12 rounded-md border border-gray-200 p-4 dark:border-gray-700"
+        class="ui-fieldset col-span-12 rounded-md border border-line p-4"
       >
-        <legend class="px-1 text-sm font-medium text-gray-900 dark:text-gray-100">{{ run.fieldset.label }}</legend>
-        <p v-if="run.fieldset.help" class="mb-3 -mt-1 text-xs text-gray-500 dark:text-gray-400">{{ run.fieldset.help }}</p>
+        <legend class="px-1 text-sm font-medium text-ink">{{ run.fieldset.label }}</legend>
+        <p v-if="run.fieldset.help" class="mb-3 -mt-1 text-xs text-ink-3">{{ run.fieldset.help }}</p>
         <FieldGrid>
           <component
             :is="fieldComponent(field.type)"
@@ -63,10 +63,10 @@
           <template v-for="run in runs(groupedFields[tab.key] ?? [])" :key="run.key">
             <fieldset
               v-if="run.fieldset"
-              class="ui-fieldset col-span-12 rounded-md border border-gray-200 p-4 dark:border-gray-700"
+              class="ui-fieldset col-span-12 rounded-md border border-line p-4"
             >
-              <legend class="px-1 text-sm font-medium text-gray-900 dark:text-gray-100">{{ run.fieldset.label }}</legend>
-              <p v-if="run.fieldset.help" class="mb-3 -mt-1 text-xs text-gray-500 dark:text-gray-400">{{ run.fieldset.help }}</p>
+              <legend class="px-1 text-sm font-medium text-ink">{{ run.fieldset.label }}</legend>
+              <p v-if="run.fieldset.help" class="mb-3 -mt-1 text-xs text-ink-3">{{ run.fieldset.help }}</p>
               <FieldGrid>
                 <component
                   :is="fieldComponent(field.type)"

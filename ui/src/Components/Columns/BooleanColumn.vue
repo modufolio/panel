@@ -65,12 +65,12 @@ const label = computed(() => {
 
 const iconClasses = computed(() => {
   const colorClasses: Record<string, string> = {
-    success: 'bg-success-100 text-success-600',
-    danger: 'bg-danger-100 text-danger-600',
-    warning: 'bg-warning-100 text-warning-600',
-    info: 'bg-info-100 text-info-600',
-    primary: 'bg-primary-100 text-primary-600',
-    gray: 'bg-gray-100 text-gray-600',
+    success: 'bg-success-surface text-success-on-surface',
+    danger: 'bg-danger-surface text-danger-on-surface',
+    warning: 'bg-warning-surface text-warning-on-surface',
+    info: 'bg-info-surface text-info-on-surface',
+    primary: 'bg-primary-surface text-primary-on-surface',
+    gray: 'bg-gray-surface text-gray-on-surface',
   }
 
   const color = boolValue.value ? props.trueColor : props.falseColor
@@ -79,12 +79,12 @@ const iconClasses = computed(() => {
 
 const labelClasses = computed(() => {
   const colorClasses: Record<string, string> = {
-    success: 'text-success-700',
-    danger: 'text-danger-700',
-    warning: 'text-warning-700',
-    info: 'text-info-700',
-    primary: 'text-primary-700',
-    gray: 'text-gray-700',
+    success: 'text-success',
+    danger: 'text-danger',
+    warning: 'text-warning',
+    info: 'text-info',
+    primary: 'text-primary',
+    gray: 'text-gray',
   }
 
   const color = boolValue.value ? props.trueColor : props.falseColor

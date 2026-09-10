@@ -78,11 +78,15 @@ function navigate(): void {
 }
 
 const colorClasses = computed(() => {
+  // Role tokens carry their own per-theme value, so the hover is the role's own
+  // on-surface foreground — darker in light, lighter in dark — rather than a
+  // second palette step with a dark-mode twin. Opacity is avoided here: the
+  // trailing arrow fades in on the same hover.
   const colors: Record<string, string> = {
-    primary: 'text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300',
-    gray: 'text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100',
-    danger: 'text-danger-600 hover:text-danger-700 dark:text-danger-400 dark:hover:text-danger-300',
-    success: 'text-success-600 hover:text-success-700 dark:text-success-400 dark:hover:text-success-300',
+    primary: 'text-primary hover:text-primary-on-surface',
+    gray: 'text-ink-2 hover:text-ink',
+    danger: 'text-danger hover:text-danger-on-surface',
+    success: 'text-success hover:text-success-on-surface',
   }
   return colors[props.color]
 })

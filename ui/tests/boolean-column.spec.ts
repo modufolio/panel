@@ -19,6 +19,6 @@ describe('BooleanColumn icons', () => {
   it('colours the false state as asked', () => {
     const no = mount(BooleanColumn, { props: { value: false, falseColor: 'danger' } })
 
-    expect(no.find('span').classes()).toContain('text-danger-600')
+    expect(no.find('span').classes()).toContain('text-danger-on-surface')
   })
 })

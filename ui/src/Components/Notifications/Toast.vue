@@ -25,7 +25,7 @@
         >
           <div
             :class="toastClasses(toast)"
-            class="flex items-start gap-3 p-4 rounded-lg shadow-lg ring-1 ring-black ring-opacity-5"
+            class="flex items-start gap-3 p-4 rounded-lg shadow-lg ring-1 ring-hairline"
           >
             <!-- Icon -->
             <div class="flex-shrink-0">
@@ -43,7 +43,7 @@
 
               <!-- Progress Bar -->
               <div v-if="toast.progress !== undefined" class="mt-2">
-                <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                <div class="w-full bg-pressed rounded-full h-2.5 overflow-hidden">
                   <div
                     class="h-2.5 rounded-full transition-all duration-300 ease-out"
                     :class="progressBarClasses(toast)"
@@ -70,7 +70,7 @@
             <button
               v-if="toast.closable"
               @click="removeToast(toast.id)"
-              class="flex-shrink-0 inline-flex text-gray-400 hover:text-gray-500 transition-colors"
+              class="flex-shrink-0 inline-flex text-ink-3 hover:text-ink-2 transition-colors"
               aria-label="Close"
               data-testid="toast-close"
             >
@@ -122,64 +122,71 @@ const positionClasses = computed(() => {
   return positions[props.position]
 })
 
+/**
+ * A toast is a tinted card, not a filled one: the role tints the surface and
+ * `-on-surface` is the foreground derived to sit on that exact tint. Pairing
+ * them is what stops a warning toast going pale-on-pale when the tint darkens.
+ */
 function toastClasses(toast: Toast) {
   const types = {
-    success: 'bg-success-50',
-    error: 'bg-danger-50',
-    warning: 'bg-warning-50',
-    info: 'bg-info-50',
+    success: 'bg-success-surface',
+    error: 'bg-danger-surface',
+    warning: 'bg-warning-surface',
+    info: 'bg-info-surface',
   }
-  return types[toast.type] || 'bg-white'
+  return types[toast.type] || 'bg-surface-raised'
 }
 
 function iconClasses(toast: Toast) {
   const types = {
-    success: 'text-success-600',
-    error: 'text-danger-600',
-    warning: 'text-warning-600',
-    info: 'text-info-600',
+    success: 'text-success',
+    error: 'text-danger',
+    warning: 'text-warning',
+    info: 'text-info',
   }
-  return types[toast.type] || 'text-gray-600'
+  return types[toast.type] || 'text-ink-2'
 }
 
+// Title and message share the foreground; the weight in the template is what
+// separates them. Two tints of one role would not survive both themes.
 function titleClasses(toast: Toast) {
   const types = {
-    success: 'text-success-900',
-    error: 'text-danger-900',
-    warning: 'text-warning-900',
-    info: 'text-info-900',
+    success: 'text-success-on-surface',
+    error: 'text-danger-on-surface',
+    warning: 'text-warning-on-surface',
+    info: 'text-info-on-surface',
   }
-  return types[toast.type] || 'text-gray-900'
+  return types[toast.type] || 'text-ink'
 }
 
 function messageClasses(toast: Toast) {
   const types = {
-    success: 'text-success-700',
-    error: 'text-danger-700',
-    warning: 'text-warning-700',
-    info: 'text-info-700',
+    success: 'text-success-on-surface',
+    error: 'text-danger-on-surface',
+    warning: 'text-warning-on-surface',
+    info: 'text-info-on-surface',
   }
-  return types[toast.type] || 'text-gray-600'
+  return types[toast.type] || 'text-ink-2'
 }
 
 function progressBarClasses(toast: Toast) {
   const types = {
-    success: 'bg-success-600',
-    error: 'bg-danger-600',
-    warning: 'bg-warning-600',
-    info: 'bg-info-600',
+    success: 'bg-success-fill',
+    error: 'bg-danger-fill',
+    warning: 'bg-warning-fill',
+    info: 'bg-info-fill',
   }
-  return types[toast.type] || 'bg-gray-600'
+  return types[toast.type] || 'bg-gray-fill'
 }
 
 function actionClasses(toast: Toast) {
   const types = {
-    success: 'text-success-700 hover:text-success-800',
-    error: 'text-danger-700 hover:text-danger-800',
-    warning: 'text-warning-700 hover:text-warning-800',
-    info: 'text-info-700 hover:text-info-800',
+    success: 'text-success-on-surface',
+    error: 'text-danger-on-surface',
+    warning: 'text-warning-on-surface',
+    info: 'text-info-on-surface',
   }
-  return types[toast.type] || 'text-gray-700 hover:text-gray-800'
+  return types[toast.type] || 'text-ink'
 }
 
 const icons = {

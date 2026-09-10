@@ -1,7 +1,8 @@
 <template>
   <span
     class="ui-badge inline-flex items-center justify-center font-medium tabular-nums rounded-full"
-    :class="[colorClasses, sizeClasses]"
+    :class="sizeClasses"
+    :data-color="resolvedColor"
   >
     <slot>{{ label }}</slot>
   </span>
@@ -9,6 +10,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { isSemanticColorInput, semanticColor } from '../../Utils/colors'
 
 const props = defineProps({
   label: {
@@ -18,7 +20,7 @@ const props = defineProps({
   color: {
     type: String,
     default: 'gray',
-    validator: (v: string) => ['primary', 'success', 'danger', 'warning', 'info', 'gray'].includes(v),
+    validator: isSemanticColorInput,
   },
   size: {
     type: String,
@@ -27,17 +29,10 @@ const props = defineProps({
   },
 })
 
-const colorClasses = computed(() => {
-  const map: Record<string, string> = {
-    primary: 'bg-primary-100 text-primary-700',
-    success: 'bg-success-100 text-success-700',
-    danger: 'bg-danger-100 text-danger-700',
-    warning: 'bg-warning-100 text-warning-700',
-    info: 'bg-info-100 text-info-700',
-    gray: 'bg-gray-100 text-gray-600',
-  }
-  return map[props.color]
-})
+/** The tint and its foreground are `data-color` in styles/components.css; going
+ *  through semanticColor means an unrecognised value renders grey rather than
+ *  unstyled, which the old map could not do. */
+const resolvedColor = computed(() => semanticColor(props.color))
 
 const sizeClasses = computed(() => {
   const map: Record<string, string> = {

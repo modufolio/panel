@@ -38,8 +38,8 @@ const previewable = computed(() => /^https?:\/\//.test(props.modelValue ?? ''))
     <div class="flex items-center gap-2">
       <input
         type="url"
-        class="ui-input w-full rounded-md border-gray-300 shadow-sm"
-        :class="{ 'border-danger-500': error }"
+        class="ui-input w-full rounded-md border-line-strong shadow-sm"
+        :class="{ 'border-danger': error }"
         :id="id"
         :value="modelValue"
         :placeholder="placeholder"
@@ -53,7 +53,7 @@ const previewable = computed(() => /^https?:\/\//.test(props.modelValue ?? ''))
         :href="modelValue"
         target="_blank"
         rel="noopener noreferrer"
-        class="shrink-0 text-sm text-primary-600 hover:underline"
+        class="shrink-0 text-sm text-primary hover:underline"
       >Preview</a>
     </div>
   </FieldPrimitive>

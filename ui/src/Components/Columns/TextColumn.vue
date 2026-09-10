@@ -22,14 +22,14 @@
       <!-- Description (optional) -->
       <div
         v-if="description"
-        class="ui-text-column-description text-xs text-gray-500 mt-0.5"
+        class="ui-text-column-description text-xs text-ink-3 mt-0.5"
       >
         {{ description }}
       </div>
     </div>
 
     <!-- Suffix (optional) -->
-    <span v-if="suffix" class="ui-text-column-suffix text-gray-500 text-sm">
+    <span v-if="suffix" class="ui-text-column-suffix text-ink-3 text-sm">
       {{ suffix }}
     </span>
   </div>
