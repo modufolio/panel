@@ -15,7 +15,7 @@
 import { router } from '@inertiajs/vue3'
 import { getCsrfToken } from './csrf'
 import { showToastsIn } from '../Components/Notifications/pageToasts'
-import { httpErrorMessage } from '../Components/Notifications/httpErrors'
+import { httpErrorMessage, notifyHttpError, type ServerError } from '../Components/Notifications/httpErrors'
 
 export interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   /** Plain objects are JSON-encoded; strings/FormData/Blob are sent as-is. */
@@ -119,8 +119,13 @@ export async function apiFetch<T = unknown>(url: string, options: ApiFetchOption
   }
 
   if (!response.ok) {
-    // The server's own sentence first; then the one configured for the
-    // status; then the bare status, which is at least honest.
+    const serverError: ServerError | undefined =
+      payload && typeof payload === 'object' && 'errors' in payload && Array.isArray((payload as { errors?: unknown }).errors)
+        ? ((payload as { errors: unknown[] }).errors[0] as ServerError | undefined)
+        : undefined
+
+    notifyHttpError(response.status, serverError)
+
     const message =
       payload && typeof payload === 'object' && 'message' in payload &&
       typeof (payload as { message?: unknown }).message === 'string'
