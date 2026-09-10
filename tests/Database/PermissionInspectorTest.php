@@ -165,7 +165,7 @@ final class PermissionInspectorTest extends DoctrineTestCase
         return $this->withPermissions(new class extends Permissions {
             public function edit(?object $record, ?UserInterface $user): bool
             {
-                return $user !== null && method_exists($user, 'getRoles') && in_array('ROLE_ADMIN', (array) $user->getRoles(), true);
+                return $user !== null && in_array('ROLE_ADMIN', $user->getRoles(), true);
             }
         });
     }
@@ -249,9 +249,7 @@ final class PermissionInspectorTest extends DoctrineTestCase
         $permissions = new class extends Permissions {
             private static function isAdmin(?UserInterface $user): bool
             {
-                return $user !== null
-                    && method_exists($user, 'getRoles')
-                    && in_array('ROLE_ADMIN', (array) $user->getRoles(), true);
+                return $user !== null && in_array('ROLE_ADMIN', $user->getRoles(), true);
             }
 
             public function readable(string $field, ?UserInterface $user, ?object $record = null): bool
