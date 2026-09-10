@@ -1,9 +1,31 @@
 /**
- * Design tokens the panel components rely on — Tailwind 4 @theme variables.
+ * Design tokens, in three layers.
+ *
+ *   1. Palette   — immutable. Literal values, identical in every theme.
+ *   2. Semantics — the only layer that flips between light and dark.
+ *   3. Bridge    — exposes layer 2 to Tailwind so `bg-surface` exists.
+ *
+ * The split is the load-bearing decision. A system that redefines its palette
+ * ramp per theme makes `gray-900` mean two different colours, and "the same
+ * grey in both themes" becomes inexpressible. Keeping layer 1 frozen is what
+ * lets --color-media-surround below be one value in both themes, which is the
+ * whole point of a panel photographers judge images in.
+ *
+ * Components consume layers 2 and 3 only. A property that names a palette
+ * step directly is a missing semantic token — add one here instead.
+ *
  * Import for the defaults, then override any value in your own @theme block
- * to re-brand the panel. Components only use these semantic scales; nothing
- * in the package hardcodes brand hex values.
+ * to re-brand the panel.
  */
+
+/* The manual toggle. Without this, `dark:` follows the OS and cannot be
+   overridden — which is the state the panel was stuck in before. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------------
+ * Layer 1 — palette. Never redeclared under .dark.
+ * ------------------------------------------------------------------------ */
+
 @theme {
   --color-primary-50: #eff6ff;
   --color-primary-100: #dbeafe;
@@ -64,6 +86,380 @@
   --color-info-800: #1e40af;
   --color-info-900: #1e3a8a;
   --color-info-950: #172554;
+
+  /* The warm orange the dark theme accents with. A raw-developer accent
+     rather than one of Tailwind's — it reads as warm against neutral chrome
+     without competing with the colour in a photograph. */
+  --color-ember-400: #eaa468;
+  --color-ember-500: #e08838;
+  --color-ember-600: #c9712a;
+  --color-ember-700: #a25a20;
+
+  /* --- Media viewing conditions --------------------------------------------
+   * These deliberately do NOT flip. A photographer judging tone needs the same
+   * surround whatever the chrome is doing, so these are viewing conditions
+   * rather than theme. The surround is *lighter* than the chrome, not darker,
+   * which is the convention professional raw developers settled on: judged
+   * against a near-black mat every image reads flatteringly bright, while
+   * against mid-grey it reads honestly.
+   */
+  --color-media-surround: #4d4d4d; /* behind a photo in the loupe/detail view */
+  --color-media-well: #242424; /* grid backdrop, matched to the chrome */
+  --color-media-cell: #595959; /* letterbox bars behind a non-square thumb */
+  --color-media-placeholder: #474747; /* thumb before its image decodes */
+  /* The glyph drawn on that placeholder. Constant for the same reason the
+     placeholder is: a themed ink would vanish on it in one theme or the
+     other, since the ground underneath never moves. */
+  --color-media-placeholder-ink: #a8a8a8;
+  --color-media-selection: #ffffff; /* the selection ring; 3px, 6px radius */
+  /* Chrome drawn directly on top of a photograph — a duration pill, a filename
+     caption, a favourite heart. It has to stay legible over arbitrary image
+     content, so it is frozen white on a frozen scrim rather than following the
+     theme's ink. Kept separate from --color-media-selection so that re-tinting
+     the selection ring cannot silently recolour every caption. */
+  --color-media-overlay-ink: #ffffff;
+  --color-media-scrim: rgb(0 0 0 / 0.55);
+
+  --color-media-star: #ffbf00;
+  --color-media-star-empty: #808080;
+  --color-media-tag: #007aff;
+
+  /* The paper a scannable code is printed on. Frozen for the same reason the
+     media tokens are: a QR quiet zone has to stay white or a phone camera
+     stops reading it, so this is a scanning condition, not chrome. */
+  --color-scan-paper: #ffffff;
+}
+
+/* ---------------------------------------------------------------------------
+ * Layer 2 — semantics. This block, and only this block, differs per theme.
+ * ------------------------------------------------------------------------ */
+
+:root {
+  color-scheme: light;
+
+  /* Surfaces, in stacking order: the page, cards on it, wells cut into it. */
+  --surface-app: #f9fafb;
+  --surface: #ffffff;
+  --surface-sunken: #f3f4f6;
+  --surface-raised: #ffffff;
+
+  /* Lines. `hairline` is the alpha one, for dividers inside a surface where a
+     solid rule would read as a seam. */
+  --line: #e5e7eb;
+  --line-strong: #d1d5db;
+  --hairline: rgb(0 0 0 / 0.06);
+
+  /* Text, brightest to faintest. `ink-3` is for disabled and metadata only —
+     it is the one value not expected to clear AA on its own. */
+  --ink: #111827;
+  --ink-2: #4b5563;
+  --ink-3: #6b7280;
+  --label: #374151;
+  --label-on: #111827;
+
+  /* The knob of a switch. It rides on a role fill rather than on a surface,
+     so it cannot be --surface: on the dark theme's ember track a #242424
+     knob disappears. Near-white in both themes, dimmed slightly in dark. */
+  --control-knob: #ffffff;
+
+  /* Interaction overlays, laid over whatever surface is underneath. */
+  --hover: rgb(0 0 0 / 0.04);
+  --pressed: rgb(0 0 0 / 0.07);
+  --overlay: rgb(17 24 39 / 0.5);
+
+  /* The click-catcher behind a popover or dropdown, as opposed to the scrim
+     behind a dialog. It has to say "the page is not taking clicks" without
+     dimming the content the menu is anchored to — --overlay at half opacity
+     reads as a modal and makes a menu feel like one. */
+  --overlay-soft: rgb(0 0 0 / 0.2);
+
+  /* Role bases. Everything else about a role derives from these two lines. */
+  --primary: var(--color-primary-600);
+  --primary-on-fill: #ffffff;
+  --success: var(--color-success-600);
+  --success-on-fill: #ffffff;
+  --danger: var(--color-danger-600);
+  --danger-on-fill: #ffffff;
+  --warning: var(--color-warning-600);
+  --warning-on-fill: #1f1300;
+  --info: var(--color-info-600);
+  --info-on-fill: #ffffff;
+  --gray: var(--ink-2);
+  --gray-on-fill: #ffffff;
+
+  /* The <select> chevron. A data: URI is its own document, so currentColor
+     inside it resolves to black rather than the control's text colour — the
+     tint has to be baked in per theme, which is what this token is for. */
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23374151' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+
+  /* How a role's tint and its foreground are derived (see the block below).
+     In light the tint is pale, so its text mixes toward black. */
+  --role-tint: 10%;
+  --role-fg-toward: #000000;
+  --role-fg-amount: 78%;
+  /* A hovered role — a filled button's background, a link's text — shifts the
+     same way that role's foreground does: toward black in light, toward white
+     in dark. One knob, so no role can ship without a hover state. */
+  --role-hover: 14%;
+
+  --focus: var(--primary);
+
+  /* A selected row or card. Deliberately not --primary-surface: selection is a
+     state, not a role, and tinting it with the accent ties the highlight to
+     whatever hue the accent happens to be. On a light theme a pale accent wash
+     still reads cleanly, so this keeps the familiar look. */
+  --selected: color-mix(in oklab, var(--primary) 10%, var(--surface));
+
+  --shadow-alpha: 0.1;
+
+  /* The two squares of the transparency checkerboard, behind a colour swatch
+     with no colour. It is a pattern rather than a surface, so it cannot be
+     spelled with the surface tokens: the squares have to stay distinguishable
+     from each other *and* from the surface they sit on, in both themes. */
+  --checker-a: #e5e7eb;
+  --checker-b: #ffffff;
+
+  /* A switch's off track. Not a surface: it has to stay distinguishable from
+     the knob on top of it (--surface-raised), which --surface-sunken cannot
+     do on a dark panel where the two are three points apart. */
+  --track-off: #e5e7eb;
+}
+
+:root.dark {
+  color-scheme: dark;
+
+  /* Neutral greys with no hue tint, lifted far enough off black that panel
+     text stays readable — Tailwind's own greys are blue-cast and tint any
+     photograph they sit near. */
+  --surface-app: #161616;
+  --surface: #242424;
+  /* #222222 would be the natural next step down, but against --surface
+     (#242424) it is only 0.8% apart, and
+     a thead, skeleton row or expanded-row well disappears into the card.
+     A well goes down toward the canvas instead. */
+  --surface-sunken: #1c1c1c;
+  --surface-raised: #2c2c2c;
+
+  --line: #3a3a3a;
+  --line-strong: #4a4a4a;
+  --hairline: rgb(255 255 255 / 0.08);
+
+  --ink: #eaeaea;
+  --ink-2: #b0b0b0;
+  --ink-3: #707070;
+  --label: #bababa;
+  --label-on: #f0f0f0;
+
+  --control-knob: #e8e8e8;
+
+  --hover: rgb(255 255 255 / 0.05);
+  --pressed: rgb(255 255 255 / 0.09);
+  --overlay: rgb(0 0 0 / 0.65);
+  --overlay-soft: rgb(0 0 0 / 0.35);
+
+  /* The neutral tint has to be *lighter* than what it sits on, and in dark the
+     sunken surface is darker than a card — a default badge on a panel came out
+     at ~1.02:1 against it. An alpha lift is the one value that reads as a chip
+     on the canvas, a card and an elevated menu alike. */
+  --gray-surface: rgb(255 255 255 / 0.09);
+
+  /* The one role that changes hue between themes. Blue is right on white and
+     muddy on #242424, where the warm orange holds its own. */
+  --primary: var(--color-ember-500);
+  --primary-on-fill: #1a0e02;
+  /* Every role steps up to its 500 here, which is bright enough that white on
+     it fails AA — success worst of all at 2.4:1. So the on-fill colours flip
+     to near-black too, rather than inheriting light's #ffffff. Warning is
+     already dark in both themes and needs no override. */
+  --success: var(--color-success-500);
+  --success-on-fill: var(--color-success-950);
+  --danger: var(--color-danger-500);
+  --danger-on-fill: var(--color-danger-950);
+  --warning: var(--color-warning-500);
+  --info: var(--color-info-500);
+  --info-on-fill: var(--color-info-950);
+  --gray: var(--ink-2);
+  --gray-on-fill: #161616;
+
+  /* Green is the one role the 600 → 500 lift pushes past white: white on
+     success-500 is ~2.1:1, so a filled success button reads as unlabelled.
+     The other roles stay light-on-colour, which is still legible at 500. */
+  --success-on-fill: var(--color-success-950);
+  --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23bababa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+
+  /* The tint sits on a dark surface, so its text mixes toward white instead. */
+  --role-tint: 18%;
+
+  /* On a dark surface an accent wash goes muddy — a warm accent at any useful
+     strength reads as brown rather than as "selected". A neutral lift says the
+     same thing without staining the row, and leaves the accent to the border
+     and the checkbox, where it still marks the selection. */
+  --selected: color-mix(in oklab, #ffffff 7%, var(--surface));
+  --role-fg-toward: #ffffff;
+  --role-fg-amount: 72%;
+  --role-hover: 12%;
+
+  --shadow-alpha: 0.4;
+
+  /* Both squares stay above --surface (#242424) so the pattern reads as an
+     absence of colour rather than as a hole in the panel. */
+  --checker-a: #3a3a3a;
+  --checker-b: #2c2c2c;
+
+  --track-off: #4a4a4a;
+}
+
+/**
+ * Derived role tokens — five per role, one formula.
+ *
+ *   {role}             the colour itself: text, icons, borders on the page
+ *   {role}-fill        a solid background, for filled buttons and badges
+ *   {role}-hover       the role one step along, under the pointer
+ *   {role}-on-fill     what goes on top of that solid background
+ *   {role}-surface     a subtle tint, for callouts and selected rows
+ *   {role}-on-surface  what goes on top of that tint
+ *
+ * The on-colours are the pair everyone forgets, and then hardcodes text-white
+ * on a yellow badge. Deriving them means a role cannot be added without one.
+ *
+ * These live outside the theme blocks because the formula is the same in both
+ * — only its inputs (--role-tint, --role-fg-*) flip.
+ */
+:root {
+  --primary-fill: var(--primary);
+  --primary-hover: color-mix(in oklab, var(--primary) calc(100% - var(--role-hover)), var(--role-fg-toward));
+  --primary-surface-strong: color-mix(in oklab, var(--primary) calc(var(--role-tint) * 1.8), var(--surface));
+  --primary-surface: color-mix(in oklab, var(--primary) var(--role-tint), var(--surface));
+  --primary-on-surface: color-mix(in oklab, var(--primary) var(--role-fg-amount), var(--role-fg-toward));
+
+  /* Hover/active steps, primary only: it is the one role that backs a control
+     the user presses — the others are badges and callouts, which have no
+     states. Both shift along --role-fg-toward, so the fill darkens against a
+     light theme and lightens against a dark one rather than always going
+     down the ramp, which in dark reads as the control switching off. */
+
+  --success-fill: var(--success);
+  --success-hover: color-mix(in oklab, var(--success) calc(100% - var(--role-hover)), var(--role-fg-toward));
+  --success-surface-strong: color-mix(in oklab, var(--success) calc(var(--role-tint) * 1.8), var(--surface));
+  --success-surface: color-mix(in oklab, var(--success) var(--role-tint), var(--surface));
+  --success-on-surface: color-mix(in oklab, var(--success) var(--role-fg-amount), var(--role-fg-toward));
+
+  --danger-fill: var(--danger);
+  --danger-hover: color-mix(in oklab, var(--danger) calc(100% - var(--role-hover)), var(--role-fg-toward));
+  --danger-surface-strong: color-mix(in oklab, var(--danger) calc(var(--role-tint) * 1.8), var(--surface));
+  --danger-surface: color-mix(in oklab, var(--danger) var(--role-tint), var(--surface));
+  --danger-on-surface: color-mix(in oklab, var(--danger) var(--role-fg-amount), var(--role-fg-toward));
+
+  --warning-fill: var(--warning);
+  --warning-hover: color-mix(in oklab, var(--warning) calc(100% - var(--role-hover)), var(--role-fg-toward));
+  --warning-surface-strong: color-mix(in oklab, var(--warning) calc(var(--role-tint) * 1.8), var(--surface));
+  --warning-surface: color-mix(in oklab, var(--warning) var(--role-tint), var(--surface));
+  --warning-on-surface: color-mix(in oklab, var(--warning) var(--role-fg-amount), var(--role-fg-toward));
+
+  --info-fill: var(--info);
+  --info-hover: color-mix(in oklab, var(--info) calc(100% - var(--role-hover)), var(--role-fg-toward));
+  --info-surface-strong: color-mix(in oklab, var(--info) calc(var(--role-tint) * 1.8), var(--surface));
+  --info-surface: color-mix(in oklab, var(--info) var(--role-tint), var(--surface));
+  --info-on-surface: color-mix(
+    in oklab,
+    var(--info) var(--role-fg-amount),
+    var(--role-fg-toward)
+  );
+
+  /* Neutral collapses its pair deliberately: a grey tint with "grey mixed
+     toward white" on it is unreadable, and the honest answer is body text. */
+  --gray-fill: var(--gray);
+  --gray-hover: color-mix(in oklab, var(--gray) calc(100% - var(--role-hover)), var(--role-fg-toward));
+  --gray-surface: var(--surface-sunken);
+  --gray-on-surface: var(--ink);
+}
+
+/* ---------------------------------------------------------------------------
+ * Layer 3 — bridge. `inline` is required: it makes the generated utility hold
+ * `var(--surface)` rather than a copy of its value, which is the mechanism by
+ * which .dark overrides reach classes that were compiled once.
+ * ------------------------------------------------------------------------ */
+
+@theme inline {
+  /* Overriding Tailwind's own shadow scale, so `shadow-lg` picks up the
+     theme's alpha instead of its built-in fixed rgb(0 0 0 / 0.1). */
+  --shadow-sm: var(--elevation-sm);
+  --shadow-md: var(--elevation-md);
+  --shadow-lg: var(--elevation-lg);
+  --shadow-xl: var(--elevation-xl);
+  --shadow-2xl: var(--elevation-2xl);
+
+  --color-app: var(--surface-app);
+  --color-surface: var(--surface);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-raised: var(--surface-raised);
+
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-hairline: var(--hairline);
+
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-label: var(--label);
+  --color-label-on: var(--label-on);
+
+  --color-control-knob: var(--control-knob);
+
+  --color-hover: var(--hover);
+  --color-selected: var(--selected);
+  --color-pressed: var(--pressed);
+  --color-overlay: var(--overlay);
+  --color-overlay-soft: var(--overlay-soft);
+  --color-focus: var(--focus);
+  --color-track-off: var(--track-off);
+
+  --color-primary: var(--primary);
+  --color-primary-fill: var(--primary-fill);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-surface-strong: var(--primary-surface-strong);
+  --color-primary-on-fill: var(--primary-on-fill);
+  --color-primary-surface: var(--primary-surface);
+  --color-primary-on-surface: var(--primary-on-surface);
+
+  --color-success: var(--success);
+  --color-success-fill: var(--success-fill);
+  --color-success-hover: var(--success-hover);
+  --color-success-surface-strong: var(--success-surface-strong);
+  --color-success-on-fill: var(--success-on-fill);
+  --color-success-surface: var(--success-surface);
+  --color-success-on-surface: var(--success-on-surface);
+
+  --color-danger: var(--danger);
+  --color-danger-fill: var(--danger-fill);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-surface-strong: var(--danger-surface-strong);
+  --color-danger-on-fill: var(--danger-on-fill);
+  --color-danger-surface: var(--danger-surface);
+  --color-danger-on-surface: var(--danger-on-surface);
+
+  --color-warning: var(--warning);
+  --color-warning-fill: var(--warning-fill);
+  --color-warning-hover: var(--warning-hover);
+  --color-warning-surface-strong: var(--warning-surface-strong);
+  --color-warning-on-fill: var(--warning-on-fill);
+  --color-warning-surface: var(--warning-surface);
+  --color-warning-on-surface: var(--warning-on-surface);
+
+  --color-info: var(--info);
+  --color-info-fill: var(--info-fill);
+  --color-info-hover: var(--info-hover);
+  --color-info-surface-strong: var(--info-surface-strong);
+  --color-info-on-fill: var(--info-on-fill);
+  --color-info-surface: var(--info-surface);
+  --color-info-on-surface: var(--info-on-surface);
+
+  --color-gray: var(--gray);
+  --color-gray-fill: var(--gray-fill);
+  --color-gray-hover: var(--gray-hover);
+  --color-gray-on-fill: var(--gray-on-fill);
+  --color-gray-surface: var(--gray-surface);
+  --color-gray-on-surface: var(--gray-on-surface);
 }
 
 /**
@@ -76,4 +472,20 @@
      (basecoat, off a 0.625rem base). 4px is the step between them. */
   --radius-input: 4px;
   --input-height: 2.25rem;
+
+  /* One shadow family whose only per-theme variable is how opaque the black
+     is. Tokenised so a theme cannot flip three of four and leave the fourth
+     behind, which is what duplicating whole shadow strings per theme causes. */
+  --elevation-sm: 0 1px 2px 0 rgb(0 0 0 / var(--shadow-alpha));
+  --elevation-md: 0 4px 6px -1px rgb(0 0 0 / var(--shadow-alpha));
+  --elevation-lg: 0 10px 15px -3px rgb(0 0 0 / var(--shadow-alpha));
+  --elevation-xl: 0 20px 25px -5px rgb(0 0 0 / var(--shadow-alpha));
+  --elevation-2xl: 0 25px 50px -12px rgb(0 0 0 / calc(var(--shadow-alpha) * 2));
+
+
+  /* The ring drawn around the active thumbnail. Sized so it holds at any
+     cell size, and outside the pixels so nothing chromatic touches the
+     image itself. */
+  --media-ring-width: 3px;
+  --media-ring-radius: 6px;
 }

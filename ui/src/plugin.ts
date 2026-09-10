@@ -5,6 +5,7 @@ import { registerIcons } from './Components/Core/iconRegistry'
 import { registerFieldType } from './Components/Fields/useBlueprint'
 import { setMediaEndpoints, type MediaEndpoints } from './Components/Media/mediaEndpoints'
 import { configureHttpErrors, type HttpErrorMessages } from './Components/Notifications/httpErrors'
+import { setDefaultTheme, type ResolvedTheme } from './Composables/useTheme'
 
 export interface CreatePanelOptions {
   /** Mount path of the panel backend, e.g. '/panel' or '/admin'. */
@@ -37,6 +38,18 @@ export interface CreatePanelOptions {
    * a plain sentence for one of those to get a toast back.
    */
   errorMessages?: HttpErrorMessages
+  /**
+   * What the panel opens as before anyone has touched the theme switch.
+   * Defaults to `'dark'` — the panel is built around judging images, and every
+   * tool in that category is dark. `'system'` follows the OS instead.
+   *
+   * A stored preference always wins over this. It only decides the first load.
+   *
+   * This sets the class on <html> as soon as createPanel runs, which is early
+   * but still after the document has painted once; see the README for the
+   * blocking <head> snippet that removes the flash.
+   */
+  theme?: ResolvedTheme | 'system'
 }
 
 /**
@@ -56,6 +69,7 @@ export function createPanel(options: CreatePanelOptions = {}) {
   if (options.icons) registerIcons(options.icons)
   if (options.teleportTarget !== undefined) setTeleportTarget(options.teleportTarget)
   setMediaEndpoints(options.media)
+  if (options.theme !== undefined) setDefaultTheme(options.theme)
   configureHttpErrors(options.errorMessages)
   for (const [type, loader] of Object.entries(options.fields ?? {})) {
     registerFieldType(type, loader)

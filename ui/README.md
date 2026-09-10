@@ -94,10 +94,64 @@ That entry pulls in the design tokens, the button and form rules, and
 `components.css` — the `ui-*` classes the components themselves emit. Import
 your own stylesheet after it to override any of them.
 
-Theming: components use the semantic `--color-primary-*` / `success` /
-`danger` / `warning` / `info` scales. Import
-`@modufolio/panel/styles/tokens.css` for the defaults, then override any
-value in your own `@theme` block to re-brand.
+### Theming
+
+`tokens.css` is three layers:
+
+1. **Palette** — `--color-primary-*`, `--color-success-*`, … and the
+   `--color-media-*` values. Literal, and identical in every theme.
+2. **Semantics** — `--surface`, `--ink`, `--line`, and five tokens per role
+   (`--danger`, `--danger-fill`, `--danger-on-fill`, `--danger-surface`,
+   `--danger-on-surface`). This is the only layer that differs between light
+   and dark.
+3. **Bridge** — an `@theme inline` block turning layer 2 into utilities, so
+   `bg-surface`, `text-ink`, `border-line` and `text-danger-on-surface` exist.
+
+Components use layers 2 and 3 — `bg-surface`, not `bg-white dark:bg-gray-900`.
+Both themes therefore come from one set of classes, and anything built on top
+of the panel inherits dark mode without repeating the work. Override any value
+in your own `@theme` block to re-brand.
+
+The `--color-media-*` tokens deliberately do **not** change with the theme: a
+photographer judging tone needs the same neutral surround whatever the chrome
+is doing. `bg-media-surround` is `#4d4d4d` in both themes, and is *lighter*
+than the dark chrome around it, the way professional raw developers mat an
+image.
+
+### Light and dark
+
+Dark mode is a `dark` class on `<html>`, not a media query, so the user can
+override the OS. `createPanel({ theme })` sets what the panel opens as —
+`'dark'` (the default), `'light'`, or `'system'` to follow the OS. A stored
+choice always wins; `theme` only decides the first load.
+
+Read or change it with `useTheme()`:
+
+```ts
+const { theme, preference, isDark, options, set } = useTheme()
+set('light')            // 'system' | 'light' | 'dark', persisted to panel.theme
+```
+
+**Add this to your document `<head>`, before any stylesheet.** The composable
+applies the class as soon as it is imported, but that is still after the
+browser has painted once — this script runs first and removes the flash:
+
+```html
+<script>
+  try {
+    var stored = localStorage.getItem('panel.theme')
+    var dark = stored === 'dark' || (stored !== 'light' &&
+      (stored === 'system'
+        ? matchMedia('(prefers-color-scheme: dark)').matches
+        : true))
+    document.documentElement.classList.toggle('dark', dark)
+  } catch (e) {}
+</script>
+```
+
+The final `: true` is the panel's dark default; change it to
+`matchMedia('(prefers-color-scheme: dark)').matches` if you pass
+`theme: 'system'` to `createPanel`.
 
 ## Quick example
 

@@ -1,8 +1,11 @@
 /**
  * @modufolio/panel styles entry.
  *
- * Import from the consumer's Tailwind CSS entry, inside the components layer:
+ * Import from the consumer's Tailwind CSS entry. The tokens go in un-layered
+ * — they declare @custom-variant, which a cascade layer cannot contain — and
+ * the component rules go inside the components layer:
  *
+ *   @import '@modufolio/panel/styles/tokens.css';
  *   @import '@modufolio/panel/styles' layer(components);
  *
  * and add the package to Tailwind's content scanning so component classes
@@ -10,7 +13,6 @@
  *
  *   @source "../node_modules/@modufolio/panel";
  */
-@import './tokens.css';
 @import './buttons.css';
 @import './form.css';
 @import './components.css';
