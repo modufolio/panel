@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Database;
 
+use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Field\TextType;
 use Modufolio\Panel\Form\FormResolver;
 use Modufolio\Panel\Inspection\PermissionInspector;
@@ -13,6 +14,7 @@ use Modufolio\Panel\Resource\Permissions;
 use Modufolio\Panel\Tests\Case\DoctrineTestCase;
 use Modufolio\Panel\Tests\Fixture\AdminMovieResource;
 use Modufolio\Panel\Tests\Fixture\MovieResource;
+use Modufolio\Panel\Tests\Fixture\StubUser;
 use Modufolio\Panel\Tests\Fixture\UserMovieResource;
 use Modufolio\Panel\Tests\Routing\ReadOnlyResource;
 use Symfony\Component\Routing\RouteCollection;
@@ -31,26 +33,15 @@ final class PermissionInspectorTest extends DoctrineTestCase
     private const SUPER = 'ROLE_SUPER_ADMIN';
 
     /** A user carrying exactly the roles given — what a stored user's getRoles() returns. */
-    private static function user(string ...$roles): object
+    private static function user(string ...$roles): UserInterface
     {
-        return new class(array_values($roles)) {
-            /** @param list<string> $roles */
-            public function __construct(private readonly array $roles)
-            {
-            }
-
-            /** @return list<string> */
-            public function getRoles(): array
-            {
-                return $this->roles;
-            }
-        };
+        return new StubUser(array_values($roles));
     }
 
-    /** @return \Closure(string): object */
+    /** @return \Closure(string): UserInterface */
     private static function literalUsers(): \Closure
     {
-        return static fn (string $role): object => self::user($role);
+        return static fn (string $role): UserInterface => self::user($role);
     }
 
     /** The playground's hierarchy: a super admin reaches admin, an admin reaches user. */
@@ -172,7 +163,7 @@ final class PermissionInspectorTest extends DoctrineTestCase
     private function adminOnlyEdits(): MovieResource
     {
         return $this->withPermissions(new class extends Permissions {
-            public function edit(?object $record, ?object $user): bool
+            public function edit(?object $record, ?UserInterface $user): bool
             {
                 return $user !== null && method_exists($user, 'getRoles') && in_array('ROLE_ADMIN', (array) $user->getRoles(), true);
             }
@@ -240,7 +231,7 @@ final class PermissionInspectorTest extends DoctrineTestCase
     public function testAScopeOverrideIsFlagged(): void
     {
         $scoped = $this->withPermissions(new class extends Permissions {
-            public function scope(\Doctrine\ORM\QueryBuilder $qb, string $alias, ?object $user): void
+            public function scope(\Doctrine\ORM\QueryBuilder $qb, string $alias, ?UserInterface $user): void
             {
             }
         });
@@ -256,19 +247,19 @@ final class PermissionInspectorTest extends DoctrineTestCase
     private function gatedForm(): MovieResource
     {
         $permissions = new class extends Permissions {
-            private static function isAdmin(?object $user): bool
+            private static function isAdmin(?UserInterface $user): bool
             {
                 return $user !== null
                     && method_exists($user, 'getRoles')
                     && in_array('ROLE_ADMIN', (array) $user->getRoles(), true);
             }
 
-            public function readable(string $field, ?object $user, ?object $record = null): bool
+            public function readable(string $field, ?UserInterface $user, ?object $record = null): bool
             {
                 return $field !== 'secret' || self::isAdmin($user);
             }
 
-            public function writable(string $field, ?object $user, ?object $record = null): bool
+            public function writable(string $field, ?UserInterface $user, ?object $record = null): bool
             {
                 return match ($field) {
                     'rating' => self::isAdmin($user),
@@ -347,7 +338,7 @@ final class PermissionInspectorTest extends DoctrineTestCase
     public function testAFieldRuleNeedingARecordIsReportedNotFatal(): void
     {
         $needsRecord = $this->withPermissions(new class extends Permissions {
-            public function readable(string $field, ?object $user, ?object $record = null): bool
+            public function readable(string $field, ?UserInterface $user, ?object $record = null): bool
             {
                 if ($record === null) {
                     throw new \LogicException('needs a record');

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modufolio\Panel\Inspection;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Form\FormResolver;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\ResourceCapabilities;
@@ -58,7 +59,7 @@ final class SchemaInspector
      * @param class-string<PanelResource> $class
      * @param object|null                 $user  the viewer to answer for; null is nobody signed in
      */
-    public function inspect(string $class, ?object $user = null): SchemaReport
+    public function inspect(string $class, ?UserInterface $user = null): SchemaReport
     {
         $resource     = ($this->resources)($class);
         $capabilities = new ResourceCapabilities($resource, $this->urls, $user);
@@ -166,7 +167,7 @@ final class SchemaInspector
     /**
      * @return list<FieldEntry>|null
      */
-    private function form(PanelResource $resource, ?object $user): ?array
+    private function form(PanelResource $resource, ?UserInterface $user): ?array
     {
         $form = $resource->form();
 

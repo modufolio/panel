@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Database;
 
+use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Form\Field;
 use Modufolio\Panel\Form\Form;
 use Modufolio\Panel\Form\FormResolver;
@@ -24,7 +25,7 @@ use Modufolio\Panel\Tests\Fixture\MovieResource;
  */
 final class SchemaInspectorTest extends DoctrineTestCase
 {
-    private function inspect(PanelResource $resource, string $options = '', ?object $user = null): SchemaReport
+    private function inspect(PanelResource $resource, string $options = '', ?UserInterface $user = null): SchemaReport
     {
         $routes = $this->routesFromConfig(
             'function (PanelResourceConfigurator $panel): void { $panel->resource(\\' . MovieResource::class . '::class)' . $options . '; }',
@@ -101,7 +102,7 @@ final class SchemaInspectorTest extends DoctrineTestCase
             public function permissions(): Permissions
             {
                 return new class extends Permissions {
-                    public function writable(string $field, ?object $user, ?object $record = null): bool
+                    public function writable(string $field, ?UserInterface $user, ?object $record = null): bool
                     {
                         return false;
                     }

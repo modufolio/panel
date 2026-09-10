@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Modufolio\Panel\Tests\Database;
 
 use Doctrine\ORM\QueryBuilder;
+use Modufolio\Appkit\Security\User\UserInterface;
+use Modufolio\Panel\Tests\Fixture\StubUser;
 use Modufolio\Panel\Resource\Permissions;
 use Modufolio\Panel\Resource\RecordLocator;
 use Modufolio\Panel\Tests\Case\DoctrineTestCase;
@@ -43,7 +45,7 @@ final class RecordLocatorTest extends DoctrineTestCase
     private function releasedOnlyResource(): MovieResource
     {
         return $this->withPermissions(new class extends Permissions {
-            public function scope(QueryBuilder $qb, string $alias, ?object $user): void
+            public function scope(QueryBuilder $qb, string $alias, ?UserInterface $user): void
             {
                 $qb->andWhere("{$alias}.released = :scopeReleased")->setParameter('scopeReleased', true);
             }
@@ -126,14 +128,14 @@ final class RecordLocatorTest extends DoctrineTestCase
             public ?string $seenAlias = null;
             public ?object $seenUser = null;
 
-            public function scope(QueryBuilder $qb, string $alias, ?object $user): void
+            public function scope(QueryBuilder $qb, string $alias, ?UserInterface $user): void
             {
                 $this->seenQuery = $qb;
                 $this->seenAlias = $alias;
                 $this->seenUser  = $user;
             }
         };
-        $viewer = new \stdClass();
+        $viewer = new StubUser();
 
         $found = $this->locator()->find($this->withPermissions($permissions), $movie->getUuid()->toString(), $viewer);
 
@@ -150,7 +152,7 @@ final class RecordLocatorTest extends DoctrineTestCase
         $permissions = new class extends Permissions {
             public bool $scoped = false;
 
-            public function scope(QueryBuilder $qb, string $alias, ?object $user): void
+            public function scope(QueryBuilder $qb, string $alias, ?UserInterface $user): void
             {
                 $this->scoped = true;
             }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Blueprint;
 
+use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Blueprint\BlueprintBuilder;
 use Modufolio\Panel\Blueprint\Defaults;
 use Modufolio\Panel\Blueprint\FieldAccess;
@@ -105,12 +106,12 @@ final class FieldValidatorTest extends TestCase
         $builder->add('slug', TextType::class);
 
         $permissions = new class extends Permissions {
-            public function readable(string $field, ?object $user, ?object $record = null): bool
+            public function readable(string $field, ?UserInterface $user, ?object $record = null): bool
             {
                 return $field !== 'internal_notes' || ($user instanceof FlaggedUser && $user->admin);
             }
 
-            public function writable(string $field, ?object $user, ?object $record = null): bool
+            public function writable(string $field, ?UserInterface $user, ?object $record = null): bool
             {
                 return $field !== 'slug';
             }
@@ -137,7 +138,13 @@ final class FieldValidatorTest extends TestCase
 }
 
 /** A user whose only trait is whether it is an admin. */
-final class FlaggedUser
+final class FlaggedUser implements \Modufolio\Appkit\Security\User\UserInterface
 {
     public function __construct(public readonly bool $admin) {}
+    public function getId(): mixed { return 1; }
+    public function getEmail(): string { return 'test@example.com'; }
+    public function getRoles(): array { return []; }
+    public function eraseCredentials(): void {}
+    public function getUserIdentifier(): string { return 'test'; }
+    public function isEnabled(): bool { return true; }
 }

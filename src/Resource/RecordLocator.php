@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modufolio\Panel\Resource;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Modufolio\Appkit\Security\User\UserInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -21,7 +22,7 @@ final class RecordLocator
     {
     }
 
-    public function find(PanelResource $resource, ?string $uuid, ?object $user = null): ?object
+    public function find(PanelResource $resource, ?string $uuid, ?UserInterface $user = null): ?object
     {
         if ($uuid === null || $uuid === '') {
             return null;

@@ -760,7 +760,7 @@ final class ResourceListingTest extends DoctrineTestCase
     private function releasedOnlyResource(): MovieResource
     {
         return $this->withPermissions(new class extends Permissions {
-            public function scope(QueryBuilder $qb, string $alias, ?object $user): void
+            public function scope(QueryBuilder $qb, string $alias, ?UserInterface $user): void
             {
                 $qb->andWhere("{$alias}.released = :scopeReleased")->setParameter('scopeReleased', true);
             }
@@ -797,7 +797,7 @@ final class ResourceListingTest extends DoctrineTestCase
         $permissions = new class extends Permissions {
             public ?object $seenUser = null;
 
-            public function scope(QueryBuilder $qb, string $alias, ?object $user): void
+            public function scope(QueryBuilder $qb, string $alias, ?UserInterface $user): void
             {
                 $this->seenUser = $user;
             }
@@ -1072,7 +1072,7 @@ final class ResourceListingTest extends DoctrineTestCase
         $this->seed();
 
         $resource = $this->withPermissions(new class extends Permissions {
-            public function edit(?object $record, ?object $user): bool
+            public function edit(?object $record, ?UserInterface $user): bool
             {
                 return false;
             }
@@ -1091,7 +1091,7 @@ final class ResourceListingTest extends DoctrineTestCase
         $this->seed();
 
         $resource = $this->withPermissions(new class extends Permissions {
-            public function delete(?object $record, ?object $user): bool
+            public function delete(?object $record, ?UserInterface $user): bool
             {
                 return false;
             }
@@ -1120,12 +1120,12 @@ final class ResourceListingTest extends DoctrineTestCase
                 parent::__construct();
             }
 
-            public function edit(?object $record, ?object $user): bool
+            public function edit(?object $record, ?UserInterface $user): bool
             {
                 return $this->mayEdit;
             }
 
-            public function delete(?object $record, ?object $user): bool
+            public function delete(?object $record, ?UserInterface $user): bool
             {
                 return $this->mayDelete;
             }
@@ -1425,7 +1425,7 @@ final class ResourceListingTest extends DoctrineTestCase
         $this->seed();
 
         $trapped = $this->withPermissions(new class extends Permissions {
-            public function scope(QueryBuilder $qb, string $alias, ?object $user): void
+            public function scope(QueryBuilder $qb, string $alias, ?UserInterface $user): void
             {
                 // Valid to build, invalid to execute: Movie has no such field.
                 $qb->andWhere("{$alias}.noSuchField = 1");

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modufolio\Panel\Form;
 
 use Doctrine\ORM\EntityManagerInterface;
+use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Blueprint\FieldAccess;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\RelationOptionResolver;
@@ -42,7 +43,7 @@ final class FormPresenter
      *
      * @return array<string, mixed>
      */
-    public function props(PanelResource $resource, ?object $record = null, ?object $user = null): array
+    public function props(PanelResource $resource, ?object $record = null, ?UserInterface $user = null): array
     {
         $capabilities = new ResourceCapabilities($resource, $this->urlGenerator, $user);
 
@@ -79,7 +80,7 @@ final class FormPresenter
      *
      * @return list<array<string, mixed>>
      */
-    public function fields(PanelResource $resource, ?object $record = null, ?object $user = null): array
+    public function fields(PanelResource $resource, ?object $record = null, ?UserInterface $user = null): array
     {
         return FieldAccess::resolve($this->resolvedFields($resource), $resource->permissions(), $user, $record);
     }

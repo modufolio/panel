@@ -6,6 +6,7 @@ namespace Modufolio\Panel\Metric;
 
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
+use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Support\Label;
 use Modufolio\Panel\Table\Summary;
@@ -49,7 +50,7 @@ final class MetricCalculator
      *
      * @return list<array<string, mixed>>
      */
-    public function compute(PanelResource $resource, ?object $user = null): array
+    public function compute(PanelResource $resource, ?UserInterface $user = null): array
     {
         $computed = [];
 
@@ -85,7 +86,7 @@ final class MetricCalculator
     /**
      * @return array{value: float|int|null, previous?: float|int|null, change?: float|null}
      */
-    private function value(PanelResource $resource, Metric $metric, ?object $user): array
+    private function value(PanelResource $resource, Metric $metric, ?UserInterface $user): array
     {
         $window = $metric->windowLength();
         $bucket = $metric->bucket();
@@ -116,7 +117,7 @@ final class MetricCalculator
     /**
      * @return array{value: float|int, series: list<array{label: string, value: float|int}>}
      */
-    private function trend(PanelResource $resource, Metric $metric, ?object $user): array
+    private function trend(PanelResource $resource, Metric $metric, ?UserInterface $user): array
     {
         $bucket = (string) $metric->bucket();
         $length = (int) $metric->windowLength();
@@ -186,7 +187,7 @@ final class MetricCalculator
     /**
      * @return array{slices: list<array{label: string, value: float|int, color?: string}>}
      */
-    private function partition(PanelResource $resource, Metric $metric, ?object $user): array
+    private function partition(PanelResource $resource, Metric $metric, ?UserInterface $user): array
     {
         $alias = $resource->queryAlias();
         $field = $metric->groupField();
@@ -239,7 +240,7 @@ final class MetricCalculator
      * The resource's rows, as this viewer may see them: scoped, and without
      * the soft-deleted ones a listing hides by default.
      */
-    private function scopedQuery(PanelResource $resource, ?object $user): QueryBuilder
+    private function scopedQuery(PanelResource $resource, ?UserInterface $user): QueryBuilder
     {
         $alias = $resource->queryAlias();
         $qb    = $this->entityManager->getRepository($resource->entityClass())->createQueryBuilder($alias);
@@ -256,7 +257,7 @@ final class MetricCalculator
     private function aggregate(
         PanelResource $resource,
         Metric $metric,
-        ?object $user,
+        ?UserInterface $user,
         ?\DateTimeImmutable $from,
         ?\DateTimeImmutable $until,
     ): float|int|null {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Resource;
 
+use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Resource\FieldPickUrls;
 use Modufolio\Panel\Resource\Permissions;
 use Modufolio\Panel\Tests\Fixture\DerivedMovieResource;
@@ -113,7 +114,7 @@ final class FieldPickUrlsTest extends TestCase
     public function testAFieldIsNotStampedWhenTheViewerMayNotEditTheRecord(): void
     {
         $permissions = new class () extends Permissions {
-            public function edit(?object $record, ?object $user): bool
+            public function edit(?object $record, ?UserInterface $user): bool
             {
                 return false;
             }
@@ -127,7 +128,7 @@ final class FieldPickUrlsTest extends TestCase
     public function testAFieldIsNotStampedWhenTheViewerMayNotWriteTheTarget(): void
     {
         $permissions = new class () extends Permissions {
-            public function writable(string $field, ?object $user, ?object $record = null): bool
+            public function writable(string $field, ?UserInterface $user, ?object $record = null): bool
             {
                 return $field !== 'cover_media_id';
             }

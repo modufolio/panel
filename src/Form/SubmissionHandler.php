@@ -6,6 +6,7 @@ namespace Modufolio\Panel\Form;
 
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
+use Modufolio\Appkit\Security\User\UserInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Modufolio\Appkit\Toolkit\Str;
 use Modufolio\Panel\Blueprint\Defaults;
@@ -47,7 +48,7 @@ final class SubmissionHandler
      * @param  list<string>|null    $only restrict the write to these fields
      * @return array<string, string> errors by field key, empty on success
      */
-    public function handle(PanelResource $resource, object $entity, array $body, ?object $user = null, ?array $only = null): array
+    public function handle(PanelResource $resource, object $entity, array $body, ?UserInterface $user = null, ?array $only = null): array
     {
         $declared    = $this->forms->fieldsFor($resource);
         $permissions = $resource->permissions();

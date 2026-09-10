@@ -4,6 +4,8 @@ declare(strict_types = 1);
 
 namespace Modufolio\Panel\Resource;
 
+use Modufolio\Appkit\Security\User\UserInterface;
+
 /**
  * What this viewer may do with a record, and why not when they may not.
  *
@@ -25,7 +27,7 @@ final class RecordVerdicts
 
     public function __construct(
         private readonly Permissions $permissions,
-        private readonly ?object $user = null,
+        private readonly ?UserInterface $user = null,
     ) {
     }
 

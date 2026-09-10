@@ -4,6 +4,7 @@ declare(strict_types = 1);
 
 namespace Modufolio\Panel\Resource;
 
+use Modufolio\Appkit\Security\User\UserInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
@@ -37,7 +38,7 @@ final class RelationAddUrls
      * @param  object|null                $user   the viewer, for the permission check
      * @return list<array<string, mixed>>
      */
-    public function stamp(array $tabs, PanelResource $resource, object $entity, ?object $user): array
+    public function stamp(array $tabs, PanelResource $resource, object $entity, ?UserInterface $user): array
     {
         $mayEdit = $resource->permissions()->edit($entity, $user);
         $params  = $resource->recordRouteParams($entity);

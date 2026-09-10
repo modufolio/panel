@@ -4,6 +4,7 @@ declare(strict_types = 1);
 
 namespace Modufolio\Panel\Resource;
 
+use Modufolio\Appkit\Security\User\UserInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
@@ -43,7 +44,7 @@ final class FieldPickUrls
      * @param  object|null                $user   the viewer, for the permission check
      * @return list<array<string, mixed>>
      */
-    public function stamp(array $tabs, PanelResource $resource, object $entity, ?object $user): array
+    public function stamp(array $tabs, PanelResource $resource, object $entity, ?UserInterface $user): array
     {
         $mayEdit = $resource->permissions()->edit($entity, $user);
         $params  = $resource->recordRouteParams($entity);
@@ -73,7 +74,7 @@ final class FieldPickUrls
      * @param  array<string, string|int> $params
      * @return array<string, mixed>
      */
-    private function stampOne(array $tab, PanelResource $resource, object $entity, ?object $user, bool $mayEdit, array $params, string $route): array
+    private function stampOne(array $tab, PanelResource $resource, object $entity, ?UserInterface $user, bool $mayEdit, array $params, string $route): array
     {
         if (!isset($tab['fields']) || !is_array($tab['fields'])) {
             return $tab;

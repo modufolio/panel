@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modufolio\Panel\Tests\Database;
 
 use Modufolio\Appkit\Inertia\Inertia;
+use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Appkit\Security\Token\TokenStorageInterface;
 use Modufolio\Panel\Form\Form;
 use Modufolio\Panel\Http\ResourceController;
@@ -108,10 +109,10 @@ final class ResourceControllerTest extends DoctrineTestCase
             {
                 return new class ($this->verb) extends Permissions {
                     public function __construct(private readonly string $verb) { parent::__construct(); }
-                    public function view(?object $record, ?object $user): bool { return $this->verb !== 'view'; }
-                    public function create(?object $user): bool { return $this->verb !== 'create'; }
-                    public function delete(?object $record, ?object $user): bool { return $this->verb !== 'delete'; }
-                    public function reason(string $ability, ?object $record, ?object $user): ?string
+                    public function view(?object $record, ?UserInterface $user): bool { return $this->verb !== 'view'; }
+                    public function create(?UserInterface $user): bool { return $this->verb !== 'create'; }
+                    public function delete(?object $record, ?UserInterface $user): bool { return $this->verb !== 'delete'; }
+                    public function reason(string $ability, ?object $record, ?UserInterface $user): ?string
                     {
                         return $ability === 'delete' ? 'Classics cannot be deleted' : null;
                     }
@@ -181,7 +182,7 @@ final class ResourceControllerTest extends DoctrineTestCase
             public function permissions(): Permissions
             {
                 return new class extends Permissions {
-                    public function edit(?object $record, ?object $user): bool { return false; }
+                    public function edit(?object $record, ?UserInterface $user): bool { return false; }
                 };
             }
         };
@@ -375,7 +376,7 @@ final class ResourceControllerTest extends DoctrineTestCase
             public function permissions(): Permissions
             {
                 return new class extends Permissions {
-                    public function edit(?object $record, ?object $user): bool { return false; }
+                    public function edit(?object $record, ?UserInterface $user): bool { return false; }
                 };
             }
         };
@@ -464,7 +465,7 @@ final class ResourceControllerTest extends DoctrineTestCase
             public function permissions(): Permissions
             {
                 return new class extends Permissions {
-                    public function writable(string $field, ?object $user, ?object $record = null): bool
+                    public function writable(string $field, ?UserInterface $user, ?object $record = null): bool
                     {
                         return $field !== 'title';
                     }
@@ -735,7 +736,7 @@ final class ResourceControllerTest extends DoctrineTestCase
             public function permissions(): Permissions
             {
                 return new class extends Permissions {
-                    public function edit(?object $record, ?object $user): bool { return false; }
+                    public function edit(?object $record, ?UserInterface $user): bool { return false; }
                 };
             }
         };

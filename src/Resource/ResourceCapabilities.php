@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Resource;
 
+use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Routing\RouteUrls;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -40,7 +41,7 @@ final class ResourceCapabilities
         private readonly PanelResource $resource,
         private readonly UrlGeneratorInterface $urlGenerator,
         /** Who is asking. Null when nobody is signed in. */
-        private readonly ?object $user = null,
+        private readonly ?UserInterface $user = null,
     ) {
     }
 
@@ -49,7 +50,7 @@ final class ResourceCapabilities
         return $this->resource;
     }
 
-    public function user(): ?object
+    public function user(): ?UserInterface
     {
         return $this->user;
     }

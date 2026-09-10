@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Database;
 
+use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Field\ComputedType;
+use Modufolio\Panel\Tests\Fixture\StubUser;
 use Modufolio\Panel\Field\TextType;
 use Modufolio\Panel\Form\FormPresenter;
 use Modufolio\Panel\Form\FormResolver;
@@ -62,12 +64,12 @@ final class FormPresenterTest extends DoctrineTestCase
             public function permissions(): Permissions
             {
                 return new class extends Permissions {
-                    public function readable(string $field, ?object $user, ?object $record = null): bool
+                    public function readable(string $field, ?UserInterface $user, ?object $record = null): bool
                     {
                         return $field !== 'secret';
                     }
 
-                    public function writable(string $field, ?object $user, ?object $record = null): bool
+                    public function writable(string $field, ?UserInterface $user, ?object $record = null): bool
                     {
                         return $field !== 'locked';
                     }
@@ -444,7 +446,7 @@ final class FormPresenterTest extends DoctrineTestCase
             public ?object $seenRecord = null;
             public ?object $seenUser = null;
 
-            public function writable(string $field, ?object $user, ?object $record = null): bool
+            public function writable(string $field, ?UserInterface $user, ?object $record = null): bool
             {
                 $this->seenRecord = $record;
                 $this->seenUser   = $user;
@@ -464,7 +466,7 @@ final class FormPresenterTest extends DoctrineTestCase
         };
 
         $movie  = (new Movie())->setTitle('Heat');
-        $viewer = new \stdClass();
+        $viewer = new StubUser();
 
         $fields = $this->byKey($this->presenter()->fields($resource, $movie, $viewer));
 

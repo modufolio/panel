@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Inspection;
 
+use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Blueprint\FieldAccess;
 use Modufolio\Panel\Form\FormResolver;
 use Modufolio\Panel\Resource\PanelResource;
@@ -94,7 +95,7 @@ final class PermissionInspector
     /**
      * @param list<class-string<PanelResource>> $resourceClasses
      * @param list<string>                      $roles
-     * @param \Closure(string): object          $userFactory a user carrying only the literal role
+     * @param \Closure(string): UserInterface   $userFactory a user carrying only the literal role
      */
     public function inspect(array $resourceClasses, array $roles, \Closure $userFactory): PermissionReport
     {
@@ -113,7 +114,7 @@ final class PermissionInspector
 
     /**
      * @param list<string> $roles
-     * @param \Closure(string): object $userFactory
+     * @param \Closure(string): UserInterface $userFactory
      * @param list<Note> $notes
      * @return ResourceEntry
      */
@@ -302,7 +303,7 @@ final class PermissionInspector
     private function fieldVerdicts(
         Permissions $permissions,
         array $declared,
-        object $user,
+        UserInterface $user,
         string $key,
         string $role,
         array &$notes,

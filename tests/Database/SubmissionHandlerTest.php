@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Database;
 
+use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Form\FormResolver;
 use Modufolio\Panel\Form\SubmissionHandler;
 use Modufolio\Panel\Resource\PanelResource;
@@ -606,7 +607,7 @@ final class SubmissionHandlerTest extends DoctrineTestCase
             public function permissions(): Permissions
             {
                 return new class extends Permissions {
-                    public function writable(string $field, ?object $user, ?object $record = null): bool
+                    public function writable(string $field, ?UserInterface $user, ?object $record = null): bool
                     {
                         return $field !== 'title';
                     }
@@ -638,7 +639,7 @@ final class SubmissionHandlerTest extends DoctrineTestCase
             public function permissions(): Permissions
             {
                 return new class extends Permissions {
-                    public function writable(string $field, ?object $user, ?object $record = null): bool
+                    public function writable(string $field, ?UserInterface $user, ?object $record = null): bool
                     {
                         return $field !== 'synopsis';
                     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Resource;
 
+use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Form\Field;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\Permissions;
@@ -178,7 +179,7 @@ final class SchemaResolverTest extends TestCase
     public function testAViewerWhoMayNotDeleteIsNotOfferedDeleteOrRestore(): void
     {
         $noDelete = new class extends Permissions {
-            public function delete(?object $record, ?object $user): bool
+            public function delete(?object $record, ?UserInterface $user): bool
             {
                 return false;
             }
@@ -200,7 +201,7 @@ final class SchemaResolverTest extends TestCase
     public function testAControlTheViewerMayNotWriteIsNotDrawn(): void
     {
         $permissions = new class extends Permissions {
-            public function writable(string $field, ?object $user, ?object $record = null): bool
+            public function writable(string $field, ?UserInterface $user, ?object $record = null): bool
             {
                 return $field !== 'rating';
             }
@@ -223,7 +224,7 @@ final class SchemaResolverTest extends TestCase
     public function testAViewerWhoMayNotEditTheTypeGetsNoInlineControlAtAll(): void
     {
         $permissions = new class extends Permissions {
-            public function edit(?object $record, ?object $user): bool
+            public function edit(?object $record, ?UserInterface $user): bool
             {
                 return false;
             }

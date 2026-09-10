@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Resource;
 
+use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Resource\Permissions;
+use Modufolio\Panel\Tests\Fixture\StubUser;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -18,7 +20,7 @@ final class PermissionsTest extends TestCase
     {
         $permissions = new Permissions();
         $record      = new \stdClass();
-        $user        = new \stdClass();
+        $user        = new StubUser();
 
         self::assertSame([], $permissions->roles());
         self::assertTrue($permissions->view(null, $user));
@@ -41,13 +43,13 @@ final class PermissionsTest extends TestCase
     public function testExportFollowsView(): void
     {
         $permissions = new class extends Permissions {
-            public function view(?object $record, ?object $user): bool
+            public function view(?object $record, ?UserInterface $user): bool
             {
                 return false;
             }
         };
 
-        self::assertFalse($permissions->export(new \stdClass()));
+        self::assertFalse($permissions->export(new StubUser()));
     }
 
     /**
@@ -58,7 +60,7 @@ final class PermissionsTest extends TestCase
     public function testWritableMayDependOnBothTheRecordAndTheUser(): void
     {
         $permissions = new class extends Permissions {
-            public function writable(string $field, ?object $user, ?object $record = null): bool
+            public function writable(string $field, ?UserInterface $user, ?object $record = null): bool
             {
                 if (($record->closed ?? false) === true) {
                     return !in_array($field, ['price', 'quantity'], true);
@@ -70,8 +72,8 @@ final class PermissionsTest extends TestCase
 
         $open   = (object) ['closed' => false];
         $closed = (object) ['closed' => true];
-        $admin  = (object) ['role' => 'admin'];
-        $viewer = (object) ['role' => 'viewer'];
+        $admin  = new StubUser(role: 'admin');
+        $viewer = new StubUser(role: 'viewer');
 
         self::assertTrue($permissions->writable('price', $admin, $open));
         self::assertFalse($permissions->writable('price', $viewer, $open));

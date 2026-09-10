@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Blueprint;
 
+use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Resource\Permissions;
 
 /**
@@ -24,7 +25,7 @@ final class FieldAccess
      * @return list<array<string, mixed>> definitions minus unreadable fields,
      *                                    unwritable ones marked disabled
      */
-    public static function resolve(array $fields, Permissions $permissions, ?object $user = null, ?object $record = null): array
+    public static function resolve(array $fields, Permissions $permissions, ?UserInterface $user = null, ?object $record = null): array
     {
         $resolved = [];
 
@@ -64,7 +65,7 @@ final class FieldAccess
      * @param  array<string, mixed>       $values
      * @return array<string, mixed>
      */
-    public static function stripDenied(array $fields, Permissions $permissions, array $values, ?object $user = null, ?object $record = null): array
+    public static function stripDenied(array $fields, Permissions $permissions, array $values, ?UserInterface $user = null, ?object $record = null): array
     {
         foreach ($fields as $field) {
             $key = (string) ($field['key'] ?? '');

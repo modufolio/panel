@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modufolio\Panel\Resource;
 
 use Doctrine\ORM\QueryBuilder;
+use Modufolio\Appkit\Security\User\UserInterface;
 
 /**
  * Who may do what with a resource, in one class the application writes.
@@ -33,9 +34,8 @@ use Doctrine\ORM\QueryBuilder;
  *    submitted value dropped.
  *  - {@see move()}: per card, which board lanes it may be dragged into.
  *
- * The user is passed in rather than fetched, and typed as `?object`: the
- * package does not know the application's user class, and null means nobody
- * is signed in.
+ * The user is passed in rather than fetched, typed as `?UserInterface` from
+ * appkit, and null means nobody is signed in.
  *
  * **Every answer must be pure and cheap.** The record-level questions are
  * asked once per row per ability on every listing render, once per card
@@ -72,22 +72,22 @@ class Permissions
     }
 
     /** May this user see the listing at all, or this record in particular? */
-    public function view(?object $record, ?object $user): bool
+    public function view(?object $record, ?UserInterface $user): bool
     {
         return true;
     }
 
-    public function create(?object $user): bool
+    public function create(?UserInterface $user): bool
     {
         return true;
     }
 
-    public function edit(?object $record, ?object $user): bool
+    public function edit(?object $record, ?UserInterface $user): bool
     {
         return true;
     }
 
-    public function delete(?object $record, ?object $user): bool
+    public function delete(?object $record, ?UserInterface $user): bool
     {
         return true;
     }
@@ -100,12 +100,12 @@ class Permissions
      * shows it disabled with the sentence as its tooltip, and a bulk action
      * reports it — "3 skipped: admins cannot be deleted".
      */
-    public function reason(string $ability, ?object $record, ?object $user): ?string
+    public function reason(string $ability, ?object $record, ?UserInterface $user): ?string
     {
         return null;
     }
 
-    public function export(?object $user): bool
+    public function export(?UserInterface $user): bool
     {
         return $this->view(null, $user);
     }
@@ -121,7 +121,7 @@ class Permissions
      *
      * @param string $alias the query's root alias, so a scope can name columns
      */
-    public function scope(QueryBuilder $qb, string $alias, ?object $user): void
+    public function scope(QueryBuilder $qb, string $alias, ?UserInterface $user): void
     {
     }
 
@@ -132,7 +132,7 @@ class Permissions
      *
      * Null record means the type, or a create form with no record yet.
      */
-    public function readable(string $field, ?object $user, ?object $record = null): bool
+    public function readable(string $field, ?UserInterface $user, ?object $record = null): bool
     {
         return true;
     }
@@ -143,7 +143,7 @@ class Permissions
      * this role" — because a request answers neither by itself. The client
      * renders the field disabled; the server drops the submitted value.
      */
-    public function writable(string $field, ?object $user, ?object $record = null): bool
+    public function writable(string $field, ?UserInterface $user, ?object $record = null): bool
     {
         return true;
     }
@@ -157,7 +157,7 @@ class Permissions
      * is just editing that field. Override where the lane is a workflow state
      * and not every hop between them is legal.
      */
-    public function move(object $record, string $lane, ?object $user): bool|string
+    public function move(object $record, string $lane, ?UserInterface $user): bool|string
     {
         return true;
     }

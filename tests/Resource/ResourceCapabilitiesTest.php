@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Tests\Resource;
 
+use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Resource\Permissions;
 use Modufolio\Panel\Resource\ResourceCapabilities;
 use Modufolio\Panel\Tests\Fixture\MovieResource;
@@ -40,17 +41,17 @@ final class ResourceCapabilitiesTest extends TestCase
     private static function denying(): Permissions
     {
         return new class extends Permissions {
-            public function create(?object $user): bool
+            public function create(?UserInterface $user): bool
             {
                 return false;
             }
 
-            public function edit(?object $record, ?object $user): bool
+            public function edit(?object $record, ?UserInterface $user): bool
             {
                 return $record === null;
             }
 
-            public function delete(?object $record, ?object $user): bool
+            public function delete(?object $record, ?UserInterface $user): bool
             {
                 return false;
             }

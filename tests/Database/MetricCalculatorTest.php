@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Modufolio\Panel\Tests\Database;
 
 use Doctrine\ORM\QueryBuilder;
+use Modufolio\Appkit\Security\User\UserInterface;
 use Modufolio\Panel\Metric\Metric;
 use Modufolio\Panel\Metric\MetricCalculator;
 use Modufolio\Panel\Resource\PanelResource;
@@ -257,7 +258,7 @@ final class MetricCalculatorTest extends DoctrineTestCase
             public function permissions(): Permissions
             {
                 return new class extends Permissions {
-                    public function scope(QueryBuilder $qb, string $alias, ?object $user): void
+                    public function scope(QueryBuilder $qb, string $alias, ?UserInterface $user): void
                     {
                         // Arbitrary DQL, which is exactly why metrics are built
                         // on the ORM builder the scope hook is written against.
