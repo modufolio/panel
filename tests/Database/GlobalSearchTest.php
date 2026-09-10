@@ -44,7 +44,7 @@ final class GlobalSearchTest extends DoctrineTestCase
     /** @param list<class-string<PanelResource>> $classes */
     private function search(array $classes): GlobalSearch
     {
-        return new GlobalSearch(self::em(), $this->urlGenerator(...$classes), self::resolver(), $classes);
+        return new GlobalSearch(self::em(), $this->urlGenerator(...$classes), $this->clock(), self::resolver(), $classes);
     }
 
     /**

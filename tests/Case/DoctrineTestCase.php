@@ -21,6 +21,7 @@ use Modufolio\Panel\Resource\ResourceListing;
 use Modufolio\Panel\Routing\PanelResourceRouteLoader;
 use Modufolio\Panel\Tests\Routing\FixtureController;
 use PHPUnit\Framework\TestCase;
+use Psr\Clock\ClockInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Ramsey\Uuid\Doctrine\UuidType;
 use Symfony\Component\Config\FileLocator;
@@ -282,6 +283,11 @@ abstract class DoctrineTestCase extends TestCase
             ->load($file, 'panel_resource');
     }
 
+    protected function clock(): ClockInterface
+    {
+        return new \Symfony\Component\Clock\Clock();
+    }
+
     /**
      * A listing bound to a request, the way the host's factory would build it.
      *
@@ -301,6 +307,7 @@ abstract class DoctrineTestCase extends TestCase
             $this->request($query),
             self::em(),
             $urls ?? $this->urlGenerator($resource::class),
+            $this->clock(),
             $user,
         );
     }

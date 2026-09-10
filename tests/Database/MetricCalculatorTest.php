@@ -14,6 +14,8 @@ use Modufolio\Panel\Tests\Case\DoctrineTestCase;
 use Modufolio\Panel\Tests\Fixture\DerivedMovieResource;
 use Modufolio\Panel\Tests\Fixture\Entity\Movie;
 use Modufolio\Panel\Tests\Fixture\Entity\Studio;
+use Symfony\Component\Clock\Clock;
+use Symfony\Component\Clock\Test\ClockSensitiveTrait;
 
 /**
  * The numbers behind the cards.
@@ -25,6 +27,8 @@ use Modufolio\Panel\Tests\Fixture\Entity\Studio;
  */
 final class MetricCalculatorTest extends DoctrineTestCase
 {
+    use ClockSensitiveTrait;
+
     private function seed(): void
     {
         $studio = (new Studio())->setName('Warner Bros.')->setCity('Burbank');
@@ -76,7 +80,7 @@ final class MetricCalculatorTest extends DoctrineTestCase
     {
         $resource ??= $this->resourceWith($metrics);
 
-        return (new MetricCalculator(self::em()))->compute($resource);
+        return (new MetricCalculator(self::em(), new Clock()))->compute($resource);
     }
 
     /** @param list<Metric> $metrics */
@@ -117,6 +121,7 @@ final class MetricCalculatorTest extends DoctrineTestCase
 
     public function testAWindowNarrowsTheValueToItsPeriod(): void
     {
+        self::mockTime('today 12:00');
         $this->seed();
 
         [$today] = $this->compute([Metric::value('added')->count()->over('createdAt')->days(1)]);
@@ -126,6 +131,7 @@ final class MetricCalculatorTest extends DoctrineTestCase
 
     public function testAComparisonReportsTheChangeAgainstThePrecedingWindow(): void
     {
+        self::mockTime('today 12:00');
         $this->seed();
 
         // Two days: today (1) against the two days before it (2 on day -2).
@@ -141,6 +147,7 @@ final class MetricCalculatorTest extends DoctrineTestCase
     /** A rise from nothing is not a percentage, and saying +100% would be a lie. */
     public function testNoChangeIsReportedWhenThePreviousPeriodWasEmpty(): void
     {
+        self::mockTime('today 12:00');
         $this->seed();
 
         [$metric] = $this->compute([
@@ -154,6 +161,7 @@ final class MetricCalculatorTest extends DoctrineTestCase
 
     public function testATrendFillsEveryBucketInItsWindow(): void
     {
+        self::mockTime('today 12:00');
         $this->seed();
 
         [$metric] = $this->compute([Metric::trend('added')->count()->over('createdAt')->days(3)]);
@@ -243,6 +251,7 @@ final class MetricCalculatorTest extends DoctrineTestCase
      */
     public function testEveryMetricIsNarrowedByTheResourcesScope(): void
     {
+        self::mockTime('today 12:00');
         $this->seed();
 
         $resource = new class extends DerivedMovieResource {

@@ -86,6 +86,7 @@ final class ResourceControllerTest extends DoctrineTestCase
             validator: Validation::createValidator(),
             tokenStorage: $this->createStub(TokenStorageInterface::class),
             flashBag: $this->flash,
+            clock: $this->clock(),
             permissions: $permissions,
         );
     }
