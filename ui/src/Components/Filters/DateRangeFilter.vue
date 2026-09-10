@@ -64,6 +64,7 @@
 
 <script setup lang="ts">
 import { ref, watch, type PropType } from 'vue'
+import { formatISO } from '../../Utils/dates'
 
 interface DatePreset {
   label: string
@@ -123,38 +124,23 @@ function clear() {
 }
 
 /**
- * A calendar day as `YYYY-MM-DD`, read in the viewer's own timezone.
- *
- * Not `toISOString()`: that formats in UTC, and the month presets build their
- * dates at local midnight — so anywhere east of UTC "This month" began on the
- * last day of the previous one, and "Today" flipped to yesterday for anyone
- * filtering before their offset had elapsed.
- */
-function isoDate(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-
-  return `${date.getFullYear()}-${month}-${day}`
-}
-
-/**
  * The range a preset stands for, today. One definition rather than two:
  * applying a preset and recognising the one in force used to compute the same
  * four dates separately, which is two places for a boundary to drift.
  */
 function rangeFor(preset: DatePreset): { start: string; end: string } {
   const today = new Date()
-  const todayStr = isoDate(today)
+  const todayStr = formatISO(today)
 
   if (preset.type === 'month') {
-    return { start: isoDate(new Date(today.getFullYear(), today.getMonth(), 1)), end: todayStr }
+    return { start: formatISO(new Date(today.getFullYear(), today.getMonth(), 1)), end: todayStr }
   }
 
   if (preset.type === 'last_month') {
     // Day 0 of this month is the last day of the previous one.
     return {
-      start: isoDate(new Date(today.getFullYear(), today.getMonth() - 1, 1)),
-      end: isoDate(new Date(today.getFullYear(), today.getMonth(), 0)),
+      start: formatISO(new Date(today.getFullYear(), today.getMonth() - 1, 1)),
+      end: formatISO(new Date(today.getFullYear(), today.getMonth(), 0)),
     }
   }
 
@@ -166,7 +152,7 @@ function rangeFor(preset: DatePreset): { start: string; end: string } {
   const from = new Date(today)
   from.setDate(from.getDate() - preset.days! + 1)
 
-  return { start: isoDate(from), end: todayStr }
+  return { start: formatISO(from), end: todayStr }
 }
 
 function applyPreset(preset: DatePreset) {

@@ -123,6 +123,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { formatISO } from '../../Utils/dates'
 import FieldPrimitive from './FieldPrimitive.vue'
 import { fieldWidthProp } from './useFieldWidth'
 
@@ -238,22 +239,18 @@ function selectPreset(preset: Preset) {
   if (props.disabled) return
 
   const today = new Date()
-  const todayStr = today.toISOString().split('T')[0]
+  const todayStr = formatISO(today)
 
   if (preset.type === 'year') {
-    // This year
-    const yearStart = new Date(today.getFullYear(), 0, 1)
-    startDate.value = yearStart.toISOString().split('T')[0]
+    startDate.value = formatISO(new Date(today.getFullYear(), 0, 1))
     endDate.value = todayStr
   } else if (preset.days === 0) {
-    // Today
     startDate.value = todayStr
     endDate.value = todayStr
   } else if (preset.days !== undefined) {
-    // Last X days
     const pastDate = new Date(today)
     pastDate.setDate(pastDate.getDate() - preset.days + 1)
-    startDate.value = pastDate.toISOString().split('T')[0]
+    startDate.value = formatISO(pastDate)
     endDate.value = todayStr
   }
 
@@ -262,19 +259,16 @@ function selectPreset(preset: Preset) {
 
 function isActivePreset(preset: Preset) {
   const today = new Date()
-  const todayStr = today.toISOString().split('T')[0]
+  const todayStr = formatISO(today)
 
   if (preset.type === 'year') {
-    const yearStart = new Date(today.getFullYear(), 0, 1)
-    const yearStartStr = yearStart.toISOString().split('T')[0]
-    return startDate.value === yearStartStr && endDate.value === todayStr
+    return startDate.value === formatISO(new Date(today.getFullYear(), 0, 1)) && endDate.value === todayStr
   } else if (preset.days === 0) {
     return startDate.value === todayStr && endDate.value === todayStr
   } else {
     const pastDate = new Date(today)
     pastDate.setDate(pastDate.getDate() - (preset.days ?? 0) + 1)
-    const pastDateStr = pastDate.toISOString().split('T')[0]
-    return startDate.value === pastDateStr && endDate.value === todayStr
+    return startDate.value === formatISO(pastDate) && endDate.value === todayStr
   }
 }
 
