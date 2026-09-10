@@ -43,7 +43,7 @@
           placeholder="Min"
           :step="step"
           :min="min"
-          :max="rangeMax || max"
+          :max="rangeMax ?? max"
           class="ui-input block w-full"
           @input="emitUpdate"
         />
@@ -55,7 +55,7 @@
           type="number"
           placeholder="Max"
           :step="step"
-          :min="rangeMin || min"
+          :min="rangeMin ?? min"
           :max="max"
           class="ui-input block w-full"
           @input="emitUpdate"
