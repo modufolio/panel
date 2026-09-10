@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Routing;
 
+use Symfony\Component\Routing\Exception\ExceptionInterface as RoutingException;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
@@ -39,7 +40,7 @@ final class RouteUrls
     {
         try {
             return $urls->generate($name, $parameters);
-        } catch (\Throwable) {
+        } catch (RoutingException) {
             return null;
         }
     }
