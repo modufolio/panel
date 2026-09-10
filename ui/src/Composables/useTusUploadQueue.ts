@@ -300,7 +300,7 @@ export function useTusUploadQueue(options: UseTusUploadQueueOptions) {
   // Pause upload
   const pauseUpload = (uploadItem: UploadItem) => {
     if (uploadItem.tusUpload) {
-      uploadItem.tusUpload.abort(true)
+      uploadItem.tusUpload.abort()
       const index = uploads.value.findIndex(u => u.id === uploadItem.id)
       if (index !== -1) {
         uploads.value[index] = {
@@ -343,7 +343,7 @@ export function useTusUploadQueue(options: UseTusUploadQueueOptions) {
   // Cancel upload
   const cancelUpload = (uploadItem: UploadItem) => {
     if (uploadItem.tusUpload) {
-      uploadItem.tusUpload.abort()
+      uploadItem.tusUpload.abort(true)
     }
     if (uploadItem._clearTimer) clearTimeout(uploadItem._clearTimer)
     uploads.value = uploads.value.filter((u) => u.id !== uploadItem.id)
@@ -353,7 +353,7 @@ export function useTusUploadQueue(options: UseTusUploadQueueOptions) {
   const cancelAllUploads = () => {
     uploads.value.forEach((uploadItem) => {
       if (uploadItem.tusUpload) {
-        uploadItem.tusUpload.abort()
+        uploadItem.tusUpload.abort(true)
       }
       if (uploadItem._clearTimer) clearTimeout(uploadItem._clearTimer)
     })
