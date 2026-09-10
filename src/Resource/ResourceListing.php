@@ -24,6 +24,7 @@ use Modufolio\Appkit\Security\User\UserInterface;
 use Doctrine\ORM\EntityRepository;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\QueryBuilder;
+use Psr\Clock\ClockInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -61,6 +62,7 @@ final class ResourceListing
         private readonly ServerRequestInterface $request,
         private readonly EntityManagerInterface $entityManager,
         private readonly UrlGeneratorInterface $urlGenerator,
+        private readonly ClockInterface $clock,
         /** Who is asking — the resource's Permissions decide what that means. Null when nobody is signed in. */
         private readonly ?UserInterface $user = null,
     ) {
@@ -768,7 +770,7 @@ final class ResourceListing
             return [];
         }
 
-        return (new MetricCalculator($this->entityManager))->compute($this->resource, $this->user);
+        return (new MetricCalculator($this->entityManager, $this->clock))->compute($this->resource, $this->user);
     }
 
     /**

@@ -25,6 +25,7 @@ use Modufolio\Panel\Resource\ResourceListing;
 use Modufolio\Panel\Routing\RouteUrls;
 use Modufolio\Panel\Search\GlobalSearch;
 use Modufolio\Psr7\Http\Response;
+use Psr\Clock\ClockInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Symfony\Component\HttpFoundation\Session\Flash\FlashBagInterface;
@@ -81,6 +82,7 @@ final class ResourceController
         private readonly ValidatorInterface $validator,
         private readonly TokenStorageInterface $tokenStorage,
         private readonly FlashBagInterface $flashBag,
+        private readonly ClockInterface $clock,
         ?FormResolver $forms = null,
         private readonly ?ExportAdapterProviderInterface $exports = null,
         private readonly ?GlobalSearch $search = null,
@@ -916,6 +918,7 @@ final class ResourceController
             $request,
             $this->entityManager,
             $this->urlGenerator,
+            $this->clock,
             $this->user(),
         );
     }

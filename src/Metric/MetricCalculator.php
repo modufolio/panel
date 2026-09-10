@@ -7,6 +7,7 @@ namespace Modufolio\Panel\Metric;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 use Modufolio\Appkit\Security\User\UserInterface;
+use Psr\Clock\ClockInterface;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Support\Label;
 use Modufolio\Panel\Table\Summary;
@@ -41,9 +42,10 @@ final class MetricCalculator
      */
     private const FIELD = '/^[A-Za-z_][A-Za-z0-9_]*$/';
 
-    public function __construct(private readonly EntityManagerInterface $entityManager)
-    {
-    }
+    public function __construct(
+        private readonly EntityManagerInterface $entityManager,
+        private readonly ClockInterface $clock,
+    ) {}
 
     /**
      * Every metric the resource declares, computed, keyed by metric key.
@@ -90,7 +92,7 @@ final class MetricCalculator
     {
         $window = $metric->windowLength();
         $bucket = $metric->bucket();
-        $now    = new \DateTimeImmutable('now');
+        $now    = $this->clock->now();
 
         $from = $window !== null && $bucket !== null ? $this->windowStart($now, $bucket, $window) : null;
 
@@ -123,7 +125,7 @@ final class MetricCalculator
         $length = (int) $metric->windowLength();
         $field  = (string) $metric->dateField();
         $alias  = $resource->queryAlias();
-        $now    = new \DateTimeImmutable('now');
+        $now    = $this->clock->now();
         $from   = $this->windowStart($now, $bucket, $length);
 
         $qb = $this->scopedQuery($resource, $user);

@@ -12,6 +12,7 @@
         "php": ">=8.3",
         "doctrine/orm": "^3.0",
         "modufolio/appkit": "^0.18",
+        "psr/clock": "^1.0",
         "modufolio/http": "^0.2",
         "modufolio/json-api": "^0.9",
         "psr/container": "^2.0",

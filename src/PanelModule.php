@@ -68,6 +68,7 @@ final class PanelModule extends AbstractModule
                 'validator' => ValidatorInterface::class,
                 'tokenStorage' => TokenStorageInterface::class,
                 'flashBag' => FlashBagInterface::class,
+                'clock' => \Psr\Clock\ClockInterface::class,
                 'forms' => FormResolver::class,
                 'exports' => ExportAdapterProviderInterface::class,
                 'search' => GlobalSearch::class,
@@ -90,6 +91,7 @@ final class PanelModule extends AbstractModule
             return new GlobalSearch(
                 $app->entityManager(),
                 $app->urlGenerator(),
+                new \Symfony\Component\Clock\Clock(),
                 // The second argument is the container's own type check, so
                 // a resource registered under someone else's id fails by name
                 // here rather than somewhere down the request.

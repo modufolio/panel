@@ -10,6 +10,7 @@ use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\ResourceListing;
 use Modufolio\Panel\Support\Label;
 use Modufolio\Psr7\Http\ServerRequest;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
@@ -34,6 +35,7 @@ final class GlobalSearch
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly UrlGeneratorInterface $urlGenerator,
+        private readonly ClockInterface $clock,
         private readonly \Closure $resources,
         private readonly array|\Closure $resourceClasses,
     ) {
@@ -76,7 +78,7 @@ final class GlobalSearch
         $key = $resource->key();
         $request = new ServerRequest('GET', sprintf('/%s?%s', $key, http_build_query(['search' => $query, 'page' => ['size' => $limit]])));
 
-        $props = (new ResourceListing($resource, $request, $this->entityManager, $this->urlGenerator, $user))->render()->props();
+        $props = (new ResourceListing($resource, $request, $this->entityManager, $this->urlGenerator, $this->clock, $user))->render()->props();
 
         /** @var array{data?: list<array<string, mixed>>, meta?: array{total?: int}} $collection */
         $collection = $props[$key] ?? [];
