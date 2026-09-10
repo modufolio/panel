@@ -11,7 +11,7 @@ each one trades exactly one thing.
 
 | Rung | You give up | You keep |
 |---|---|---|
-| **1. Fully generated** | — | routes, the host's one-line `Resource/Index` shell over `ResourcePage`, drawer, everything |
+| **1. Fully generated** | — | routes, the package's own `Resource/Index` page over `ResourcePage`, drawer, everything |
 | **2. Your page, generated routes** | the generic Vue page | routes, schema, presenter, list query, drawer |
 | **3. Your controller, resource kept** | route generation (partially) | schema, presenter, list query, drawer tabs |
 | **4. Fully custom** | the listing machinery | whatever still fits |

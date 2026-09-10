@@ -196,6 +196,13 @@ const cellHandlers = {
 `disabledWhen('field')` keeps the control visible but inert when that field is
 truthy; `readOnlyWhen('field')` drops it for a static badge.
 
+The viewer's permissions have the last word. A column stays `editable` in
+the schema the client receives only when the resource's `Permissions` let
+this viewer `edit()` the type and `writable()` the column's field — the same
+question the patch endpoint asks, asked before the control exists. A rule
+about *this record* still answers on the write; a rule about this *viewer*
+answers here, so a control that would be refused is never drawn.
+
 ### Sortability is derived
 
 **A column cannot declare itself sortable.** There is no `sortable()` — only

@@ -57,7 +57,9 @@ registration only says which routes exist.
 
 `indexComponent()` defaults to the generic `Resource/Index` page, which renders
 the write actions too — override it only for a resource that has outgrown it
-(see [graduating-a-resource.md](graduating-a-resource.md)).
+(see [graduating-a-resource.md](graduating-a-resource.md)). That page, and the
+create, edit and permissions ones beside it, come from `@modufolio/panel`'s
+`resourcePages` resolver map: the application registers no Vue file for them.
 
 ### The listing
 
@@ -85,6 +87,8 @@ the write actions too — override it only for a resource that has outgrown it
 | `drawer()` | The drawer's tabs — a details tab is a list of keys, labelled from `fields()`; without one the grid follows the form |
 | `drawerType()` | Slot name for one record (default: the singular of `key()`) |
 | `drawerTitle()` | Heading for the open record |
+| `title()` | The resource in the plural, as the page heading reads it (default: `key()` humanised, 'Form Submissions') |
+| `label()` | One record, as a button reads it (default: `drawerType()` humanised, 'Form Submission') |
 
 A relation tab lists related rows two lines each — `primary()` and
 `secondary()`. When the reader needs more than that before opening anything,
@@ -208,6 +212,84 @@ Per-field access is enforced but not yet advertised — the schema does not
 carry `writable`, so a control the viewer may not use is drawn, clicked, and
 refused. Declaring it would let the client render it read-only instead.
 
+### Saved views
+
+A filter set someone named — "Overdue issues", "Unpublished screenings" — with
+the search, the sort and which columns were on. The generated listing offers
+them beside the column toggle; a hand-written page imports `SavedViews` and
+wires the same three handlers.
+
+Nothing server-side: a view is a URL with a name, so it is remembered in the
+browser exactly as column preferences are (`panel.views.{key}` in
+`localStorage`), needing no table, migration or endpoint. Applying one blanks
+the filter form and writes the view over it — a view is the whole list state,
+not a patch over what was filtered before — and one visit follows. Saving over
+a name replaces that view; there is no rename, because a view is only ever the
+current list under a label.
+
+A filter the resource has since dropped is forgotten when the view is applied,
+the way a removed column is forgotten from a column preference. The trade for
+staying in the browser is that a view does not follow the viewer to another
+machine and cannot be shared; `Composables/savedViews.ts` is the seam to move
+behind an endpoint when either becomes the point.
+
+### Metrics
+
+Numbers above the listing — how many, how much, which way it is going, how it
+breaks down — declared by `metrics()` and computed by `Metric\MetricCalculator`:
+
+```php
+public function metrics(): array
+{
+    return [
+        Metric::value('issues')->count()->icon('clipboard'),
+        Metric::value('opened')->count()->over('createdAt')->days(30)->compare(),
+        Metric::trend('created')->count()->over('createdAt')->days(14),
+        Metric::partition('status')->count()->colors(IssueStatus::class),
+    ];
+}
+```
+
+Three shapes: one number (optionally against the period before it), a series
+over time, and a breakdown by a field. The aggregate names a SQL function and
+the field names a column, so a metric is data all the way down and no closure
+has to cross the prop boundary. `ResourcePage` renders whichever card each
+type names, above the table or the board.
+
+Two decisions worth knowing:
+
+- **A metric is not narrowed by the table's filters.** It describes the
+  resource ("1,204 movies, 38 added this month"), not the question the list is
+  currently asking; a column's `summarize()` already describes the filtered
+  set. What it *is* narrowed by is `Permissions::scope()` and the soft-delete
+  scope, through one door in the calculator — a number the list under it
+  contradicts is a bug report, and a number counting rows the viewer cannot
+  open is worse.
+- **A trend buckets in PHP, over a bounded window.** Date truncation has no
+  portable spelling, and a per-engine branch is only worth it when engines
+  return different rows (see json-api's `SqlDialect`, which branches for
+  `NULLS LAST` and nothing else). Folding the window's dates in PHP gives the
+  same answer everywhere — which is why a trend must declare `days()` or
+  `months()`.
+
+### The permission page
+
+`GET {prefix}/_permissions` renders the permission inspector: for every
+resource, which routes admit each role, what the resource's own hooks answer,
+which form fields each role may read and write, and the places two layers
+disagree. It is generated with the resource routes and gated by the role the
+loader was given (`ROLE_SUPER_ADMIN` unless the host says otherwise) — the page
+enumerates the permission model, so it defaults to the most privileged role
+rather than the panel's.
+
+The report is the application's to build: the inspector needs the route
+collection, a resource factory, the list of roles, and a stand-in user carrying
+one role, none of which the package can know. A host answers by registering a
+`Contracts\PermissionReportProviderInterface`; without one the route answers
+404, which is more use than an empty grid. The page component is
+`Resource/Permissions`, and the client's `<PermissionsMatrix :report="report">`
+renders it.
+
 ### Permissions
 
 Who may do what is one class the application writes, extending
@@ -240,6 +322,25 @@ and free to take a service — the resource's constructor is where it arrives.
 Which operations *exist* stays structural (`form()`, `only()`,
 `except()`); permissions only ever narrow what exists.
 
+Every write button the panel offers is the conjunction of two of these
+facts from two places: the router says whether the resource *generated* the
+route, and `Permissions` say whether *this viewer* may use it.
+`Resource\ResourceCapabilities` asks the pair once per resource and viewer —
+`create()`, `edit($record)`, `delete($record)`, `move()`, `export()` — and
+every surface reads the answer from it: the listing's `resource` prop, its
+derived row actions, the form's delete button, the drawer frame's URLs. A
+controller building its own frame gets the same object from
+`ResourceListing::capabilities()`. Nothing else in the panel asks half the
+question.
+
+**Every answer a `Permissions` class gives must be pure and cheap.** The
+record-level questions are asked once per row per ability on every listing
+render, once per card per lane on a board with quick moves, and once per
+field on every form; nothing is memoised. A rule that reads a property or
+compares a role costs nothing. A rule that queries inside `edit()` is an
+N+1: load what it needs in the constructor, or keep those rows out of reach
+with `scope()`.
+
 The layers are easy to reason about one at a time and hard to see combined.
 `Inspection\PermissionInspector` reads them back together without a request:
 per resource and per role, which generated routes admit the role, what the
@@ -249,6 +350,16 @@ write-denied — plus notes on divergences, such as a rule that reads a literal
 role while the route layer honours the hierarchy. The host wires it with its
 route collection, its resource factory, a `FormResolver`, the role hierarchy
 and a user factory, and can expose it as a console command, a page, or both.
+
+`Inspection\SchemaInspector` does the same for the *schema*. The panel
+derives a column's label, type, options and control at render time — from
+the column, then `fields()`, then Doctrine's mapping, the routes and the
+viewer's permissions — so when a column renders wrong there is no generated
+file to read. The inspector runs the listing's own `SchemaResolver` over the
+real routes for a stand-in viewer and reports every column and form field
+with the layer that decided each part (`column`/`form`, `fields`, `mapping`,
+`route`, `permissions`, `default`). The playground exposes it as
+`panel:schema <key> [--role ROLE]`.
 
 ### Registration
 

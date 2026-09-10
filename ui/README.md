@@ -20,7 +20,8 @@ npm install @modufolio/panel
 ```
 
 Peer dependencies: `vue ^3.5`, `@inertiajs/vue3 ^3`, `@heroicons/vue ^2`,
-and (optional) `@vueuse/core`, `vuedraggable`, `lodash`.
+and (optional) `@vueuse/core`, `vuedraggable`, `lodash`, `tus-js-client`
+(only for `useTusUploadQueue`).
 
 ## Setup
 
@@ -43,6 +44,41 @@ createApp({ render: () => h(App, props) })
 Every URL the panel builds goes through `panelUrl()` with that `baseUrl` —
 nothing in the package hardcodes a mount path (CI-enforced).
 
+### Failed requests
+
+The panel reports a failed status itself: a toast for what the viewer can
+shrug off, a modal for what ends what they were doing (401, 403 and 5xx by
+default). Both are configuration:
+
+```js
+createPanel({
+  errorMessages: {
+    403: 'Ask an admin for access.',                      // toast
+    409: { as: 'modal', title: 'Out of date', message: 'Reload and try again.' },
+    404: false,                                           // leave it alone
+  },
+})
+```
+
+`AppLayout` mounts the toast host and the modal; an app laying out its own
+chrome mounts `<Toast />` and `<ErrorModal />` once itself.
+
+### Generic resource pages
+
+The pages the generated resource routes render ship with the package. Spread
+them into your Inertia resolver and a full-CRUD resource needs no Vue file of
+its own:
+
+```js
+import { resourcePages } from '@modufolio/panel'
+
+const pages = { ...resourcePages, ...appPages }   // app pages win on a clash
+```
+
+That covers `Resource/Index`, `Resource/Create`, `Resource/Edit` and
+`Resource/Permissions`. None of them declares a layout, so whatever your
+resolver assigns applies to them like any other page.
+
 ## Styles (Tailwind CSS 4)
 
 The package ships source `.vue` files and source CSS — your Tailwind build
@@ -53,6 +89,10 @@ compiles both. In your CSS entry:
 @import '@modufolio/panel/styles' layer(components);
 @source "../node_modules/@modufolio/panel";
 ```
+
+That entry pulls in the design tokens, the button and form rules, and
+`components.css` — the `ui-*` classes the components themselves emit. Import
+your own stylesheet after it to override any of them.
 
 Theming: components use the semantic `--color-primary-*` / `success` /
 `danger` / `warning` / `info` scales. Import

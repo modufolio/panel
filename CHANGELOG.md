@@ -7,6 +7,184 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Resources can carry metrics.** `PanelResource::metrics()` declares numbers
+  shown above the listing, in the three shapes those ecosystems settled on:
+  `Metric::value()` (optionally `->compare()`d against the preceding window),
+  `Metric::trend()` over a date field, and `Metric::partition()` by a field,
+  with colours from the same enum the table and board already read.
+  `MetricCalculator` computes them through one door that applies
+  `Permissions::scope()` and hides soft-deleted rows, so a metric can never
+  count what its viewer cannot open; `MetricRow` and the three cards render
+  them. Deliberately not narrowed by the table's filters — a column's
+  `summarize()` is what describes the filtered set.
+
+- **The generic resource pages ship with the package.** `resourcePages` is an
+  Inertia resolver map covering `Resource/Index`, `Resource/Create`,
+  `Resource/Edit` and `Resource/Permissions` — spread it into the app's own
+  map (`{ ...resourcePages, ...appPages }`) and a full-CRUD resource needs no
+  Vue file anywhere. Every consumer was hand-copying the same four shells,
+  which is four chances to drift from what the routes actually send. The
+  components are exported individually as well (`ResourceIndexPage` and
+  friends), and none of them declares a layout: whatever the app's resolver
+  assigns applies to them like any other page.
+- **Component styles are part of the package.** `styles/components.css`, now
+  imported by `styles/index.css`, carries the `ui-*` rules the package's own
+  components emit — PageHeader, Table and its columns, BelongsToSelect,
+  RelationManager, StatsWidget, Wizard, the sidebar's icon weight. They lived
+  in the consuming application, so anything but that one app rendered those
+  components unstyled. The two entrance animations are written as keyframes
+  rather than `@apply animate-in …`, so the package needs no Tailwind plugin
+  and honours `prefers-reduced-motion`.
+- **`useResourceFilters(endpoint, filters, table, perPage)`** — `useListFilters`
+  with the schema's own defaults applied and `setFilter`/`goToPage` bound, the
+  three lines every generated index page repeated.
+- **`useFieldRules(specs, values, serverErrors)`** — client-side checking of
+  the rules a PHP blueprint declared, with messages that stay quiet until a
+  field is touched or a save is attempted, and a server message that stands
+  until the user edits that field.
+- **`useTusUploadQueue` and `UploadQueue`** — a domain-free resumable-upload
+  queue and its progress panel. `tus-js-client` is an optional peer, reached
+  through a dynamic import the first time an upload starts, so an app that
+  never uploads never loads it.
+- **`RecordFormDrawer`** — the slide-over that adds or edits one related
+  record above a drawer, registered in the overlay layer stack so Escape
+  closes the panel rather than the drawer beneath it.
+- **The panel owns both halves of error reporting.** `errorMessages` entries
+  now say *how* a status is reported as well as what it says: a plain string
+  is a toast, `{ as: 'modal', title, message }` is a dialog the viewer has to
+  dismiss. `ErrorModal` (mounted by `AppLayout`) and the `showErrorModal()`
+  store behind it are the new pieces; both are exported for an app that lays
+  out its own chrome. When the response carried a JSON:API error body, its
+  `title` and `detail` are what the modal shows — the server already redacts
+  `detail` outside dev, so the client needs no environment check of its own.
+- **`ChangePasswordDialog`** — current password, new, confirm, posted to
+  `{baseUrl}/profile/password` (override with `endpoint`), server errors
+  landing back on the fields. The package already shipped every other auth
+  screen.
+- **A default user menu.** `AppLayout` with no `userMenuItems` now renders
+  profile, two-factor, change password and log out, wired to the routes every
+  panel serves — the change-password entry opens the dialog the layout
+  mounts. Passing a list still replaces them wholesale.
+
+- **`ResourceCapabilities` — one object for "may this viewer do this here".**
+  Every write button the panel offers is a conjunction of two facts from two
+  places: the router says whether the resource *generated* the route, the
+  resource's `Permissions` say whether *this viewer* may use it. The pair was
+  spelled out at seven sites across the listing, the form presenter and the
+  drawer frame; it is now asked once per resource and viewer, with route
+  existence memoised (the generator has no cheap "does this route exist",
+  only a generation to try and a throw to catch). `ResourceListing::capabilities()`
+  exposes it to a controller building its own frame.
+- **`SchemaResolver` — the table pipeline, out of the listing.** Labels from
+  `fields()`, the mapping's guesses, the record URL from the show route, the
+  trashed default, actions from the routes and the permissions, then
+  editability: a `TableSchema → TableSchema` pipeline whose steps are public
+  and unit-tested without a database. `FilterOptionResolver` holds the one
+  step that reads one. `ResourceListing` lost ~400 lines to the two.
+- **A control the viewer may not use is not drawn.** An `editable()` column
+  used to render its control for everyone and refuse on click for a viewer
+  the resource's `writable()` denied. The schema now asks the same question
+  before the control exists — at the type level, so a rule about *this
+  record* still answers on the write — and a viewer who may not `edit()` the
+  type gets no inline control at all.
+- **`Inspection\SchemaInspector` — the file a generator would have written.**
+  The panel derives everything at render time, which keeps a resource a dozen
+  lines and means a column that renders wrong has no file to read. The
+  inspector runs the listing's own `SchemaResolver` over the real routes for
+  a stand-in viewer and reports every column and form field with the layer
+  that decided its label, type, options and control: `column`/`form`,
+  `fields`, `mapping`, `route`, `permissions` or `default`. `SchemaReport` is
+  the plain-array result a console command tabulates.
+- **The resource sends its own labels.** `PanelResource::title()` ('Movies')
+  and `label()` ('Movie') travel in the listing's `resource` prop, every key
+  a drawer tab lists arrives labelled (from `fields()`, or humanised on the
+  server), and a form field placed in a group or fieldset the form never
+  declared gets that container declared and labelled in `layout`. The
+  client's `useResourceListing` reads `resource.title` and `resource.label`
+  and humanises nothing; `titleLabel`/`sentenceLabel` remain exported for a
+  page that builds its own props.
+- **`RecordVerdicts::verdict()` and `verdictsEach()`** answer `can` and `why`
+  from one round of questions. `canEach` then `whyEach` asked every ability
+  twice per row; the listing, the board and the drawer frame now ask once.
+- **`Permissions` states its cost contract.** Every answer must be pure and
+  cheap: the record-level questions are asked once per row per ability on
+  every render, and nothing is memoised. A rule that needs data the record
+  does not carry loads it in the constructor or narrows the rows with
+  `scope()`.
+- **`Column::currentLabel()` and `currentType()`** read a column's label and
+  type as they stand, for an inspector that wants to compare before and
+  after resolution.
+
+### Changed
+
+- **BREAKING: the controller is handed its resource instead of resolving one.**
+  `ResourceController::handle()` now takes a `?PanelResource $resource` in
+  place of the `string $resourceClass` it used to look up, and its constructor
+  lost the `$resources` dependency. Hosts must add a parameter resolver that
+  fills a `PanelResource` argument from the route's `resourceClass` default —
+  the same shape as appkit's `MapEntity` resolver — and the route's defaults
+  are unchanged, so nothing else moves. The two spanning routes (search, the
+  permission page) carry no resource, which is why the argument is nullable.
+
+- **BREAKING: `GlobalSearch` and `PanelResourceRouteLoader` take a closure.**
+  Both now accept `\Closure(class-string<PanelResource>): PanelResource` where
+  they took a locator. The loader already accepted a closure and every known
+  host passed one, so in practice only its type narrowed.
+
+- **401, 403 and 5xx are modals, not toasts.** Each one ends whatever the
+  viewer was doing — a dead session, a refused action, a broken server — so a
+  notice that fades on its own timer is the wrong shape for it; applications
+  were already reaching around the toast to say so. Map the status to a plain
+  sentence (`errorMessages: { 500: 'Something broke.' }`) for the old
+  behaviour.
+
+- **`ResourceMeta.title` and `ResourceMeta.label` are required.** The
+  generated pages and `useResourceListing` read them instead of humanising
+  `key` and `drawerType`; a hand-written page that builds the `resource`
+  prop itself passes both.
+- **`ExportButton` takes a `title`.** The printed table's heading, passed by
+  `ResourcePage` from the server's resource title; absent, the filename is
+  humanised as before.
+- **A drawer tab's listed keys never arrive unlabelled.** `DrawerTab::collect()`
+  used to send `null` for a key neither the tab nor `fields()` labelled and
+  leave the grid to humanise it; it now sends the sentence-case label.
+
+### Removed
+
+- **BREAKING: `ResourceLocatorInterface` and `ContainerResourceLocator`.** The
+  interface named something the host's container already is, and the adapter
+  wrapped a container in an object whose only job was to call that container —
+  in the playground, `App::resource()` asked the container for a locator built
+  over the same container, then checked the answer's type three times over.
+  A resource is an ordinary service: declare its collaborators in its
+  constructor, register it, and ask the container for it. Where the package
+  needs one it is handed one, and appkit's `get($id, $interface)` already
+  performs the type check the adapter was written for.
+
+- **`useDragReorder`.** Gone from `@modufolio/panel`: no caller in the
+  package, no test, no mention in the docs, and no use in any consuming app.
+  Drag reordering in the panel happens through `vuedraggable` and
+  `Builder/dragHandle` instead.
+- **`startOfMonth`.** Gone from the date utilities — the only one of the
+  twenty with no caller. `monthMatrix` covers what a calendar needs.
+
+### Fixed
+
+- **A date preset means the same day everywhere.** `DateRangeFilter`'s presets
+  build their dates at local midnight and formatted them with
+  `toISOString()`, which is UTC: east of Greenwich "This month" began on the
+  last day of the previous one, "Last month" ended a day early, and "Today"
+  flipped to yesterday for anyone filtering before their offset had elapsed.
+  Days are now formatted in the viewer's own timezone, and the range a preset
+  stands for is defined once rather than computed separately for applying it
+  and for marking the one in force.
+- **Zero is a value a number filter can hold.** `NumberFilter` initialised
+  through `||`, so a `0` — `seats > 0`, a range starting at zero — arrived as
+  an empty input with no Clear button, while the watch that re-syncs the same
+  fields kept it. The two now agree.
+
 ## [0.7.0] - 2026-09-08
 
 ### Fixed
@@ -27,6 +205,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   well, in `Form` (tabs and fieldsets) and in `DrawerTab::collect()`.
 
 ### Added
+
+- **The permission inspector has a page.** `GET {prefix}/_permissions`,
+  generated beside the resource routes and gated by a configurable role
+  (`ROLE_SUPER_ADMIN` by default), renders `PermissionsMatrix`: per resource,
+  which routes admit each role, what its hooks answer, which fields each role
+  may read and write, and where two layers disagree. `PermissionReport` was
+  already computed and only the console command could see it. The report stays
+  the host's to build — routes, roles and a stand-in user are things only an
+  application knows — through the new
+  `Contracts\PermissionReportProviderInterface`; without one the route answers
+  404 rather than an empty grid.
+
+- **A list you looked at can be named.** Saved views: the filters, search, sort
+  and visible columns of a listing, stored per resource under a label and
+  offered beside the column toggle — "Overdue issues" rebuilt by hand every
+  morning is now one click. Remembered in the browser like column preferences,
+  since a view is a URL with a name and needs no table, migration or endpoint;
+  `Composables/savedViews.ts` is the seam to move behind one later. Applying a
+  view blanks the form before writing it, so a view is the whole list state
+  rather than a patch over the last one, and a filter the resource has since
+  dropped is reconciled away.
 
 - **A cell can be edited from the list, on any resource.** `PATCH
   {prefix}/{key}/{uuid}` is generated beside the edit routes and writes one
