@@ -17,6 +17,7 @@ use Modufolio\Panel\Form\FormResolver;
 use Modufolio\Panel\Form\SubmissionHandler;
 use Modufolio\Panel\Resource\BoardMover;
 use Modufolio\Panel\Resource\FieldPickUrls;
+use Modufolio\Panel\Realtime\ChangePublisher;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Resource\RecordLocator;
 use Modufolio\Panel\Resource\RelationAddUrls;
@@ -87,6 +88,7 @@ final class ResourceController
         private readonly ?ExportAdapterProviderInterface $exports = null,
         private readonly ?GlobalSearch $search = null,
         private readonly ?PermissionReportProviderInterface $permissions = null,
+        private readonly ?ChangePublisher $realtime = null,
     ) {
         // A host without a media library gets the plain resolver.
         $this->forms = $forms ?? new FormResolver($entityManager);
@@ -326,6 +328,7 @@ final class ResourceController
 
         if ($errors === []) {
             $this->flashBag->add('success', $this->label($resource) . ' created.');
+            $this->announce($resource, $entity);
 
             return $this->redirect($request, $this->indexUrl($resource));
         }
@@ -367,6 +370,7 @@ final class ResourceController
 
         if ($errors === []) {
             $this->flashBag->add('success', $this->label($resource) . ' updated.');
+            $this->announce($resource, $entity);
 
             return $this->redirect($request, $this->urlGenerator->generate($resource->key() . '_edit', $resource->recordRouteParams($entity)));
         }
@@ -552,6 +556,7 @@ final class ResourceController
             $entity->softDelete();
             $this->entityManager->flush();
             $this->flashBag->add('success', $this->label($resource) . ' deleted.');
+            $this->announce($resource, $entity);
 
             return $this->redirect($request, $this->indexUrl($resource));
         }
@@ -574,6 +579,7 @@ final class ResourceController
 
         $this->executor()->apply($plan);
         $this->flashBag->add('success', $this->label($resource) . ' deleted.');
+        $this->announce($resource, $entity);
 
         return $this->redirect($request, $this->indexUrl($resource));
     }
@@ -1074,6 +1080,31 @@ final class ResourceController
     }
 
     /** Human singular: 'movies' → 'Movie'. */
+    /**
+     * Tell every panel watching this resource that it moved.
+     *
+     * The listing they are on re-fetches its rows; nothing else travels. The
+     * record's identifier rides along for a page that wants to know *which*
+     * row — it is a public identifier, and a listener who may not see the
+     * record still cannot read it, because their reload is authorized on its
+     * own terms.
+     */
+    private function announce(PanelResource $resource, object $entity): void
+    {
+        if ($this->realtime === null) {
+            return;
+        }
+
+        $payload = [];
+        $id      = $resource->recordRouteParams($entity);
+
+        if ($id !== []) {
+            $payload['record'] = $id;
+        }
+
+        $this->realtime->changed($resource->key(), $payload);
+    }
+
     private function label(PanelResource $resource): string
     {
         return FormPresenter::label($resource);

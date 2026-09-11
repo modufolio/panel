@@ -16,6 +16,9 @@ export * from './Utils/reconcile'
 export * from './Utils/tagsChanged'
 export { escapeHtml, sanitizeUrl, normalizeUrl, panelUrl, setPanelBaseUrl, getPanelBaseUrl } from './Utils/url'
 export { getCsrfToken, setCsrfToken } from './Utils/csrf'
+export { niceSize } from './Utils/niceSize'
+export { showConfirm, useConfirmDialog, type ConfirmOptions } from './Components/Dialogs/confirm'
+export { flattenErrors, errorMessages, apiErrorMessage, useFormErrors, type ServerErrors } from './Utils/errors'
 export { showToast, showToastsIn, type PageToast } from './Components/Notifications/pageToasts'
 export {
   useErrorModal,
@@ -64,6 +67,14 @@ export * from './Composables/useNestedDrawerForm'
 export { useDrawerDirtyGuard } from './Components/Drawer/useDrawerDirtyGuard'
 export * from './Composables/useDeleteConfirmation'
 export * from './Composables/useReconciled'
+export {
+  useLiveUpdates,
+  realtimeClientId,
+  REALTIME_CLIENT_HEADER,
+  REALTIME_NUDGE_HEADER,
+  type RealtimeConfig,
+  type LiveUpdateOptions,
+} from './Composables/useRealtime'
 
 // Core Primitives
 export { default as Button } from './Components/Core/Button.vue'

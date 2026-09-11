@@ -17,8 +17,11 @@ use Modufolio\Panel\Form\FormResolver;
 use Modufolio\Panel\Http\ResourceController;
 use Modufolio\Panel\Inspection\NoPermissionReport;
 use Modufolio\Panel\Inspection\PermissionInspector;
+use Modufolio\Panel\Realtime\ChangePublisher;
+use Modufolio\Panel\Realtime\NullChangePublisher;
 use Modufolio\Panel\Resource\PanelResource;
 use Modufolio\Panel\Search\GlobalSearch;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\HttpFoundation\Session\Flash\FlashBagInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
@@ -68,17 +71,24 @@ final class PanelModule extends AbstractModule
                 'validator' => ValidatorInterface::class,
                 'tokenStorage' => TokenStorageInterface::class,
                 'flashBag' => FlashBagInterface::class,
-                'clock' => \Psr\Clock\ClockInterface::class,
+                'clock' => ClockInterface::class,
                 'forms' => FormResolver::class,
                 'exports' => ExportAdapterProviderInterface::class,
                 'search' => GlobalSearch::class,
                 'permissions' => PermissionReportProviderInterface::class,
+                'realtime' => ChangePublisher::class,
             ],
         ];
     }
 
     protected function loadServices(ServiceConfigurator $services, array $config): void
     {
+        // Realtime is opt-in: the controller announces every write, and with
+        // nothing listening that costs one method call. A host that wants live
+        // panels declares its own ChangePublisher, which — like every module
+        // default — wins over this one.
+        $services->set(ChangePublisher::class, static fn (): ChangePublisher => new NullChangePublisher());
+
         // The search across resources reads the resources off the routes, as
         // the permission inspector does, so it knows exactly what is mounted.
         $services->set(GlobalSearch::class, static function (AppInterface $app): GlobalSearch {
@@ -91,7 +101,7 @@ final class PanelModule extends AbstractModule
             return new GlobalSearch(
                 $app->entityManager(),
                 $app->urlGenerator(),
-                new \Symfony\Component\Clock\Clock(),
+                $app->get(ClockInterface::class),
                 // The second argument is the container's own type check, so
                 // a resource registered under someone else's id fails by name
                 // here rather than somewhere down the request.

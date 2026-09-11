@@ -14,6 +14,7 @@
 
 import { router } from '@inertiajs/vue3'
 import { getCsrfToken } from './csrf'
+import { realtimeClientId, REALTIME_CLIENT_HEADER } from '../Composables/useRealtime'
 import { showToastsIn } from '../Components/Notifications/pageToasts'
 import { httpErrorMessage, notifyHttpError, type ServerError } from '../Components/Notifications/httpErrors'
 
@@ -98,6 +99,14 @@ export async function apiFetch<T = unknown>(url: string, options: ApiFetchOption
   const token = getCsrfToken()
   if (token && !hasHeader(finalHeaders, 'x-csrf-token')) {
     finalHeaders['X-CSRF-Token'] = token
+  }
+
+  // Says which tab is writing, so the realtime nudge this causes can be
+  // ignored by that tab — it already has the answer. Absent when the panel has
+  // no realtime connection, which is the common case for a public deployment.
+  const client = realtimeClientId()
+  if (client !== null && !hasHeader(finalHeaders, REALTIME_CLIENT_HEADER)) {
+    finalHeaders[REALTIME_CLIENT_HEADER] = client
   }
 
   const response = await fetch(url, {

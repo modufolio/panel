@@ -150,6 +150,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@floating-ui/vue": "^2.0.1"
+    "@floating-ui/vue": "^2.0.1",
+    "centrifuge": "^5.7.4"
   }
 }

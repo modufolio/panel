@@ -18,6 +18,7 @@ import { computed, useAttrs, type PropType } from 'vue'
 import { Head } from '@inertiajs/vue3'
 import ResourcePage from '../Components/Resource/ResourcePage.vue'
 import { type ResourceMeta } from '../Composables/useResourceListing'
+import { useLiveUpdates } from '../Composables/useRealtime'
 
 defineOptions({ inheritAttrs: false })
 
@@ -26,6 +27,17 @@ const props = defineProps({
 })
 
 const attrs = useAttrs()
+
+/**
+ * Every generated listing follows its own resource: the server publishes
+ * `changed('movies')` after a write and the table here re-fetches its rows.
+ *
+ * Only the rows — the schema, filters and the rest of the page are the same as
+ * they were, and re-sending them would throw away a sort or an open filter
+ * popover for nothing. A deployment with no realtime configured has no
+ * `realtime` prop, and this does nothing at all.
+ */
+useLiveUpdates(props.resource.key, { only: [props.resource.key] })
 
 /**
  * Only `resource` is named above, so the rest of the listing's props — the
