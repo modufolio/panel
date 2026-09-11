@@ -28,7 +28,10 @@ final class ColorRuleTest extends TestCase
         $this->assertSame('gt', ColorRule::above(1, 'success')->toArray()['operator']);
         $this->assertSame('gte', ColorRule::atLeast(1, 'success')->toArray()['operator']);
         $this->assertSame('equals', ColorRule::equals('draft', 'gray')->toArray()['operator']);
-        $this->assertSame([1, 5], ColorRule::between(1, 5, 'warning')->toArray()['value']);
+        $this->assertSame(
+            ['operator' => 'between', 'value' => [1, 5], 'color' => 'warning'],
+            ColorRule::between(1, 5, 'warning')->toArray(),
+        );
     }
 
     public function testAnEmptyRuleCarriesNoValueAtAll(): void
