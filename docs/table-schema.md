@@ -104,6 +104,7 @@ Column::make('organization')
 | `boolean()` | Tick / cross |
 | `format(string, bool $relative = false)` | Date format, for `date` columns |
 | `colors(array\|class-string)` | Value → colour map for badges; a backed enum implementing `HasColor` supplies its own |
+| `colorWhen(ColorRule ...)` | Colour decided by the value — see [Colour rules](#colour-rules) |
 | `weight(string)` | `medium` or `bold` |
 | `align(string)` | `left`, `center` or `right` |
 | `color(string)` | Text colour token (`primary`, `success`, `danger`, `warning`, `info`, `gray`) |
@@ -424,6 +425,73 @@ Summarising a dot-path column throws a `LogicException`: aggregating across a
 relation needs an explicit join.
 
 ---
+
+## Live updates
+
+`ResourceController` announces every write it performs — create, update,
+soft-delete, delete — through a {@see ChangePublisher} bound by the module:
+
+```php
+$this->realtime->changed($resource->key(), ['record' => [...]]);
+```
+
+The default binding is `NullChangePublisher`, so a panel with no realtime
+server behind it pays one method call and nothing else. A host that wants live
+listings declares its own `ChangePublisher` in config/services.php; the
+generated index page already subscribes to its own resource key, so nothing
+else is needed to make every listing follow its resource.
+
+The message is a nudge — the resource key and the record's public identifier,
+never record data. A listening page answers with a partial reload through its
+normal route, which is what keeps authorization in one place.
+
+## Colour rules
+
+"Red below zero, green above a thousand." A threshold, declared on the column
+and evaluated against each row's value:
+
+```php
+Column::make('balance')->money()->colorWhen(
+    ColorRule::below(0, 'danger'),
+    ColorRule::atLeast(1000, 'success'),
+);
+
+Column::make('issue_count')->numeric()->colorWhen(
+    ColorRule::atLeast(10, 'danger')->icon('warn'),
+    ColorRule::atLeast(5, 'warning'),
+    ColorRule::equals(0, 'gray'),
+);
+```
+
+First match wins, so order them the way you would say them: the exception
+first, the general case last. A matching rule stands in for the column's own
+`color()` and `icon()` for that row only, and outranks the `colors()` map on a
+badge.
+
+| Constructor | Operator |
+|---|---|
+| `ColorRule::below($n, $color)` | `lt` |
+| `ColorRule::atMost($n, $color)` | `lte` |
+| `ColorRule::above($n, $color)` | `gt` |
+| `ColorRule::atLeast($n, $color)` | `gte` |
+| `ColorRule::between($from, $to, $color)` | `between`, both bounds included |
+| `ColorRule::equals($value, $color)` | `equals` — works for text as well as numbers |
+| `ColorRule::empty($color)` | `empty` — null or `''` |
+| `ColorRule::when($operator, $value, $color)` | anything else in the shared vocabulary |
+
+Add `->icon('warn')` to any of them for a rule that reads without relying on
+colour alone.
+
+**Why the client evaluates them.** The rule crosses the wire; the comparison
+happens in the browser. That is deliberate: a row replaced by a realtime update
+recolours with no second request, an in-place edit recolours as the number
+changes before it is saved, and a threshold cannot go stale relative to the
+value beside it. A colour that depends on something *other* than the value —
+an overdue date, a permission, a computed health score — is not a rule; compute
+it in the presenter and expose it as its own field.
+
+**Null is not small.** A missing value matches no comparison, only `empty`.
+Colouring an absent number red would be a claim about data that is not there.
 
 ## Child tables
 
