@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   addDays, addMonths, adjustTwoDigitYear, atMidnight, clampToRange,
   dateAllowed, dateEquals, daysInMonth, formatDisplay, formatISO,
-  makeDate, monthMatrix, parseISO, parseUserInput,
+  date, fromUnix, makeDate, monthMatrix, parseISO, parseUserInput,
 } from '../src/Utils/dates'
 
 describe('dates', () => {
@@ -172,4 +172,53 @@ describe('dates', () => {
       expect(atMidnight(new Date(2026, 7, 22, 23, 59)).getHours()).toBe(0)
     })
   })
+
+  describe('date', () => {
+    it('reads a plain date as local midnight, not the day before', () => {
+      expect(date('2026-03-05')?.format()).toBe('Mar 5, 2026')
+    })
+
+    it('adds the time of day when the value carries one', () => {
+      expect(date('2026-03-05 14:30:00')?.format()).toBe('Mar 5, 2026 14:30')
+    })
+
+    it('honours an explicit format', () => {
+      expect(date('2026-03-05')?.format('MMM D')).toBe('Mar 5')
+    })
+
+    it('takes a Date', () => {
+      expect(date(makeDate(2026, 2, 5))?.format('MMM D')).toBe('Mar 5')
+    })
+
+    it('reads a unix timestamp only where the caller says it is one', () => {
+      expect(fromUnix(makeDate(2026, 2, 5).getTime() / 1000)?.format('MMM D')).toBe('Mar 5')
+      expect(fromUnix(null)).toBeNull()
+      expect(fromUnix(Number.NaN)).toBeNull()
+    })
+
+    it('is null for anything that is not a date, so ?? carries the absent case', () => {
+      expect(date(null)).toBeNull()
+      expect(date(undefined)).toBeNull()
+      expect(date('')).toBeNull()
+      expect(date('soon')).toBeNull()
+      expect(date(new Date('nope'))).toBeNull()
+      expect(date(null)?.format() ?? '—').toBe('—')
+    })
+
+    it('moves immutably, like DateTimeImmutable', () => {
+      const start = date('2026-03-05')!
+      expect(start.addDays(3).format('MMM D')).toBe('Mar 8')
+      expect(start.addMonths(1).format('MMM D')).toBe('Apr 5')
+      expect(start.format('MMM D')).toBe('Mar 5')
+    })
+
+    it('answers the questions the pages ask', () => {
+      expect(date('2026-03-05')?.toISO()).toBe('2026-03-05')
+      expect(date('2026-03-05 09:00:00')?.startOfDay().format('HH:mm')).toBe('00:00')
+      expect(date('2026-03-05')?.isSameDay(makeDate(2026, 2, 5))).toBe(true)
+      expect(String(date('2026-03-05'))).toBe('Mar 5, 2026')
+      expect(date('2026-03-05')?.relative(makeDate(2026, 2, 6))).toBe('1 day ago')
+    })
+  })
+
 })

@@ -127,7 +127,7 @@ import { computed } from 'vue'
 import { titleLabel } from '../../Utils/labels'
 import DrawerLink from './DrawerLink.vue'
 import Icon from '../Core/Icon.vue'
-import { formatDate, hasTimeOfDay, parseTimestamp } from '../../Utils/dates'
+import { date } from '../../Utils/dates'
 
 /**
  * The two-column definition grid every drawer's "details" view is built from.
@@ -283,11 +283,9 @@ function readableDate(value: unknown): string | undefined {
     return undefined
   }
 
-  const date = parseTimestamp(value)
-
-  return date === null
-    ? undefined
-    : formatDate(date, hasTimeOfDay(value) ? 'MMM D, YYYY HH:mm' : 'MMM D, YYYY')
+  // undefined, not a placeholder: this decides whether the value *is* a date,
+  // and a non-date is left to be presented as whatever else it is.
+  return date(value)?.format() ?? undefined
 }
 
 const resolvedFields = computed<DrawerField[]>(() => {

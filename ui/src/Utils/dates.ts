@@ -288,3 +288,109 @@ export function parseTimestamp(value: string): Date | null {
 export function hasTimeOfDay(value: string): boolean {
   return !/^\d{4}-\d{2}-\d{2}$/.test(value)
 }
+
+// ── A date, fluently ─────────────────────────────────────────────────────────
+
+/**
+ * One moment, wrapped so it reads the way it does on the server.
+ *
+ * The presenters spell this `$post->getCreatedAt()?->format('j M Y')`, and
+ * {@link date} gives the client the same sentence: a value in, `null` when
+ * there is nothing to show, and `?.` deciding what happens then. The
+ * alternative — `formatX(value, format, fallback)` — puts the absent case in
+ * a positional argument nobody reads.
+ *
+ * Immutable, like `DateTimeImmutable`: every method that moves the date
+ * returns a new `DateValue` and leaves this one alone. The formatting tokens
+ * are the panel's (`MMM D, YYYY`), the same ones a resource writes in
+ * `Column::format()` — not PHP's `Y-m-d`, since those cross the wire in the
+ * schema and must agree with what the table renders.
+ */
+export class DateValue {
+  constructor(
+    private readonly date: Date,
+    /** Whether the source carried a time of day, or was a plain calendar date. */
+    readonly hasTime: boolean,
+  ) {}
+
+  /**
+   * Without a format, a plain calendar date reads as `MMM D, YYYY` and one
+   * carrying a time of day adds `HH:mm`.
+   */
+  format(format?: string): string {
+    return formatDate(this.date, format ?? (this.hasTime ? 'MMM D, YYYY HH:mm' : 'MMM D, YYYY'))
+  }
+
+  /** "just now", "3 hours ago", "2 years ago". */
+  relative(now: Date = new Date()): string {
+    return relativeTime(this.date, now)
+  }
+
+  /** `YYYY-MM-DD`, the shape the server takes back. */
+  toISO(): string {
+    return formatISO(this.date)
+  }
+
+  addDays(days: number): DateValue {
+    return new DateValue(addDays(this.date, days), false)
+  }
+
+  addMonths(months: number, anchorDay?: number): DateValue {
+    return new DateValue(addMonths(this.date, months, anchorDay), false)
+  }
+
+  /** Local midnight of the same calendar day. */
+  startOfDay(): DateValue {
+    return new DateValue(atMidnight(this.date), false)
+  }
+
+  /** Same calendar day as another value, time ignored. */
+  isSameDay(other: DateValue | Date | null): boolean {
+    return dateEquals(this.date, other instanceof DateValue ? other.date : other)
+  }
+
+  /** The underlying Date, for a caller that needs one (a picker, a sort key). */
+  toDate(): Date {
+    return new Date(this.date.getTime())
+  }
+
+  toString(): string {
+    return this.format()
+  }
+}
+
+/**
+ * A {@link DateValue}, or `null` when the value is not a date — so `?.` and
+ * `??` carry the absent case, exactly as `?->` does on the server:
+ *
+ *   date(issue.due_date)?.format('MMM D') ?? '—'
+ *
+ * Accepts what the server sends (`'2026-03-05'`, `'2026-03-05 14:30:00'`, an
+ * ISO 8601 string) or a `Date`. A bare number is *not* accepted: PHP counts
+ * unix time in seconds and `new Date(n)` counts it in milliseconds, and a
+ * function that guesses between them is off by a factor of a thousand half
+ * the time. Say which with {@link fromUnix}, the way the server says it with
+ * `createFromFormat('U', …)`.
+ */
+export function date(value: string | Date | null | undefined): DateValue | null {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : new DateValue(value, true)
+  }
+
+  const parsed = parseTimestamp(value)
+
+  return parsed === null ? null : new DateValue(parsed, hasTimeOfDay(value))
+}
+
+/** A unix timestamp in **seconds**, as PHP's `U` format and `time()` count it. */
+export function fromUnix(seconds: number | null | undefined): DateValue | null {
+  if (typeof seconds !== 'number' || Number.isNaN(seconds)) {
+    return null
+  }
+
+  return date(new Date(seconds * 1000))
+}
