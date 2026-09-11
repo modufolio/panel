@@ -7,7 +7,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-09-11
+
 ### Added
+
+- **Live updates, if a host wants them.** `ResourceController` announces every
+  write it performs — create, update, soft-delete, delete — through the new
+  `Realtime\ChangePublisher`, and `ResourceIndexPage` subscribes to its own
+  resource key with `useLiveUpdates()`, so a generated listing follows its
+  resource without a line of application code. The message is a *nudge*: the
+  resource key and the record's public identifier, never record data. A
+  listening page answers with a partial reload through its normal route, which
+  is what keeps authorization in one place instead of restating it as channel
+  permissions that would drift. The module binds `NullChangePublisher` by
+  default, so a panel with no broker behind it pays one method call; a host
+  that wants live listings declares its own `ChangePublisher`. The client half
+  speaks Centrifugo (`centrifuge` is a dependency) and knows two things worth
+  naming: every visit and every `apiFetch` call carries the tab's connection id
+  (`X-Panel-Client`) so a tab ignores the echo of its own write, and a reload a
+  nudge caused is marked `X-Panel-Nudge` so the server can leave someone else's
+  flash message alone.
+
+- **`Column::colorWhen(ColorRule …)` — red below zero, green above a
+  thousand.** A threshold declared on the column and matched against each
+  row's value, with named constructors over the shared operator vocabulary:
+  `ColorRule::below()`, `atMost()`, `above()`, `atLeast()`, `between()`,
+  `equals()`, `empty()`, and `when()` for the rest. First match wins, and a
+  matching rule stands in for the column's own `color()` and `icon()` for that
+  row only. The rule crosses the wire and the *comparison happens on the
+  client* — deliberately: a row replaced by a live update recolours with no
+  second request, an in-place edit recolours as the number changes, and a
+  threshold cannot go stale relative to the value printed beside it. A missing
+  value matches no comparison, only `empty`; calling an absent number small
+  would be a claim about data that is not there.
+
+- **`showConfirm()` — the panel's answer to `window.confirm()`.** An awaited
+  question backed by `ConfirmDialog`, as module state with one host mounted by
+  `AppLayout`, the same shape `showErrorModal()` already had. Native confirm()
+  blocks the tab, cannot be styled, reads as a browser warning rather than as
+  part of the panel, and on some platforms offers a "don't show me these again"
+  checkbox that silently turns every later question into a yes. `ConfirmDialog`
+  gained a `tone` prop (`danger` by default, `primary` for restoring,
+  approving, switching) because not every question worth asking is destructive.
+
+- **`date()` and `fromUnix()` — a timestamp, fluently.** `date(value)` returns
+  an immutable `DateValue` or `null`, so the client reads the way the
+  presenters write: `date(issue.due_date)?.format('MMM D') ?? '—'`, the shape of
+  `$issue->getDueDate()?->format(…)`. `format()` without an argument picks
+  `MMM D, YYYY`, adding `HH:mm` when the source carried a time. A bare number
+  is *not* accepted — PHP counts unix time in seconds and `new Date(n)` counts
+  milliseconds — so `fromUnix()` says which, the way
+  `createFromFormat('U', …)` does on the server.
+
+- **`niceSize()` — the client half of `F::niceSize()`.** Same unit ladder, same
+  two decimals, same locale formatting, same `0 KB` for nothing, so an upload
+  does not change size when the page reloads and the server starts answering
+  instead. Six copies of the same KB/MB/GB arithmetic went with it.
+
+- **`flattenErrors()`, `errorMessages()`, `apiErrorMessage()` and
+  `useFormErrors()`.** Appkit's `ValidationResult::errors()` keys every field
+  to a *list* of messages while every field component here takes one string,
+  and pages were rendering `["Enter a valid photo URL."]` into the message
+  slot. The two shapes now meet in one place. `apiErrorMessage()` is the other
+  half: an `ApiError` refuses in one of three shapes — a validation bag, an
+  `error` string, a `message` — and every caller that caught one had to know
+  all three.
 
 - **Resources can carry metrics.** `PanelResource::metrics()` declares numbers
   shown above the listing, in the three shapes those ecosystems settled on:
@@ -119,6 +183,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **`ResourceController` takes an optional `?ChangePublisher` last.** Nullable
+  and last, so a host wiring it positionally is unaffected; without one the
+  controller announces nothing.
+
+- **`useTusUploadQueue().formatBytes` and `FileUploadField` render through
+  `niceSize()`.** Deprecated rather than removed, so nothing downstream breaks,
+  but the output changes: `Bytes` reads `B`, and an empty file reads `0 KB`
+  rather than `0 Bytes` — what the server has always said.
+
+- **`DrawerFieldGrid` and `ResetPassword` read through the new utilities.**
+  `readableDate()` is `date(value)?.format()`, and the password page's
+  hand-written `props.errors?.password?.[0]` is `flattenErrors()` — it was the
+  only place in the package that already knew the server sends lists.
+
+- **BREAKING: every `?object $user` parameter is typed `?UserInterface`.**
+  `Permissions`, `ResourceCapabilities`, `RecordVerdicts`, `RecordLocator`,
+  `RelationAddUrls`, `FieldPickUrls`, `FieldAccess`, `FormPresenter`,
+  `SubmissionHandler`, `MetricCalculator`, `PermissionInspector` and
+  `SchemaInspector` — every method that received the viewer as `?object` now
+  takes `Modufolio\Appkit\Security\User\UserInterface`. The package already
+  required `modufolio/appkit ^0.18`, so the interface was always available;
+  the untyped parameter was a leftover from before that coupling existed.
+  Callers passing an object that does not implement the interface hear about
+  it at the call site now rather than inside a hook.
+
+- **BREAKING: `MetricCalculator`, `ResourceListing`, `ResourceController` and
+  `GlobalSearch` require a `ClockInterface`.**  `MetricCalculator` takes
+  `Psr\Clock\ClockInterface` as its second constructor argument and calls
+  `$clock->now()` instead of `new \DateTimeImmutable('now')`. The clock
+  threads through `ResourceListing` (new fifth argument), `ResourceController`
+  (new `$clock` parameter) and `GlobalSearch` (new third argument). The kernel
+  answers `ClockInterface` with `Symfony\Component\Clock\Clock` — the facade
+  that delegates to `ClockSensitiveTrait::mockTime()` in tests — so the module
+  wires nothing, and `psr/clock ^1.0` is a declared dependency.
+
 - **BREAKING: the controller is handed its resource instead of resolving one.**
   `ResourceController::handle()` now takes a `?PanelResource $resource` in
   place of the `string $resourceClass` it used to look up, and its constructor
@@ -171,6 +270,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   twenty with no caller. `monthMatrix` covers what a calendar needs.
 
 ### Fixed
+
+- **A plain calendar date showed the day before, west of Greenwich.**
+  `DateColumn` parsed its value with `new Date('2026-08-02')`, which is UTC
+  midnight — so every `YYYY-MM-DD` column rendered a day early for anyone in a
+  negative offset. It reads through `date()` now, which is local midnight, and
+  the regression test fails under `TZ=America/New_York` without the fix.
+
+- **A dialog opened from inside a drawer had its buttons behind the drawer.**
+  `Dialog` and the drawer stack were both `z-50`, so DOM order decided and the
+  drawer won: a confirmation, an error modal or the media picker opened from a
+  record drawer was unreachable. Dialogs sit at `z-[100]` now — above every
+  drawer, still below the toasts and the upload queue, which report on work
+  rather than block it.
+
+- **Windowed metrics no longer depend on the runner's wall clock.**
+  `MetricCalculator` called `new \DateTimeImmutable('now')` for the window
+  boundary, so a test seeding rows at a fixed hour of the day broke on any
+  CI runner whose clock had not yet passed that hour. The calculator now
+  reads "now" from the injected `ClockInterface`, and the test suite freezes
+  time with `ClockSensitiveTrait::mockTime()`.
 
 - **A date preset means the same day everywhere.** `DateRangeFilter`'s presets
   build their dates at local midnight and formatted them with
