@@ -53,6 +53,9 @@ final class Column
     /** @var list<Summary> */
     private array $summaries = [];
 
+    /** @var list<ColorRule> */
+    private array $colorRules = [];
+
     private bool $editable = false;
     private ?string $disabledWhen = null;
     private ?string $readOnlyWhen = null;
@@ -319,6 +322,36 @@ final class Column
         $this->relative = $relative;
 
         return $this;
+    }
+
+    /**
+     * Colour the value by what the value is: "red below zero, green above a
+     * thousand".
+     *
+     *     Column::make('balance')->money()->colorWhen(
+     *         ColorRule::below(0, 'danger'),
+     *         ColorRule::atLeast(1000, 'success'),
+     *     )
+     *
+     * First match wins, so order them the way you would read them aloud —
+     * the exception first, the general case last. Rules are evaluated on the
+     * client, which is what keeps a realtime-updated row and an in-place edit
+     * honest: the colour follows the number without another request.
+     *
+     * Declaring a rule does not stop `color()` applying; a rule that matches
+     * simply wins for that row.
+     */
+    public function colorWhen(ColorRule ...$rules): self
+    {
+        $this->colorRules = [...$this->colorRules, ...array_values($rules)];
+
+        return $this;
+    }
+
+    /** @return list<ColorRule> */
+    public function colorRules(): array
+    {
+        return $this->colorRules;
     }
 
     /**
@@ -688,6 +721,9 @@ final class Column
             'summaries'       => $this->summaries === []
                 ? null
                 : array_map(static fn(Summary $s): array => $s->toArray(), $this->summaries),
+            'colorRules'      => $this->colorRules === []
+                ? null
+                : array_map(static fn(ColorRule $r): array => $r->toArray(), $this->colorRules),
             'options'         => $this->options,
             'editable'        => $this->editable,
             'disabledWhen'    => $this->disabledWhen,

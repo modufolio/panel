@@ -13,14 +13,7 @@ import ToggleIconColumn from '../Columns/ToggleIconColumn.vue'
 import { semanticColor } from '../../Utils/colors'
 import CopyButton from '../Columns/CopyButton.vue'
 import { resolveColumnComponent } from '../Columns/columnRegistry'
-import {
-  isEmptyValue,
-  cellClasses,
-  truncate,
-  formatValue,
-  type SchemaColumn,
-  type CellHandler,
-} from './tableSchema'
+import { cellClasses, formatValue, isEmptyValue, matchColorRule, truncate, type CellHandler, type SchemaColumn } from './tableSchema'
 import type { TableRecord } from './tableTypes'
 
 /** The component each read-only column type renders through. */
@@ -118,6 +111,15 @@ export default defineComponent({
         })
       }
 
+      // "Red below zero, green above a thousand": the column's declared
+      // thresholds, matched against this row's value. A rule that matches
+      // stands in for the column's own colour and icon for this cell only —
+      // everything downstream reads `column` as usual.
+      const rule = matchColorRule(column, value)
+      const styled: SchemaColumn = rule === null
+        ? column
+        : { ...column, color: rule.color, icon: rule.icon ?? column.icon }
+
       // An editable text cell renders its input even when empty — that is the
       // state someone opens the cell to fill in.
       if (empty && column.type === 'text' && column.editable) {
@@ -136,7 +138,10 @@ export default defineComponent({
         column.type !== 'image' &&
         column.type !== 'toggleIcon'
       ) {
-        return h(TextColumn, { label: column.placeholder ?? '—' })
+        return h(TextColumn, {
+          label: column.placeholder ?? '—',
+          labelClass: rule === null ? undefined : cellClasses(styled),
+        })
       }
 
       const component = componentForType[column.type] ?? TextColumn
@@ -146,7 +151,7 @@ export default defineComponent({
           if (flag(record, column.readOnlyWhen) || !column.editable) {
             return h(BadgeColumn, {
               label: labelForOption(column, value),
-              color: semanticColor(column.colors?.[String(value)]),
+              color: semanticColor(rule?.color ?? column.colors?.[String(value)]),
             })
           }
 
@@ -186,7 +191,7 @@ export default defineComponent({
             // an enum's cases, most often — call that case. Without this a
             // badge read `on_hold` where the select beside it read "On Hold".
             label: labelForOption(column, value),
-            color: semanticColor(column.colors?.[String(value)]),
+            color: semanticColor(rule?.color ?? column.colors?.[String(value)]),
           })
 
         case 'boolean':
@@ -230,7 +235,7 @@ export default defineComponent({
         case 'numeric':
           return h(TextColumn, {
             label: formatValue(column, value),
-            labelClass: cellClasses({ ...column, align: column.align ?? 'right' }),
+            labelClass: cellClasses({ ...styled, align: column.align ?? 'right' }),
           })
 
         case 'text':
@@ -246,8 +251,8 @@ export default defineComponent({
           const cell = h(component, {
             label: truncate(text, column.limit),
             title: column.limit && text.length > column.limit ? text : undefined,
-            labelClass: cellClasses(column),
-            icon: column.icon,
+            labelClass: cellClasses(styled),
+            icon: styled.icon,
             description: column.descriptionKey ? (record[column.descriptionKey] ?? '') : '',
           })
 

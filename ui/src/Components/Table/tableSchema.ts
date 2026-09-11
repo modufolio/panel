@@ -74,6 +74,8 @@ export interface SchemaColumn {
   relative?: boolean
   /** Value → colour map, for `type: 'badge'` and read-only selects. */
   colors?: Record<string, string>
+  /** Colour decided by the value itself — thresholds. First match wins. */
+  colorRules?: SchemaColorRule[]
   /** Choices for `type: 'select'`. */
   options?: Array<{ label: string; value: string; class?: string }>
   /** Editable in place — the page supplies the save handler via `cellHandlers`. */
@@ -143,6 +145,87 @@ export function cellClasses(column: SchemaColumn): string {
   if (column.color && colors[column.color]) classes.push(colors[column.color])
 
   return classes.join(' ')
+}
+
+/**
+ * A colour rule as the server declares it: an operator from the shared
+ * vocabulary, a bound, and what to show when it matches.
+ */
+export interface SchemaColorRule {
+  operator: 'equals' | 'not_equals' | 'gt' | 'gte' | 'lt' | 'lte' | 'between' | 'empty' | 'not_empty' | (string & {})
+  value?: unknown
+  color: string
+  icon?: string
+}
+
+/**
+ * The first rule this value matches, or null.
+ *
+ * Evaluated here rather than on the server so the colour follows the number:
+ * a row replaced by a realtime update, or a cell edited in place, recolours
+ * without asking anyone. Comparisons are numeric when both sides look like
+ * numbers and string-wise otherwise, so `equals` works for a status as well as
+ * `lt` works for a balance.
+ */
+export function matchColorRule(column: SchemaColumn, value: unknown): SchemaColorRule | null {
+  for (const rule of column.colorRules ?? []) {
+    if (ruleMatches(rule, value)) {
+      return rule
+    }
+  }
+
+  return null
+}
+
+function ruleMatches(rule: SchemaColorRule, value: unknown): boolean {
+  const empty = value === null || value === undefined || value === ''
+
+  if (rule.operator === 'empty') return empty
+  if (rule.operator === 'not_empty') return !empty
+
+  // Nothing to compare against: a missing value is not "less than 10", it is
+  // absent, and colouring it red would be a lie about data that is not there.
+  if (empty) return false
+
+  if (rule.operator === 'between') {
+    const [from, to] = Array.isArray(rule.value) ? rule.value : [undefined, undefined]
+    const n = Number(value)
+
+    return Number.isFinite(n) && n >= Number(from) && n <= Number(to)
+  }
+
+  if (rule.operator === 'equals' || rule.operator === 'not_equals') {
+    const same = looseEquals(value, rule.value)
+
+    return rule.operator === 'equals' ? same : !same
+  }
+
+  const left = Number(value)
+  const right = Number(rule.value)
+
+  if (!Number.isFinite(left) || !Number.isFinite(right)) {
+    return false
+  }
+
+  switch (rule.operator) {
+    case 'gt': return left > right
+    case 'gte': return left >= right
+    case 'lt': return left < right
+    case 'lte': return left <= right
+    default: return false
+  }
+}
+
+/** Numbers compare as numbers; everything else as text. */
+function looseEquals(value: unknown, other: unknown): boolean {
+  const left = Number(value)
+  const right = Number(other)
+
+  if (Number.isFinite(left) && Number.isFinite(right) && value !== '' && other !== '') {
+    return left === right
+  }
+
+  return String(value) === String(other)
 }
 
 /** Truncate for display; the untruncated value is kept as a title attribute. */
