@@ -95,6 +95,7 @@
     <GlobalSearchDialog v-if="globalSearch" :show="searchOpen" @close="searchOpen = false" />
     <Toast position="bottom-right" />
     <ErrorModal />
+    <ConfirmDialogHost />
     <ChangePasswordDialog v-model:is-open="changePasswordOpen" />
   </div>
 </template>
@@ -110,6 +111,7 @@ import TopNavigation from './TopNavigation.vue'
 import Toast from '../../Components/Notifications/Toast.vue'
 import GlobalSearchDialog from '../Search/GlobalSearchDialog.vue'
 import ErrorModal from '../Dialogs/ErrorModal.vue'
+import ConfirmDialogHost from '../Dialogs/ConfirmDialogHost.vue'
 import ChangePasswordDialog from '../Dialogs/ChangePasswordDialog.vue'
 import { panelUrl } from '../../Utils/url'
 import { useTheme } from '../../Composables/useTheme'

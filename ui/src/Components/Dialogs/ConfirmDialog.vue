@@ -14,7 +14,12 @@
         </button>
         <button
           type="button"
-          class="inline-flex items-center gap-2 rounded-lg bg-danger-fill px-4 py-2 text-sm font-medium text-danger-on-fill hover:bg-danger-hover disabled:opacity-50 transition-colors"
+          :class="[
+            'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium disabled:opacity-50 transition-colors',
+            tone === 'primary'
+              ? 'bg-primary-fill text-primary-on-fill hover:bg-primary-hover'
+              : 'bg-danger-fill text-danger-on-fill hover:bg-danger-hover',
+          ]"
           :disabled="loading"
           @click="emit('confirm')"
         >
@@ -32,13 +37,15 @@
 <script setup lang="ts">
 import Dialog from './Dialog.vue'
 
-defineProps<{
+withDefaults(defineProps<{
   isOpen: boolean
   title: string
   message: string
   confirmLabel?: string
   loading?: boolean
-}>()
+  /** Red by default; `primary` for a question that is not destructive. */
+  tone?: 'danger' | 'primary'
+}>(), { tone: 'danger' })
 
 const emit = defineEmits<{
   confirm: []
