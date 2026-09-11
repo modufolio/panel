@@ -98,6 +98,7 @@
 
 <script setup lang="ts">
 import { panelUrl } from '../../Utils/url'
+import { flattenErrors, useFormErrors } from '../../Utils/errors'
 import { computed } from 'vue'
 import { Head, useForm } from '@inertiajs/vue3'
 import TextField from '../Fields/TextField.vue'
@@ -117,8 +118,10 @@ const form = useForm({
   password_confirm: '',
 })
 
-// Merge server-side errors with Inertia form errors
-const passwordError = computed(() => form.errors.password || props.errors?.password?.[0])
+// Merge server-side errors with Inertia form errors. Both bags go through
+// flattenErrors(): the server keys a field to a list of messages.
+const formErrors = useFormErrors(form)
+const passwordError = computed(() => formErrors.value.password || flattenErrors(props.errors).password)
 
 function submit() {
   form.post(panelUrl(`/reset-password/${props.token}`))
