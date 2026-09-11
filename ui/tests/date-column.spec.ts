@@ -39,6 +39,16 @@ describe('DateColumn formatting', () => {
     }
   })
 
+  it('renders a plain calendar date as that day, west of Greenwich too', () => {
+    // `new Date('2026-08-02')` is UTC midnight, which is Aug 1 in New York —
+    // the column used to show the day before for anyone in a negative offset.
+    const rendered = mount(DateColumn, {
+      props: { value: '2026-08-02', format: 'MMM D, YYYY' },
+    }).text()
+
+    expect(rendered).toBe('Aug 2, 2026')
+  })
+
   it('leaves literal separators untouched', () => {
     // Only known tokens are substituted; punctuation passes through.
     expect(render({ format: 'DD.MM.YYYY' })).toBe('02.08.2026')

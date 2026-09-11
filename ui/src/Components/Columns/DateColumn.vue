@@ -11,7 +11,7 @@
 import { computed } from 'vue'
 // One definition, shared with the drawer's field grid: the same moment must
 // not read one way in a cell and another in a drawer.
-import { formatDate, relativeTime } from '../../Utils/dates'
+import { date, fromUnix, type DateValue } from '../../Utils/dates'
 
 const props = defineProps({
   value: {
@@ -41,24 +41,17 @@ const props = defineProps({
 })
 
 const formattedDate = computed(() => {
-  if (!props.value) return '—'
+  // A number is milliseconds here, as `new Date(n)` has always read it in this
+  // column; fromUnix() is what the seconds-counting server side would use.
+  const value: DateValue | null = typeof props.value === 'number'
+    ? fromUnix(props.value / 1000)
+    : date(props.value)
 
-  try {
-    const date = new Date(props.value)
-
-    if (isNaN(date.getTime())) {
-      return '—'
-    }
-
-    // Relative time (e.g., "2 hours ago")
-    if (props.relative) {
-      return relativeTime(date)
-    }
-
-    // Format based on props.format
-    return formatDate(date, props.format)
-  } catch {
+  if (value === null) {
     return '—'
   }
+
+  // Relative time (e.g., "2 hours ago")
+  return props.relative ? value.relative() : value.format(props.format)
 })
 </script>
