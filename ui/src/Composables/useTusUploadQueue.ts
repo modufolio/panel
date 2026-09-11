@@ -1,6 +1,7 @@
 import { ref, watch, onScopeDispose } from 'vue'
 import type * as tus from 'tus-js-client'
 import { getCsrfToken } from '../Utils/csrf'
+import { niceSize } from '../Utils/niceSize'
 
 /**
  * Generic, domain-free TUS resumable-upload queue. Knows nothing about media
@@ -360,15 +361,8 @@ export function useTusUploadQueue(options: UseTusUploadQueueOptions) {
     uploads.value = []
   }
 
-  // Format bytes
-  const formatBytes = (bytes: number, decimals = 2) => {
-    if (bytes === 0) return '0 Bytes'
-    const k = 1024
-    const dm = decimals < 0 ? 0 : decimals
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
-  }
+  /** @deprecated Import {@link niceSize} instead — this is that, under an older name. */
+  const formatBytes = (bytes: number) => niceSize(bytes)
 
   // Get status text
   const getStatusText = (upload: UploadItem) => {

@@ -55,7 +55,7 @@
             </svg>
           </button>
           <p class="mt-2 text-sm text-label truncate">{{ file?.name }}</p>
-          <p class="text-xs text-ink-3">{{ formatFileSize(file?.size) }}</p>
+          <p class="text-xs text-ink-3">{{ niceSize(file?.size) }}</p>
         </div>
 
         <!-- File Info (non-image) -->
@@ -66,7 +66,7 @@
             </svg>
             <div class="text-left">
               <p class="text-sm font-medium text-ink truncate max-w-xs">{{ file.name }}</p>
-              <p class="text-xs text-ink-3">{{ formatFileSize(file.size) }}</p>
+              <p class="text-xs text-ink-3">{{ niceSize(file.size) }}</p>
             </div>
           </div>
           <button
@@ -89,6 +89,7 @@ import { ref, computed, watch } from 'vue'
 import { useId } from '../../Primitives/useId'
 import FieldPrimitive from './FieldPrimitive.vue'
 import { fieldWidthProp } from './useFieldWidth'
+import { niceSize } from '../../Utils/niceSize'
 
 const props = defineProps({
   ...fieldWidthProp,
@@ -213,15 +214,6 @@ function removeFile() {
   }
 }
 
-function formatFileSize(bytes?: number) {
-  if (!bytes) return '0 Bytes'
-
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-
-  return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
-}
 
 // Watch for external changes to modelValue
 watch(() => props.modelValue, (newValue) => {
