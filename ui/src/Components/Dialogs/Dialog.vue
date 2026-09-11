@@ -1,3 +1,10 @@
+<!--
+  A dialog is modal, so it sits above every drawer: the stack's overlay is
+  z-50 and a record drawer is z-[60]/z-[61], and at an equal z-index the
+  drawer won on DOM order alone — a confirmation opened from inside a drawer
+  had its buttons behind the drawer panel. Still below the toasts (z-[200])
+  and the upload queue (z-[150]), which report on work rather than block it.
+-->
 <template>
   <Teleport :to="teleportTarget">
     <Transition
@@ -10,7 +17,7 @@
     >
       <div
         v-if="isOpen"
-        class="ui-dialog-overlay fixed inset-0 z-50 bg-overlay backdrop-blur-sm"
+        class="ui-dialog-overlay fixed inset-0 z-[100] bg-overlay backdrop-blur-sm"
         @click="handleOverlayClick"
       />
     </Transition>
@@ -25,7 +32,7 @@
     >
       <div
         v-if="isOpen"
-        class="ui-dialog-container fixed inset-0 z-50 overflow-y-auto"
+        class="ui-dialog-container fixed inset-0 z-[100] overflow-y-auto"
       >
         <div class="flex min-h-full items-start justify-center pt-16 px-4 pb-4">
           <div
