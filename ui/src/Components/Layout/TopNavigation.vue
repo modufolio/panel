@@ -66,7 +66,7 @@
               </div>
               <div
                 v-else
-                class="flex items-center justify-center w-8 h-8 bg-primary-fill text-primary-on-fill rounded-full text-sm font-medium"
+                class="flex items-center justify-center w-8 h-8 bg-primary-fill dark:bg-white text-primary-on-fill rounded-full text-sm font-medium"
               >
                 {{ userInitials }}
               </div>
