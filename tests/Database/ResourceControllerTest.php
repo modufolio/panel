@@ -281,6 +281,113 @@ final class ResourceControllerTest extends DoctrineTestCase
     }
 
     /**
+     * The edit page steps through the list it was opened from: the neighbour
+     * links point at the *edit* route, not the drawer, so a user working
+     * through records never returns to the listing in between.
+     */
+    public function testTheEditPageLinksToItsNeighboursEditRoutes(): void
+    {
+        $heat = $this->seed();
+        $uuid = $heat->getUuid()->toString();
+        $jaws = self::em()->getRepository(Movie::class)->findOneBy(['title' => 'Jaws']);
+
+        $page = $this->page($this->controller(new DerivedMovieResource())->handle(
+            $this->http('GET', '/panel/movies/' . $uuid . '/edit'),
+            'edit',
+            $this->resource,
+            $uuid,
+        ));
+
+        self::assertSame(
+            // Heat is the first row of the default order, so there is nothing
+            // before it: the missing side is null rather than wrapping round.
+            ['next' => '/panel/movies/' . $jaws?->getUuid()->toString() . '/edit', 'previous' => null],
+            $page->props()['recordNavigation'],
+        );
+    }
+
+    /**
+     * The list state rides along, because the neighbours are only meaningful
+     * in the order the user is actually looking at: stepping to the next
+     * record must not silently drop the sort that decided which record that is.
+     */
+    public function testEditNavigationCarriesTheListStateItWasOpenedWith(): void
+    {
+        $heat = $this->seed();
+        $uuid = $heat->getUuid()->toString();
+        $jaws = self::em()->getRepository(Movie::class)->findOneBy(['title' => 'Jaws']);
+
+        $page = $this->page($this->controller(new DerivedMovieResource())->handle(
+            $this->http('GET', '/panel/movies/' . $uuid . '/edit?sort=title'),
+            'edit',
+            $this->resource,
+            $uuid,
+        ));
+
+        self::assertSame(
+            '/panel/movies/' . $jaws?->getUuid()->toString() . '/edit?sort=title',
+            $page->props()['recordNavigation']['next'],
+        );
+    }
+
+    /**
+     * A neighbour this viewer may not edit is no link at all, rather than a
+     * link that lands on a refusal.
+     */
+    public function testANeighbourThisViewerMayNotEditIsNotLinked(): void
+    {
+        $heat = $this->seed();
+        $uuid = $heat->getUuid()->toString();
+
+        $resource = new class extends DerivedMovieResource {
+            public function permissions(): Permissions
+            {
+                return new class extends Permissions {
+                    /** Everything but Jaws, which is the record next to Heat. */
+                    public function edit(?object $record, ?UserInterface $user): bool
+                    {
+                        return !($record instanceof Movie) || $record->getTitle() !== 'Jaws';
+                    }
+                };
+            }
+        };
+
+        $page = $this->page($this->controller($resource)->handle(
+            $this->http('GET', '/panel/movies/' . $uuid . '/edit'),
+            'edit',
+            $this->resource,
+            $uuid,
+        ));
+
+        self::assertSame(['next' => null, 'previous' => null], $page->props()['recordNavigation']);
+    }
+
+    /**
+     * A rejected save redraws the edit page, and it must come back whole: the
+     * navigation is part of the page, not of the successful path.
+     */
+    public function testAnInvalidUpdateRedrawsTheEditPageWithItsNavigation(): void
+    {
+        $heat = $this->seed();
+        $uuid = $heat->getUuid()->toString();
+        $jaws = self::em()->getRepository(Movie::class)->findOneBy(['title' => 'Jaws']);
+
+        $page = $this->page($this->controller(new DerivedMovieResource())->handle(
+            $this->http('PUT', '/panel/movies/' . $uuid, ['title' => '']),
+            'update',
+            $this->resource,
+            $uuid,
+        ));
+
+        self::assertSame('Resource/Edit', $page->component());
+        self::assertNotSame([], (array) $page->props()['errors']);
+        self::assertSame(
+            '/panel/movies/' . $jaws?->getUuid()->toString() . '/edit',
+            $page->props()['recordNavigation']['next'],
+        );
+    }
+
+    /**
      * One cell, written where it is read. The redirect carries the list state
      * the request arrived with, because that URL is what Inertia reloads.
      */

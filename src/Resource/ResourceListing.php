@@ -52,7 +52,7 @@ final class ResourceListing
     /** @var array<string, mixed> */
     private array $extraProps = [];
 
-    /** @var array<string, mixed> Parsed params in scope during navigationUrls(). */
+    /** @var array<string, mixed> Parsed params in scope during navigationRecords(). */
     private array $navigationParams = [];
 
     private ?ResourceCapabilities $capabilities = null;
@@ -399,6 +399,29 @@ final class ResourceListing
     public function navigationUrls(object $entity): array
     {
         $queryParams = $this->request->getQueryParams();
+        $neighbours  = $this->navigationRecords($entity);
+
+        return [
+            'next'     => $this->recordUrl($neighbours['next'], $queryParams),
+            'previous' => $this->recordUrl($neighbours['previous'], $queryParams),
+        ];
+    }
+
+    /**
+     * The records either side of this one in the listing's own order.
+     *
+     * Separate from {@see navigationUrls()} because a drawer is not the only
+     * place a neighbour is reachable from: the edit page links to its
+     * neighbours' *edit* routes, and deciding that needs the record — the
+     * edit URL is a conjunction of the route existing and this viewer being
+     * allowed to edit that particular record, which a finished URL has
+     * already thrown away.
+     *
+     * @return array{next: object|null, previous: object|null}
+     */
+    public function navigationRecords(object $entity): array
+    {
+        $queryParams = $this->request->getQueryParams();
         $params      = $this->resource->parseListParams($queryParams);
         $params['filters'] = $this->resource->filterValues($params, $queryParams);
 
@@ -448,8 +471,8 @@ final class ResourceListing
         );
 
         return [
-            'next'     => $this->recordUrl($next, $queryParams),
-            'previous' => $this->recordUrl($previous, $queryParams),
+            'next'     => $next,
+            'previous' => $previous,
         ];
     }
 

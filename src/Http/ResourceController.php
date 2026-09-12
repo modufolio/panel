@@ -351,7 +351,7 @@ final class ResourceController
             return $this->deny($request, $resource);
         }
 
-        return $this->page('Resource/Edit', $this->editProps($resource, $entity));
+        return $this->page('Resource/Edit', $this->editProps($resource, $entity, $request));
     }
 
     private function update(ServerRequestInterface $request, PanelResource $resource, ?string $uuid): ResponseInterface|Inertia
@@ -375,8 +375,11 @@ final class ResourceController
             return $this->redirect($request, $this->urlGenerator->generate($resource->key() . '_edit', $resource->recordRouteParams($entity)));
         }
 
+        // The same props the edit page was rendered with, neighbours
+        // included: a rejected save redraws the page, and the navigation
+        // must not disappear because the form came back with errors.
         return $this->page('Resource/Edit', [
-            ...$this->editProps($resource, $entity),
+            ...$this->editProps($resource, $entity, $request),
             'errors' => new \ArrayObject($errors),
         ]);
     }
@@ -527,11 +530,55 @@ final class ResourceController
      *
      * @return array<string, mixed>
      */
-    private function editProps(PanelResource $resource, object $entity): array
+    private function editProps(PanelResource $resource, object $entity, ServerRequestInterface $request): array
     {
         return [
             ...$this->presenter()->props($resource, $entity, $this->user()),
             'record' => $this->presenter()->record($resource, $entity, $resource->presentOne($entity)),
+            // NOT 'navigation': a host's layout reads a shared prop of that
+            // name for the sidebar menu, and an edit page would hand it this
+            // pair instead — the sidebar then renders nothing.
+            'recordNavigation' => $this->editNavigation($request, $resource, $entity),
+        ];
+    }
+
+    /**
+     * The neighbouring records' *edit* URLs, so the edit page can step through
+     * the list without going back to it.
+     *
+     * The order is the listing's own — the request carries the list state the
+     * page was opened from, the same query the redirect after a save reads —
+     * so "next" means the next row of the list as the user actually sorted and
+     * filtered it, and stepping keeps that state alive across records.
+     *
+     * A neighbour this viewer may not edit is no link rather than a link that
+     * lands on a refusal: `edit()` asks both halves of the question, the route
+     * existing and the permission holding for that particular record.
+     *
+     * @return array{next: string|null, previous: string|null}
+     */
+    private function editNavigation(ServerRequestInterface $request, PanelResource $resource, object $entity): array
+    {
+        $listing      = $this->listing($request, $resource);
+        $capabilities = $listing->capabilities();
+        $neighbours   = $listing->navigationRecords($entity);
+
+        $query  = http_build_query($request->getQueryParams());
+        $suffix = $query !== '' ? '?' . $query : '';
+
+        $url = static function (?object $neighbour) use ($capabilities, $suffix): ?string {
+            if ($neighbour === null || !$capabilities->edit($neighbour)) {
+                return null;
+            }
+
+            $url = $capabilities->recordUrl('edit', $neighbour);
+
+            return $url === null ? null : $url . $suffix;
+        };
+
+        return [
+            'next'     => $url($neighbours['next']),
+            'previous' => $url($neighbours['previous']),
         ];
     }
 
