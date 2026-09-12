@@ -13,10 +13,9 @@ use Modufolio\Panel\Support\Label;
  *
  * Like {@see Column}, everything here is JSON-serialisable — the filter
  * *control* is rendered from this description, and the *predicate* is applied
- * server-side by {@see apply()}. Filament reaches for a
- * `query(Builder $q, array $data)` closure for anything beyond a plain select;
- * we keep the predicate declarative by pairing a fixed filter type with a
- * hardcoded entity field.
+ * server-side by {@see apply()}. Rather than reaching for a closure for
+ * anything beyond a plain select, we keep the predicate declarative by
+ * pairing a fixed filter type with a hardcoded entity field.
  *
  * The field is never taken from the request — it is baked in at construction,
  * which is what makes interpolating it into DQL safe.

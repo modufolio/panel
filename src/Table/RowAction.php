@@ -41,8 +41,7 @@ final class RowAction
      * The open-ended one. A behaviour is a verb this table knows how to
      * perform, so every new interaction used to need either a new verb here
      * or a handler on the page; a dialog is a *pointer*, and the endpoint on
-     * the other end decides what it is. Kirby's panel is built this way and
-     * it is why their buttons carry a URL rather than a behaviour.
+     * the other end decides what it is.
      */
     public const BEHAVIOUR_DIALOG = 'dialog';
 

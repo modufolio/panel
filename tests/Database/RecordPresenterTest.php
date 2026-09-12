@@ -16,7 +16,7 @@ use Modufolio\Panel\Tests\Fixture\MovieResource;
 /**
  * A resource without a presenter gets its rows read off the entity: what a
  * column names is what the cell shows, through the same query language a
- * Kirby blueprint uses.
+ * blueprint uses.
  */
 final class RecordPresenterTest extends DoctrineTestCase
 {

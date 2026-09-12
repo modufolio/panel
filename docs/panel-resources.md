@@ -650,7 +650,7 @@ the id (the uuid where there is one), then each column's key resolved against
 the entity. A bare key reads its accessor (`released_on` reaches
 `getReleasedOn()`), a `value('studio.name')` path walks the relation, and a
 `text('{{ movie.title }} ({{ movie.year }})')` template renders over the
-entity — through appkit's query language, the one Kirby's blueprints use, with
+entity — through appkit's query language, with
 `record` and the resource's singular key as roots. A null along a path is a
 null cell; a segment nothing can answer is refused by column name.
 

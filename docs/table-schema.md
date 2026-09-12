@@ -42,21 +42,17 @@ Return `null` (the default) to keep hand-written columns in the page component.
 ## The closure boundary
 
 This is the one design constraint everything else follows from: **the schema
-crosses a JSON boundary, so it cannot contain closures.**
+crosses a JSON boundary, so it cannot contain closures.** We render in Vue,
+so a callback cannot survive `json_encode`.
 
-Filament — the obvious comparison — leans on them heavily
-(`->tooltip(fn ($record) => …)`), which works because Livewire renders
-server-side per row. We render in Vue, so a callback cannot survive
-`json_encode`.
+Four things closures are often used for elsewhere, and where each goes here:
 
-Four things closures are used for, and where each goes here:
-
-| Purpose | Filament | Here |
-|---|---|---|
-| Derived cell value | `->state(fn ($r) => …)` | Compute it in the **presenter**, expose it as a field |
-| Conditional display text | `->description(fn ($r) => …)` | Presenter field + `->descriptionKey('…')` |
-| Query mutation | `->query(fn (Builder $q) => …)` | A **typed filter/constraint**, applied server-side by name |
-| Anything else | closure | A `#cell-{key}` slot override on the page |
+| Purpose | Here |
+|---|---|
+| Derived cell value | Compute it in the **presenter**, expose it as a field |
+| Conditional display text | Presenter field + `->descriptionKey('…')` |
+| Query mutation | A **typed filter/constraint**, applied server-side by name |
+| Anything else | A `#cell-{key}` slot override on the page |
 
 The escape hatch is real and cheap: a page-provided `#cell-{key}` slot **wins**
 over the generated cell, and overriding one column doesn't opt you out of the

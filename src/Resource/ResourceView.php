@@ -386,8 +386,8 @@ final class ResourceView
             }
 
             // getLabel() first: it is the convention the enums in this
-            // codebase already follow, and label() is the one Filament-style
-            // enums use. Neither present, the case's own value is humanised.
+            // codebase already follow, and label() is a common alternative.
+            // Neither present, the case's own value is humanised.
             $labels[(string) $case->value] = match (true) {
                 method_exists($case, 'getLabel') => (string) $case->getLabel(),
                 method_exists($case, 'label')    => (string) $case->label(),

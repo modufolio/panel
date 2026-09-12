@@ -3,8 +3,6 @@ import vueParser from 'vue-eslint-parser';
 import typescript from '@typescript-eslint/eslint-plugin';
 import typescriptParser from '@typescript-eslint/parser';
 
-// Mirrors the base rules the package was developed under in appkit-portfolio,
-// plus the package-specific mount-path rule.
 export default [
   {
     ignores: ['node_modules/', 'dist/'],
@@ -54,8 +52,6 @@ export default [
     },
   },
 
-  // No hardcoded mount paths — URLs go through panelUrl() / props, so the
-  // package works wherever the host app mounts the panel.
   {
     files: ['src/**/*.{js,ts,vue}'],
     rules: {

@@ -15,10 +15,9 @@ use Modufolio\Panel\Support\Label;
 /**
  * One field a user may build an ad-hoc condition against.
  *
- * Modelled on Filament's QueryBuilder constraints, and the strongest evidence
- * that a static schema is enough: a constraint declares only
- * `{key, field, type, label}` — the *operators* come from its type, so a
- * user-composable query needs no closures at all.
+ * The strongest evidence that a static schema is enough: a constraint
+ * declares only `{key, field, type, label}` — the *operators* come from its
+ * type, so a user-composable query needs no closures at all.
  *
  * "Its type" is now the field type itself: each of the four kinds names a
  * {@see FilterableFieldInterface} implementation, and both the operator menu

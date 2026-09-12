@@ -11,12 +11,10 @@ use Modufolio\Panel\Support\Label;
  * One column in a {@see TableSchema}.
  *
  * Deliberately **declarative only** — every property must survive
- * json_encode, because the schema crosses an Inertia prop boundary into Vue.
- * That is the hard difference from Filament, whose column API leans on
- * closures (`->tooltip(fn ($record) => ...)`) evaluated server-side per row
- * during a Livewire render. Anything genuinely dynamic belongs either in the
- * presenter (compute the value per row, expose it as a field) or in a
- * `#cell-{key}` slot override on the page.
+ * json_encode, because the schema crosses an Inertia prop boundary into Vue,
+ * so it cannot carry closures evaluated server-side per row. Anything
+ * genuinely dynamic belongs either in the presenter (compute the value per
+ * row, expose it as a field) or in a `#cell-{key}` slot override on the page.
  *
  * Sortability is *not* declared here — see {@see TableSchema} for why.
  */
@@ -590,8 +588,8 @@ final class Column
      * Choices for a `select` column.
      *
      * Accepts either a literal option list or a backed enum class-string —
-     * `->options(AccountStatus::class)` — mirroring Filament, where naming the
-     * enum is enough because the enum carries its own label/colour/class.
+     * `->options(AccountStatus::class)` — naming the enum is enough because
+     * it carries its own label/colour/class.
      *
      * Options are pure data, so they cross the prop boundary happily; it is
      * the *save* callback that cannot, which is why {@see editable()} only

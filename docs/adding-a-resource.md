@@ -160,7 +160,7 @@ count share one predicate.
 By default the rows are read off the entity through the columns: `title`
 reads `getTitle()`, `value('contact.name')` walks `getContact()->getName()`,
 and `text('{{ event.starts_at.format("d M") }}')` renders a template over the
-entity — the same query language a Kirby blueprint uses, with `record` and
+entity — the same query language a blueprint uses, with `record` and
 the resource's singular key as roots. Dates travel as ISO 8601, enums as their
 value, relations as their name. The drawer's record adds every form key, so
 the drawer can show what the form edits. **`id` is the uuid** either way.

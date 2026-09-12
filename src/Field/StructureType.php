@@ -20,8 +20,8 @@ namespace Modufolio\Panel\Field;
  * the two identically: it edits rows of sub-fields either way, and only the
  * server-side handling of the submitted array differs.
  *
- * Kirby calls this field "structure", which is where the name comes from —
- * a blueprint ported from a Kirby site maps its structure fields onto this
+ * Named after the "structure" field concept it originates from — a
+ * blueprint ported from such a site maps its structure fields onto this
  * one token for token.
  */
 final class StructureType implements FieldTypeInterface

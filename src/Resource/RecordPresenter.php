@@ -13,14 +13,14 @@ use Modufolio\Panel\Table\Column;
  *
  * Each column names what it shows — its key, or a `value('studio.name')`
  * path, or a `text('{{ movie.title }} ({{ movie.year }})')` template — and
- * that is resolved against the entity through appkit's query language, the
- * one Kirby's blueprints use: `movie.studio.name` walks getStudio() and
+ * that is resolved against the entity through appkit's query language:
+ * `movie.studio.name` walks getStudio() and
  * getName(), `released_on` reaches getReleasedOn(). What the presenter used
  * to say in PHP, the column says in its declaration, and the drawer, the
  * export and the board read the same values.
  *
  * Two roots are in scope for a template: `record`, always, and the resource's
- * singular key (`movie`), so a blueprint reads the way a Kirby user expects.
+ * singular key (`movie`), so a blueprint reads naturally.
  * A template is developer-authored, exactly as trusted as a PHP class; a
  * request never contributes to one.
  *

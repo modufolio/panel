@@ -20,9 +20,7 @@ namespace Modufolio\Panel\Field;
  *    ordinary sub-field declarations exactly as StructureType uses them;
  *    submitted values land in the section's `attrs`.
  *
- * Independent implementation of a widely shared concept (Kirby's layout
- * field, ACF's flexible content, Craft's Matrix all express it); the column
- * content here is this panel's own ProseMirror document, not their blocks.
+ * The column content is this panel's own ProseMirror document.
  */
 final class SectionsType implements FieldTypeInterface
 {

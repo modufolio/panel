@@ -10,8 +10,7 @@ namespace Modufolio\Panel\Field;
  * of StructureType: same `fields` option, same sub-field declarations, but
  * the value is one object rather than a list of rows.
  *
- * Kirby calls the concept "object", Bolt calls it "set" — the shorter name
- * won.
+ * Called "set" for the shorter name.
  */
 final class SetType implements FieldTypeInterface
 {

@@ -689,8 +689,6 @@ short version, for a resource written against 0.4.0:
   $namespace)` registers every concrete `PanelResource` subclass found under
   it, alphabetically. `->only()`, `->except()` and `->prefix()` stay
   registration options, because which routes exist is a routing decision.
-  New `docs/coming-from-filament.md` maps Filament's and EasyAdmin's
-  vocabulary onto the package's.
 
 - **The controller ships with the package.** `Http\ResourceController` serves
   every generated route — index, show, create, store, edit, update, destroy,
@@ -713,7 +711,7 @@ short version, for a resource written against 0.4.0:
 - **Rows are read off the entity; the presenter is the override.**
   `PanelResource::present()` is no longer abstract. Its default,
   `Resource\RecordPresenter`, emits the id (the uuid where there is one) and
-  each column's key resolved against the entity through appkit's Kirby-ported
+  each column's key resolved against the entity through appkit's
   query language — a bare key reads its accessor (`released_on` reaches
   `getReleasedOn()`), a `value('studio.name')` path walks the relation, and
   the new `Column::text('{{ movie.title }} ({{ movie.year }})')` renders a
