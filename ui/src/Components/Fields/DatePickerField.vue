@@ -30,19 +30,21 @@
         @keydown="onInputKeydown"
       />
 
-      <button
-        type="button"
-        class="absolute inset-y-0 right-0 flex items-center pr-3 text-ink-3 hover:text-ink-2"
-        :disabled="disabled"
-        tabindex="-1"
-        aria-label="Toggle calendar"
-        @mousedown.prevent
-        @click="toggle"
-      >
-        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-        </svg>
-      </button>
+      <InputIcon side="right" interactive>
+        <button
+          type="button"
+          class="text-ink-3 hover:text-ink-2"
+          :disabled="disabled"
+          tabindex="-1"
+          aria-label="Toggle calendar"
+          @mousedown.prevent
+          @click="toggle"
+        >
+          <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+          </svg>
+        </button>
+      </InputIcon>
 
       <div v-if="open" class="absolute left-0 z-50 mt-1">
         <CalendarPanel
@@ -65,6 +67,7 @@ import { computed, ref, watch } from 'vue'
 import { useId } from '../../Primitives/useId'
 import CalendarPanel from './Calendar/CalendarPanel.vue'
 import FieldPrimitive from './FieldPrimitive.vue'
+import InputIcon from '../Core/InputIcon.vue'
 import { fieldWidthProp } from './useFieldWidth'
 import { formatDisplay, formatISO, parseISO, parseUserInput } from '../../Utils/dates'
 

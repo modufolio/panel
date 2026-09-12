@@ -29,9 +29,7 @@
             ]"
             @change="handleStartDateChange"
           />
-          <div
-            class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3"
-          >
+          <InputIcon side="right">
             <svg
               class="h-5 w-5 text-ink-3"
               fill="none"
@@ -45,7 +43,7 @@
                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
               />
             </svg>
-          </div>
+          </InputIcon>
         </div>
       </div>
 
@@ -72,9 +70,7 @@
             ]"
             @change="handleEndDateChange"
           />
-          <div
-            class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3"
-          >
+          <InputIcon side="right">
             <svg
               class="h-5 w-5 text-ink-3"
               fill="none"
@@ -88,7 +84,7 @@
                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
               />
             </svg>
-          </div>
+          </InputIcon>
         </div>
       </div>
     </div>
@@ -125,6 +121,7 @@
 import { ref, watch } from 'vue'
 import { formatISO } from '../../Utils/dates'
 import FieldPrimitive from './FieldPrimitive.vue'
+import InputIcon from '../Core/InputIcon.vue'
 import { fieldWidthProp } from './useFieldWidth'
 
 interface Preset {

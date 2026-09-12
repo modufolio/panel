@@ -6,10 +6,10 @@
   >
     <div class="ui-field-wrapper relative">
       <!-- Prefix Icon/Text -->
-      <div v-if="prefix" class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+      <InputIcon v-if="prefix" side="left">
         <component v-if="typeof prefix !== 'string'" :is="prefix" class="w-5 h-5 text-ink-3" />
         <span v-else class="text-ink-3 text-sm">{{ prefix }}</span>
-      </div>
+      </InputIcon>
 
       <!-- Input -->
       <input
@@ -30,10 +30,10 @@
       />
 
       <!-- Suffix Icon/Text -->
-      <div v-if="suffix" class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+      <InputIcon v-if="suffix" side="right">
         <component v-if="typeof suffix !== 'string'" :is="suffix" class="w-5 h-5 text-ink-3" />
         <span v-else class="text-ink-3 text-sm">{{ suffix }}</span>
-      </div>
+      </InputIcon>
     </div>
   </FieldPrimitive>
 </template>
@@ -42,6 +42,7 @@
 import { computed } from 'vue'
 import { useId } from '../../Primitives/useId'
 import FieldPrimitive from './FieldPrimitive.vue'
+import InputIcon from '../Core/InputIcon.vue'
 import { fieldWidthProp } from './useFieldWidth'
 
 const props = defineProps({

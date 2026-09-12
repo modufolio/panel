@@ -29,7 +29,7 @@
       :disabled="disabled"
       :aria-describedby="describedBy"
       :aria-valuetext="suffix ? `${modelValue} ${suffix}` : undefined"
-      class="ui-field-range-input w-full h-2 accent-primary cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+      class="ui-field-range-input w-full h-2 accent-primary dark:accent-white cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
       @input="onInput"
     />
   </FieldPrimitive>

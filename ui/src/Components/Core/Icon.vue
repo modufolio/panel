@@ -8,6 +8,8 @@ import {
   ArchiveBoxIcon,
   ArrowRightOnRectangleIcon,
   ArrowTopRightOnSquareIcon,
+  ArrowDownIcon,
+  ArrowUpIcon,
   ArrowUpTrayIcon,
   Bars3Icon,
   BellIcon,
@@ -74,6 +76,23 @@ import {
 import SitemapIcon from './Icons/SitemapIcon.vue'
 import DocumentLinesIcon from './Icons/DocumentLinesIcon.vue'
 import { getCustomIcon } from './iconRegistry'
+import { pathIcon } from '../../Utils/pathIcon'
+
+// Block-builder glyphs. Kept as raw path data (rather than a heroicon) so the
+// builder's toolbar/slash-menu icons don't shift when heroicons' set changes.
+const ParagraphIcon = pathIcon('M4 6h16M4 10h16M4 14h16M4 18h7', { strokeWidth: 2 })
+const Heading2Icon = pathIcon('M4 6h16M4 12h7', { strokeWidth: 2 })
+const Heading3Icon = pathIcon('M4 6h12M4 12h6', { strokeWidth: 2 })
+const BlockquoteIcon = pathIcon(
+  'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
+  { strokeWidth: 2 },
+)
+const BulletListIcon = pathIcon('M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01', { strokeWidth: 2 })
+const CodeBlockIcon = pathIcon('M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4', { strokeWidth: 2 })
+const ImageBlockIcon = pathIcon(
+  'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
+  { strokeWidth: 2 },
+)
 
 const props = defineProps({
   name: {
@@ -179,6 +198,20 @@ const iconMap: Record<string, unknown> = {
   'chart': ChartBarIcon,
   'kanban': ViewColumnsIcon,
   'layout-kanban': ViewColumnsIcon,
+  'columns': ViewColumnsIcon,
+  'duplicate': Square2StackIcon,
+  'arrow-up': ArrowUpIcon,
+  'arrow-down': ArrowDownIcon,
+
+  // Block builder
+  'paragraph': ParagraphIcon,
+  'heading-2': Heading2Icon,
+  'heading-3': Heading3Icon,
+  'blockquote': BlockquoteIcon,
+  'bullet-list': BulletListIcon,
+  'ordered-list': BulletListIcon,
+  'code-block': CodeBlockIcon,
+  'image-block': ImageBlockIcon,
 }
 
 const iconComponent = computed(() => getCustomIcon(props.name) ?? iconMap[props.name] ?? null)

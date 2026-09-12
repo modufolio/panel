@@ -66,13 +66,11 @@
             />
 
             <!-- Format Badge -->
-            <div
-              class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"
-            >
+            <InputIcon side="right">
               <span class="text-xs font-medium text-ink-3 uppercase">
                 {{ format }}
               </span>
-            </div>
+            </InputIcon>
           </div>
         </div>
 
@@ -103,6 +101,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, type PropType } from 'vue'
 import FieldPrimitive from './FieldPrimitive.vue'
+import InputIcon from '../Core/InputIcon.vue'
 import { fieldWidthProp } from './useFieldWidth'
 
 const props = defineProps({

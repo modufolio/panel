@@ -13,7 +13,7 @@
       <div ref="mount" class="pm-editor relative py-3 pl-9 pr-4 text-sm leading-relaxed text-ink" />
 
       <!-- Block insert toolbar -->
-      <div v-if="!readError" class="flex flex-wrap items-center gap-1 border-t border-line bg-surface-sunken px-3 py-2">
+      <div v-if="!readError && insertBar" class="flex flex-wrap items-center gap-1 border-t border-line bg-surface-sunken px-3 py-2">
         <span class="mr-1 text-xs text-ink-3">Add:</span>
         <button
           v-for="option in BLOCK_OPTIONS"
@@ -22,9 +22,7 @@
           class="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs text-ink-2 transition-colors hover:bg-hover"
           @click="runOption(option)"
         >
-          <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" :d="option.iconPath" />
-          </svg>
+          <Icon :name="option.icon" class="h-3.5 w-3.5" />
           {{ option.label }}
         </button>
       </div>
@@ -48,7 +46,6 @@
             placeholder="https://…"
             class="w-40 border-0 border-b border-line-strong bg-transparent px-1 py-0.5 text-xs text-ink outline-none placeholder:text-ink-3"
             @keydown.enter.prevent="applyLink"
-            @keydown.esc.prevent="cancelLink"
           />
           <button type="button" title="Apply link" class="rounded px-1.5 py-0.5 text-ink hover:bg-hover" @mousedown.prevent="applyLink">✓</button>
           <button type="button" title="Cancel" class="rounded px-1.5 py-0.5 text-ink hover:bg-hover" @mousedown.prevent="cancelLink">✕</button>
@@ -87,9 +84,7 @@
             @mousedown.prevent="chooseSlashOption(option)"
           >
             <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" :class="i === slash.focus ? 'bg-primary-surface' : 'bg-surface-sunken'">
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" :d="option.iconPath" />
-              </svg>
+              <Icon :name="option.icon" class="h-4 w-4" />
             </div>
             <div class="min-w-0">
               <div class="text-sm font-medium">{{ option.label }}</div>
@@ -118,6 +113,7 @@ import { dropCursor } from 'prosemirror-dropcursor'
 import { router } from '@inertiajs/vue3'
 import FieldMessage from '../../Components/Fields/FieldMessage.vue'
 import FieldPrimitive from '../../Components/Fields/FieldPrimitive.vue'
+import Icon from '../Core/Icon.vue'
 import { fieldWidthProp } from '../../Components/Fields/useFieldWidth'
 import { normalizeUrl } from '../../Utils/url'
 import { sanitizeUrl } from '../../Utils/url'
@@ -149,6 +145,8 @@ const props = defineProps({
   help:       { type: String, default: '' },
   error:      { type: String, default: '' },
   required:   { type: Boolean, default: false },
+  /** The block-insert bar under the editor; off inside a layout column, where the slash menu is enough. */
+  insertBar:  { type: Boolean, default: true },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -159,30 +157,28 @@ const emit = defineEmits(['update:modelValue'])
 interface BlockOption {
   label: string
   description: string
-  iconPath: string
+  icon: string
   keywords: string[]
   command: Command
 }
 
 const BLOCK_OPTIONS: BlockOption[] = [
   { label: 'Text', description: 'Plain paragraph', keywords: ['text', 'paragraph', 'p'],
-    iconPath: 'M4 6h16M4 10h16M4 14h16M4 18h7', command: commands.setParagraph },
+    icon: 'paragraph', command: commands.setParagraph },
   { label: 'Heading 2', description: 'Section title', keywords: ['heading', 'h2', 'title'],
-    iconPath: 'M4 6h16M4 12h7', command: commands.setHeading(2) },
+    icon: 'heading-2', command: commands.setHeading(2) },
   { label: 'Heading 3', description: 'Subsection title', keywords: ['heading', 'h3', 'subtitle'],
-    iconPath: 'M4 6h12M4 12h6', command: commands.setHeading(3) },
+    icon: 'heading-3', command: commands.setHeading(3) },
   { label: 'Quote', description: 'Block quotation', keywords: ['quote', 'blockquote', 'cite'],
-    iconPath: 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
-    command: commands.wrapBlockquote },
+    icon: 'blockquote', command: commands.wrapBlockquote },
   { label: 'Bullet list', description: 'Unordered list', keywords: ['list', 'bullet', 'ul'],
-    iconPath: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01', command: commands.toggleBulletList },
+    icon: 'bullet-list', command: commands.toggleBulletList },
   { label: 'Numbered list', description: 'Ordered list', keywords: ['list', 'number', 'ol', 'ordered'],
-    iconPath: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01', command: commands.toggleOrderedList },
+    icon: 'ordered-list', command: commands.toggleOrderedList },
   { label: 'Code', description: 'Code snippet', keywords: ['code', 'pre', 'snippet'],
-    iconPath: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4', command: commands.setCodeBlock },
+    icon: 'code-block', command: commands.setCodeBlock },
   { label: 'Image', description: 'Photo from media library', keywords: ['image', 'photo', 'picture', 'img'],
-    iconPath: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
-    command: insertImage },
+    icon: 'image-block', command: insertImage },
 ]
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -476,6 +472,27 @@ function closeLinkInput() {
 // Arrow/Enter/Escape for the slash menu. Bound at the document level because
 // ProseMirror owns keydown inside the editor and the menu is teleported out.
 function onKeydown(event: KeyboardEvent) {
+  // None of the toolbar, link input or slash menu live inside this field's own
+  // DOM subtree — they are teleported to `body` — so an Escape here is
+  // invisible to a Drawer or Dialog's own dismissable-layer registration and
+  // would otherwise keep bubbling until it reached one and closed it, instead
+  // of just backing out of whichever of these popovers is open. Handled and
+  // stopped here regardless of which one, rather than only the slash menu.
+  if (event.key === 'Escape' && (linkInput.open || slash.visible || toolbar.visible)) {
+    event.preventDefault()
+    event.stopPropagation()
+
+    if (linkInput.open) {
+      cancelLink()
+    } else if (slash.visible) {
+      const current = view.value
+      if (current) current.dispatch(closeSlashMenu(current.state, false))
+    } else {
+      toolbar.visible = false
+    }
+    return
+  }
+
   if (!slash.visible) return
 
   const options = slashOptions.value
@@ -489,10 +506,6 @@ function onKeydown(event: KeyboardEvent) {
   } else if (event.key === 'Enter' && options[slash.focus]) {
     event.preventDefault()
     chooseSlashOption(options[slash.focus])
-  } else if (event.key === 'Escape') {
-    event.preventDefault()
-    const current = view.value
-    if (current) current.dispatch(closeSlashMenu(current.state, false))
   }
 }
 

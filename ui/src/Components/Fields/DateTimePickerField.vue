@@ -78,15 +78,15 @@ const emit = defineEmits(['update:modelValue'])
 
 /** Tolerates a stored `…:ss`, a space separator, and a trailing `Z`. */
 const parts = computed(() => {
-  const match = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}))?/.exec(props.modelValue.trim())
+  const match = /^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}))?/.exec((props.modelValue ?? '').trim())
   return { date: match?.[1] ?? '', time: match?.[2] ?? '' }
 })
 
 const datePart = computed(() => parts.value.date)
 const timePart = computed(() => parts.value.time)
 
-const minDate = computed(() => props.min.slice(0, 10))
-const maxDate = computed(() => props.max.slice(0, 10))
+const minDate = computed(() => (props.min ?? '').slice(0, 10))
+const maxDate = computed(() => (props.max ?? '').slice(0, 10))
 
 function commit(date: string, time: string): void {
   // No date means no moment, whatever the time says — emitting a bare time
