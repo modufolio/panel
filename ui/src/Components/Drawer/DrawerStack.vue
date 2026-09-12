@@ -11,7 +11,7 @@
         leave-to-class="opacity-0"
       >
         <div
-          v-if="hasDrawerFrames"
+          v-if="hasDrawerFrames && overlays === 0"
           class="ui-drawer-stack-overlay fixed inset-0 z-50 bg-overlay"
           data-testid="drawer-overlay"
           data-overlay-backdrop
@@ -171,7 +171,9 @@ function isDialog(item: StackItem): boolean {
 
 /**
  * Dialog draws its own overlay; the stack's shared one is for drawers. Both
- * at once dims the page twice.
+ * at once dims the page twice. The shared overlay also stands down while an
+ * `overlays` panel (the add-a-row form) is open, for the same reason — that
+ * panel draws its own scrim on top of the stack.
  */
 const hasDrawerFrames = computed(() => props.stack.some((item) => !isDialog(item)))
 
