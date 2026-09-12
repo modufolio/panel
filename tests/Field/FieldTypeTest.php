@@ -40,6 +40,7 @@ final class FieldTypeTest extends TestCase
             \Modufolio\Panel\Field\HasManyType::class   => 'repeater',
             \Modufolio\Panel\Field\HiddenType::class    => 'hidden',
             \Modufolio\Panel\Field\ImageType::class     => 'image',
+            \Modufolio\Panel\Field\LayoutType::class    => 'layout',
             \Modufolio\Panel\Field\ManyToManyType::class => 'multiselect',
             \Modufolio\Panel\Field\NumberType::class    => 'text',
             \Modufolio\Panel\Field\SectionsType::class  => 'sections',

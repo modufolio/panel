@@ -83,6 +83,7 @@ export { default as Badge } from './Components/Core/Badge.vue'
 export { default as Empty } from './Components/Core/Empty.vue'
 export { default as ErrorBoundary } from './Components/Core/ErrorBoundary.vue'
 export { default as Icon } from './Components/Core/Icon.vue'
+export { default as InputIcon } from './Components/Core/InputIcon.vue'
 export { registerIcons } from './Components/Core/iconRegistry'
 export { default as Label } from './Components/Core/Label.vue'
 export { default as Modal } from './Components/Core/Modal.vue'
@@ -371,6 +372,7 @@ export { default as Sidebar } from './Components/Layout/Sidebar.vue'
 export { default as TopNavigation } from './Components/Layout/TopNavigation.vue'
 export { default as ThemeSwitcher } from './Components/Layout/ThemeSwitcher.vue'
 export { default as PageHeader } from './Components/Layout/PageHeader.vue'
+export { default as RecordNavigation } from './Components/Layout/RecordNavigation.vue'
 export { default as Breadcrumbs } from './Components/Layout/Breadcrumbs.vue'
 export { default as Container } from './Components/Layout/Container.vue'
 export { default as Grid } from './Components/Layout/Grid.vue'
@@ -398,3 +400,17 @@ export { default as ProseMirrorBuilderField } from './Components/Fields/ProseMir
 // internals (drag handle, link sanitiser) stay private.
 export { schema, HEADING_LEVELS, CODE_LANGUAGES, IMAGE_WIDTHS } from './Builder/schema'
 export { emptyDoc, parseStoredValue, serializeDoc } from './Builder/document'
+
+// Layout field
+export { default as LayoutField } from './Components/LayoutField/LayoutField.vue'
+export {
+  BLOCK_TYPES as LAYOUT_BLOCK_TYPES,
+  DEFAULT_LAYOUTS,
+  parseLayouts,
+  normalizeRows as normalizeLayoutRows,
+  changeRowLayout,
+  widthToSpan,
+  type LayoutRow,
+  type LayoutColumn,
+  type LayoutBlock,
+} from './Components/LayoutField/layoutModel'

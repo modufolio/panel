@@ -30,7 +30,7 @@ final class FieldComponentsTest extends TestCase
      */
     public function testEveryFieldTypeNamesAShippedOrHostProvidedComponent(): void
     {
-        $hostProvided = ['builder', 'image', 'sections'];
+        $hostProvided = ['builder', 'image', 'layout', 'sections'];
 
         $components = [];
         foreach (glob(__DIR__ . '/../../src/Field/*Type.php') ?: [] as $file) {
