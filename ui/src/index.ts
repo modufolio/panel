@@ -282,6 +282,12 @@ export { default as ChangePasswordDialog } from './Components/Dialogs/ChangePass
 export { default as ErrorModal } from './Components/Dialogs/ErrorModal.vue'
 export { default as DeleteConfirmDialog } from './Components/Dialogs/DeleteConfirmDialog.vue'
 
+// Navigation builder (a reorderable, one-level-deep site menu)
+export { default as MenuTree } from './Components/Navigation/MenuTree.vue'
+export { default as MenuItemRow } from './Components/Navigation/MenuItemRow.vue'
+export { default as AddCustomLink } from './Components/Navigation/AddCustomLink.vue'
+export { useNavigation, type NavigationItem, type NavigationTreeNode } from './Composables/useNavigation'
+
 // Drawer Components (Hierarchical overlay navigation)
 export { default as Drawer } from './Components/Drawer/Drawer.vue'
 export { default as DrawerStack } from './Components/Drawer/DrawerStack.vue'
