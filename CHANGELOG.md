@@ -7,6 +7,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-09-12
+
+### Added
+
+- **The layout field: rows of columns, each column a stack of blocks.**
+  `LayoutField` and `Modufolio\Panel\Field\LayoutType`, stored as
+  `[{id, columns: [{width, blocks: [{type, content}]}]}]` — the shape flat-file
+  layout content already travels in, so an import round-trips unchanged. A row
+  takes one of the `layouts` presets, each written the way a blueprint states
+  it (`'1/2 1/2'`); the `blocks` option names the types a column will offer
+  (`heading`, `text`, `quote`, `image`). Host-registered rather than built in,
+  like the builder field, because its blocks need the media picker and the
+  ProseMirror editor: `createPanel({ fields: { layout: … } })`.
+
+- **`RecordNavigation` — previous/next through a list, from the record's own
+  page.** The pair every editor was drawing by hand, once: two chevrons that
+  step to the neighbouring records, plus the left/right arrow keys. Both sides
+  are always rendered — an absent neighbour is a dead button rather than
+  nothing, so the arrows keep their place instead of moving under the cursor as
+  you step. Real links, not buttons, so middle-click and cmd-click still open a
+  record in a new tab. `label` names what a record is ("post", "movie") for the
+  tooltips and the screen reader; `keyboard` turns the keys off for a page that
+  wants them for something else. A keystroke aimed at a focused field is left to
+  that field, and any chord to the browser.
+
+- **The generated edit page carries that navigation.** `ResourceController`
+  resolves each neighbour through the new
+  `ResourceListing::navigationRecords()` and hands the page a
+  `recordNavigation` prop. Three things it gets right: the order is the
+  listing's own, read from the request, so "next" is the row below the one the
+  page was opened from; that list state rides along on the links, so stepping
+  keeps the sort and the filters alive; and a neighbour this viewer may not
+  edit is no link at all rather than a link onto a refusal. A rejected save
+  redraws the page with its navigation intact.
+
+- **`InputIcon` — an icon inside an input, positioned once.** Every field
+  placed its own `absolute inset-y-0 {side}-0 flex items-center p{l|r}-3`, and
+  the copies had drifted (`pl-9` here, `pl-10` there). One definition is what
+  each field's own padding lines up against now. `side` and, for a clear button
+  or a calendar toggle, `interactive`.
+
+- **Icons for the block editors.** `columns`, `duplicate`, `arrow-up`,
+  `arrow-down`, and the builder's own glyphs — paragraph, headings, blockquote,
+  bullet list, code block, image — kept as raw path data so a toolbar does not
+  shift when the heroicons set changes.
+
+### Changed
+
+- **`--color-ember-500` is brighter** (`#e08838` → `#f08119`): the dark theme's
+  primary was reading closer to brown than to amber against the near-black
+  chrome.
+
+- **The builder's block-insert bar can be turned off** (`insertBar`), and its
+  toolbar and slash menu now draw through `Icon` rather than carrying their own
+  inline paths. Inside a layout column the slash menu is enough on its own.
+
+- **Fields place their icons through `InputIcon`** — `BelongsToSelect`,
+  `ColorPickerField`, `DatePickerField`, `DateRangePickerField`,
+  `DateTimePickerField`, `RangeField`, `SelectField`, `TextField`.
+
+- **The drawer stack's shared overlay stands down while an `overlays` panel is
+  open**, the same way it already did for a dialog: that panel draws its own
+  scrim, and two at once dims the page twice.
+
+### Fixed
+
+- **Leaving a live-updating listing and coming back no longer crashes it.** A
+  Centrifugo `Subscription` stays registered on the client by channel name
+  after `unsubscribe()` — only `removeSubscription()` forgets it — so
+  remounting a page for the same channel called `newSubscription()` on a
+  channel that still existed and threw "Subscription to the channel … already
+  exists". `useLiveUpdates()` now reuses a leftover registration and drops it
+  on dispose.
+
 ## [0.8.0] - 2026-09-11
 
 ### Added
