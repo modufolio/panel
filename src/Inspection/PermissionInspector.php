@@ -36,6 +36,7 @@ use Symfony\Component\Routing\RouteCollection;
  *
  * @phpstan-import-type RoleVerdict from PermissionReport
  * @phpstan-import-type ResourceEntry from PermissionReport
+ * @phpstan-import-type PageEntry from PermissionReport
  * @phpstan-import-type Note from PermissionReport
  */
 final class PermissionInspector
@@ -93,11 +94,15 @@ final class PermissionInspector
     }
 
     /**
-     * @param list<class-string<PanelResource>> $resourceClasses
-     * @param list<string>                      $roles
-     * @param \Closure(string): UserInterface   $userFactory a user carrying only the literal role
+     * @param list<class-string<PanelResource>>        $resourceClasses
+     * @param list<string>                              $roles
+     * @param \Closure(string): UserInterface            $userFactory a user carrying only the literal role
+     * @param list<array{key: string, label: string}>   $pages       host-declared pages served by
+     *        hand-written controllers — nothing else knows they exist, so they are named here to be
+     *        checked by the same route-role logic a resource gets. Routes are found by the same
+     *        `{key}` / `{key}_*` naming convention a resource's own routes follow.
      */
-    public function inspect(array $resourceClasses, array $roles, \Closure $userFactory): PermissionReport
+    public function inspect(array $resourceClasses, array $roles, \Closure $userFactory, array $pages = []): PermissionReport
     {
         $resources = [];
         $notes     = [];
@@ -109,7 +114,56 @@ final class PermissionInspector
             $resources[$entry['key']] = $entry;
         }
 
-        return new PermissionReport($roles, $resources, $notes);
+        $pageEntries = [];
+
+        foreach ($pages as $page) {
+            $entry = $this->inspectPage($page['key'], $page['label'], $roles, $notes);
+
+            $pageEntries[$entry['key']] = $entry;
+        }
+
+        return new PermissionReport($roles, $resources, $pageEntries, $notes);
+    }
+
+    /**
+     * A host-declared page, checked the way a resource's routes are: which
+     * roles a route names, for each route the page's key convention finds.
+     * A page has no hooks and no fields — it is a route or two, gated or not.
+     *
+     * @param list<string> $roles
+     * @param list<Note>   $notes
+     * @return PageEntry
+     */
+    private function inspectPage(string $key, string $label, array $roles, array &$notes): array
+    {
+        $routes = $this->routesByKey($key);
+
+        if ($routes !== [] && !$this->anyRouteGuarded($routes)) {
+            $notes[] = $this->note('unguarded', $key, null, sprintf(
+                'No route of "%s" names a role; every signed-in user reaches them.',
+                $key,
+            ));
+        }
+
+        $verdicts = [];
+
+        foreach ($roles as $role) {
+            $reachable = ($this->reachableRoles)($role);
+            $admitted  = [];
+
+            foreach ($routes as $name => $route) {
+                $admitted[$name] = $this->admits($route, $reachable);
+            }
+
+            $verdicts[$role] = $admitted;
+        }
+
+        return [
+            'key'    => $key,
+            'label'  => $label,
+            'routes' => array_keys($routes),
+            'roles'  => $verdicts,
+        ];
     }
 
     /**
@@ -201,6 +255,27 @@ final class PermissionInspector
             $byName  = $name === $key || str_starts_with($name, $key . '_');
 
             if ($byClass || $byName) {
+                $found[$name] = $route;
+            }
+        }
+
+        return $found;
+    }
+
+    /**
+     * Routes matching a bare key convention (`{key}`, `{key}_*`), with no
+     * resource class to fall back on — a page's only address is its name.
+     *
+     * @return array<string, Route>
+     */
+    private function routesByKey(string $key): array
+    {
+        $found = [];
+
+        foreach ($this->routes as $name => $route) {
+            $name = (string) $name;
+
+            if ($name === $key || str_starts_with($name, $key . '_')) {
                 $found[$name] = $route;
             }
         }

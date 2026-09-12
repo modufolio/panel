@@ -17,6 +17,7 @@ use Modufolio\Panel\Tests\Fixture\MovieResource;
 use Modufolio\Panel\Tests\Fixture\StubUser;
 use Modufolio\Panel\Tests\Fixture\UserMovieResource;
 use Modufolio\Panel\Tests\Routing\ReadOnlyResource;
+use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
 use Modufolio\Panel\Form\Form;
 
@@ -366,12 +367,48 @@ final class PermissionInspectorTest extends DoctrineTestCase
         self::assertSame([ReadOnlyResource::class, MovieResource::class], PermissionInspector::resourceClassesIn($routes));
     }
 
-    public function testTheReportSerialisesWithItsThreeParts(): void
+    public function testTheReportSerialisesWithItsFourParts(): void
     {
         $report = $this->inspect($this->movieRoutes(), new MovieResource(), [self::USER]);
 
-        self::assertSame(['roles', 'resources', 'notes'], array_keys($report->toArray()));
+        self::assertSame(['roles', 'resources', 'pages', 'notes'], array_keys($report->toArray()));
         self::assertSame([self::USER], $report->toArray()['roles']);
         self::assertSame(['movies'], array_keys($report->toArray()['resources']));
+        self::assertSame([], $report->toArray()['pages']);
+    }
+
+    public function testAHostDeclaredPageIsCheckedByTheSameRouteRoleLogicAResourceGets(): void
+    {
+        $routes = $this->movieRoutes();
+        $routes->add('settings', new Route(
+            '/panel/settings',
+            defaults: ['_is_granted_roles' => [[self::USER]]],
+            methods: ['GET'],
+        ));
+        $routes->add('settings_update', new Route(
+            '/panel/settings',
+            defaults: ['_is_granted_roles' => [[self::ADMIN]]],
+            methods: ['POST'],
+        ));
+
+        $inspector = new PermissionInspector(
+            $routes,
+            static fn (string $class): PanelResource => new MovieResource(),
+            new FormResolver(self::em()),
+        );
+
+        $report = $inspector->inspect(
+            [MovieResource::class],
+            [self::USER],
+            self::literalUsers(),
+            [['key' => 'settings', 'label' => 'Settings']],
+        );
+
+        self::assertSame(['settings'], array_keys($report->pages));
+        self::assertSame('Settings', $report->pages['settings']['label']);
+        self::assertSame(['settings', 'settings_update'], $report->pages['settings']['routes']);
+        // The role reaches the page itself but not the write behind it.
+        self::assertTrue($report->pages['settings']['roles'][self::USER]['settings']);
+        self::assertFalse($report->pages['settings']['roles'][self::USER]['settings_update']);
     }
 }

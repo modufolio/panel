@@ -518,6 +518,7 @@ final class ResourceControllerTest extends DoctrineTestCase
                     ],
                 ],
             ],
+            pages: [],
             notes: [],
         );
 
