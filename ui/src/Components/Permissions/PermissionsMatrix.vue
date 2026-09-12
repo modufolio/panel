@@ -48,6 +48,21 @@
         </div>
       </Section>
 
+      <Section v-if="pages.length > 0" heading="Pages" description="Host-declared pages outside the panel's own resources: which roles reach them." card>
+        <div class="overflow-x-auto">
+          <Table :columns="pageColumns" :records="pageRows" :searchable="false" :sticky-header="false">
+            <template #cell-role="{ value }">
+              <span class="font-mono text-xs">{{ value }}</span>
+            </template>
+            <template v-for="page in pages" :key="page.key" #[`cell-${page.key}`]="{ value }">
+              <Tag v-if="value === 'partial'" color="warning">partial</Tag>
+              <span v-else-if="value === '—'" class="text-ink-3">—</span>
+              <BooleanColumn v-else :value="value === 'yes'" true-label="yes" false-label="no" false-color="gray" :show-label="false" />
+            </template>
+          </Table>
+        </div>
+      </Section>
+
       <Section heading="Divergences" description="Where one layer says yes and another says no, or a check cannot be answered for the type." card>
         <p v-if="report.notes.length === 0" class="text-sm text-ink-3">None: every layer agrees for every role.</p>
         <ul v-else class="divide-y divide-line">
@@ -102,6 +117,14 @@ interface ResourceEntry {
   roles: Record<string, RoleVerdict>
 }
 
+interface PageEntry {
+  key: string
+  label: string
+  routes: string[]
+  /** role => route name => admitted */
+  roles: Record<string, Record<string, boolean>>
+}
+
 interface Note {
   kind: string
   resource: string
@@ -112,6 +135,7 @@ interface Note {
 export interface PermissionReport {
   roles: string[]
   resources: Record<string, ResourceEntry>
+  pages: Record<string, PageEntry>
   notes: Note[]
 }
 
@@ -132,6 +156,32 @@ const props = defineProps({
 })
 
 const resources = computed(() => Object.values(props.report.resources))
+const pages = computed(() => Object.values(props.report.pages ?? {}))
+
+const pageColumns = computed(() => [
+  { key: 'role', label: 'Role' },
+  ...pages.value.map((page) => ({ key: page.key, label: page.label })),
+])
+
+function pageCell(page: PageEntry, role: string): string {
+  const admitted = page.roles[role]
+
+  if (!admitted || page.routes.length === 0) return '—'
+
+  const granted = page.routes.filter((route) => admitted[route]).length
+
+  return granted === 0 ? 'no' : granted === page.routes.length ? 'yes' : 'partial'
+}
+
+const pageRows = computed(() => props.report.roles.map((role) => {
+  const row: Record<string, unknown> = { id: role, role }
+
+  for (const page of pages.value) {
+    row[page.key] = pageCell(page, role)
+  }
+
+  return row
+}))
 
 /** Route-name suffixes per operation, mirroring PermissionInspector::OPERATIONS. */
 const operations: Record<string, string[]> = {

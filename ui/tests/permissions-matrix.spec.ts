@@ -43,6 +43,7 @@ const report = {
       },
     },
   },
+  pages: {},
   notes: [
     {
       kind: 'route_admits_hook_denies',
@@ -112,5 +113,30 @@ describe('PermissionsMatrix', () => {
   it('explains itself by default, and stays quiet when told to', () => {
     expect(render().text()).toContain('What each role may do on every panel resource')
     expect(render({ description: null }).text()).not.toContain('What each role may do')
+  })
+
+  it('renders host-declared pages, and stays quiet when there are none', () => {
+    expect(render().text()).not.toContain('Pages')
+
+    const withPages = render({
+      report: {
+        ...report,
+        pages: {
+          settings: {
+            key: 'settings',
+            label: 'Settings',
+            routes: ['settings', 'settings_update'],
+            roles: {
+              ROLE_ADMIN: { settings: true, settings_update: true },
+              // Reaches the page but not the write behind it: partial, not "no".
+              ROLE_USER: { settings: true, settings_update: false },
+            },
+          },
+        },
+      },
+    }).text()
+
+    expect(withPages).toContain('Settings')
+    expect(withPages).toContain('partial')
   })
 })
