@@ -131,7 +131,16 @@ export function useLiveUpdates(resource: string, options: LiveUpdateOptions = {}
         return
     }
 
-    const subscription = connection(config).newSubscription(config.channel_prefix + resource)
+    const client = connection(config)
+    const channel = config.channel_prefix + resource
+
+    // A Subscription stays registered on the client by channel name after
+    // unsubscribe() — only removeSubscription() forgets it. Remounting this
+    // page for the same channel (leave and come back) would otherwise call
+    // newSubscription() on a channel that is still registered and throw
+    // "Subscription to the channel ... already exists", which crashed the
+    // page before this reused the leftover registration instead.
+    const subscription = client.getSubscription(channel) ?? client.newSubscription(channel)
 
     subscription.on('publication', (ctx) => {
         const payload = (ctx.data ?? {}) as Record<string, unknown>
@@ -162,5 +171,6 @@ export function useLiveUpdates(resource: string, options: LiveUpdateOptions = {}
     onScopeDispose(() => {
         subscription.unsubscribe()
         subscription.removeAllListeners()
+        client.removeSubscription(subscription)
     })
 }
