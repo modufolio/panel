@@ -110,16 +110,7 @@ abstract class DoctrineTestCase extends TestCase
             isDevMode: true,
         );
 
-        // Native lazy objects need PHP 8.4. Below that Doctrine generates
-        // proxy classes, and the new config factory no longer picks a
-        // directory for them on its own — CI on 8.3 was the first to notice.
-        if (PHP_VERSION_ID >= 80400) {
-            $config->enableNativeLazyObjects(true);
-        } else {
-            $config->setProxyDir(sys_get_temp_dir() . '/modufolio-panel-proxies');
-            $config->setProxyNamespace('Modufolio\\Panel\\Tests\\Proxies');
-            $config->setAutoGenerateProxyClasses(true);
-        }
+        $config->enableNativeLazyObjects(true);
 
         $connection = DriverManager::getConnection(self::connectionParams(), $config);
 
