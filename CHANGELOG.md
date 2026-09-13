@@ -53,7 +53,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bullet list, code block, image — kept as raw path data so a toolbar does not
   shift when the heroicons set changes.
 
+- **`ResourceMenu::fromRouter()` reads menu entries from the router's
+  build-time cache** instead of walking a live `RouteCollection`, so the
+  host's navigation no longer loads every route from source on each request.
+  `fromRoutes()` stays for callers that already hold a collection.
+
 ### Changed
+
+- **Requires PHP 8.4 and `modufolio/appkit` ^0.20.** CI now runs 8.4, 8.5 and
+  8.6 (8.6 non-blocking while it's still in development); the PHP 8.3 proxy
+  fallback in Doctrine test setup is gone along with it.
 
 - **`--color-ember-500` is brighter** (`#e08838` → `#f08119`): the dark theme's
   primary was reading closer to brown than to amber against the near-black
