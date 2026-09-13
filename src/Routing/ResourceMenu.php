@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Modufolio\Panel\Routing;
 
+use Modufolio\Appkit\Routing\RouterInterface;
 use Symfony\Component\Routing\RouteCollection;
 
 /**
@@ -21,9 +22,31 @@ final class ResourceMenu
 {
     public const DEFAULT = '_panel_menu';
 
+    /** Where {@see self::fromRouter()} caches the extracted entries. */
+    public const CACHE_KEY = 'panel_menu';
+
+    /**
+     * Every declared entry, in route order, from the router's build-time
+     * cache. Sorting is the host's: it has hand-written entries of its own to
+     * interleave.
+     *
+     * @return list<array{route: string, label: string, icon: string|null, group: string|null, order: int, roles: list<string>}>
+     */
+    public static function fromRouter(RouterInterface $router): array
+    {
+        return $router->cachedRouteData(
+            self::CACHE_KEY,
+            static fn (RouteCollection $routes): array => self::fromRoutes($routes)
+        );
+    }
+
     /**
      * Every declared entry, in route order. Sorting is the host's: it has
      * hand-written entries of its own to interleave.
+     *
+     * Prefer {@see self::fromRouter()}: the entries are static, and reading
+     * them from a live collection means loading every route from source on
+     * every request.
      *
      * @return list<array{route: string, label: string, icon: string|null, group: string|null, order: int, roles: list<string>}>
      */
