@@ -34,10 +34,13 @@ final class ResourceMenu
      */
     public static function fromRouter(RouterInterface $router): array
     {
-        return $router->cachedRouteData(
+        /** @var list<array{route: string, label: string, icon: string|null, group: string|null, order: int, roles: list<string>}> $entries */
+        $entries = $router->cachedRouteData(
             self::CACHE_KEY,
             static fn (RouteCollection $routes): array => self::fromRoutes($routes)
         );
+
+        return $entries;
     }
 
     /**
