@@ -9,9 +9,9 @@
         }
     ],
     "require": {
-        "php": ">=8.3",
+        "php": ">=8.4",
         "doctrine/orm": "^3.0",
-        "modufolio/appkit": "^0.18",
+        "modufolio/appkit": "^0.20",
         "psr/clock": "^1.0",
         "modufolio/http": "^0.2",
         "modufolio/json-api": "^0.9",
