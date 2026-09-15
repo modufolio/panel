@@ -82,6 +82,19 @@ const { floatingStyles } = useAnchoredPosition(triggerRef, panelRef, isOpen, {
 The available height is applied as `max-height` and published as
 `--panel-available-height` for panels that scroll an inner region instead.
 
+## Menus — `ActionGroup`, `ActionGroupItem`, `ActionGroupSeparator`
+
+Menu items never draw the host's offset focus ring: the menu clips overflow,
+so a ring drawn outside the item loses its sides and what survives looks like
+dividers. Keyboard focus is the highlighted row plus an inset accent bar
+(`.ui-action-group-item:focus-visible` in `styles/components.css`).
+
+Colour is a category on the icon (`primary`, `success`, …) except for
+`danger`, where it is a warning and the whole row carries it, in the softened
+`--danger-on-surface` at rest and the tinted row on hover. Put an
+`ActionGroupSeparator` above the destructive item so the split is structural;
+`SchemaTable`'s generated menu does this before the first `danger` action.
+
 ## Keyboard — `useArrowNavigation`, `useTypeahead`
 
 `useArrowNavigation(container)` gives a menu the WAI-ARIA keyboard model:

@@ -457,8 +457,13 @@
 
 :where(.ui-action-group-item) {
   --item-fg: var(--ink-2);
-  --item-icon: var(--ink-3);
-  --item-hover-bg: var(--hover);
+  /* --ink-2, not --ink-3: on the raised menu surface in dark, --ink-3 is
+     2.8:1, under the 3:1 a non-text glyph needs. */
+  --item-icon: var(--ink-2);
+  /* --pressed rather than --hover: a 5% lift is invisible on a raised surface
+     in dark, and the active row has to be findable without the focus ring
+     (which the menu deliberately does not draw — see below). */
+  --item-hover-bg: var(--pressed);
   --item-hover-fg: var(--item-fg);
 }
 
@@ -467,10 +472,13 @@
 :where(.ui-action-group-item[data-color='warning']) { --item-icon: var(--warning); }
 :where(.ui-action-group-item[data-color='info']) { --item-icon: var(--info); }
 
-/* Destructive items tint the whole row on hover, not just the icon — the one
-   place in the menu where the colour is a warning rather than a category. */
+/* Destructive items are the one place in a menu where colour is a warning
+   rather than a category, so the whole row carries it: label and icon in the
+   softened on-surface red at rest (the raw 500 glows on a dark menu), and the
+   tinted row on hover. */
 :where(.ui-action-group-item[data-color='danger']) {
-  --item-icon: var(--danger);
+  --item-fg: var(--danger-on-surface);
+  --item-icon: var(--danger-on-surface);
   --item-hover-bg: var(--danger-surface);
   --item-hover-fg: var(--danger-on-surface);
 }
@@ -487,6 +495,29 @@
   color: var(--item-hover-fg);
 }
 
+/* A menu item shows keyboard focus as the highlighted row plus an inset
+   accent bar, never the global 2px offset ring: the menu clips overflow, so
+   the ring lost its sides and what survived looked like two dividers drawn
+   into the neighbouring rows. Inset, it cannot be clipped. */
+.ui-action-group-item:focus-visible {
+  outline: none;
+  background-color: var(--item-hover-bg);
+  color: var(--item-hover-fg);
+  box-shadow: inset 2px 0 0 var(--focus);
+}
+
 .ui-action-group-item-icon {
   color: var(--item-icon);
+}
+
+/* ---------------------------------------------------------------------------
+ * Action group separator — Actions/ActionGroupSeparator.vue. A hairline with
+ * breathing room, so a destructive item is set apart by structure and its
+ * colour only has to confirm it.
+ * ------------------------------------------------------------------------ */
+
+.ui-action-group-separator {
+  margin: 0.25rem 0;
+  border: 0;
+  border-top: 1px solid var(--hairline);
 }

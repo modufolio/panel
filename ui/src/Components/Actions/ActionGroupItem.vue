@@ -56,7 +56,8 @@ const props = defineProps({
 const emit = defineEmits(['click'])
 
 /** Label colour, icon colour and the hover tint are all `data-color` in
- *  styles/components.css — danger is the only role that tints the whole row. */
+ *  styles/components.css — danger is the only role that colours the whole row,
+ *  quietly at rest and tinted on hover. */
 const resolvedColor = computed(() => semanticColor(props.color))
 
 function handleClick() {

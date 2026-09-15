@@ -8,7 +8,11 @@
       v-model:collapsed="sidebarCollapsed"
       :items="navigationItems"
       class="hidden md:flex"
-    />
+    >
+      <template v-if="$slots.logo" #logo="slotProps">
+        <slot name="logo" v-bind="slotProps" />
+      </template>
+    </Sidebar>
 
     <!-- Mobile Sidebar Overlay -->
     <Transition
@@ -43,7 +47,11 @@
           :items="navigationItems"
           :collapsed="false"
           class="h-full"
-        />
+        >
+          <template v-if="$slots.logo" #logo="slotProps">
+            <slot name="logo" v-bind="slotProps" />
+          </template>
+        </Sidebar>
       </div>
     </Transition>
 

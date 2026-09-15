@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`ActionGroupSeparator` — a rule between groups of menu items.** Place one
+  above a destructive item so the split is structural and the colour only
+  confirms it. `SchemaTable`'s generated row menu draws one before the first
+  `danger` action on its own.
+
+### Fixed
+
+- **Action menus in dark mode: the clipped focus ring, the invisible active
+  row, and icons under 3:1.** A focused item showed the host's 2px offset
+  focus ring, which the menu's `overflow-hidden` cut down to two orange
+  stripes bleeding into the neighbouring rows. Items now show keyboard focus
+  as the highlighted row plus an inset accent bar, which cannot be clipped.
+  The hover/focus tint steps up from `--hover` (5%, ~1.1:1 on the raised menu
+  surface) to `--pressed`, and item icons use `--ink-2` instead of `--ink-3`
+  (2.8:1 on the dark menu).
+- **Destructive menu items are quiet red, not a red icon on a grey label.**
+  Label and icon both take `--danger-on-surface` at rest, the softened mix
+  rather than the raw 500 that glowed on a dark menu; hover keeps the tinted
+  row.
+
 ## [0.9.0] - 2026-09-12
 
 ### Added

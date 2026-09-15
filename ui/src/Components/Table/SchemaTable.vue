@@ -62,16 +62,19 @@
     -->
     <template v-if="generatedRowActions" #actions="{ record }">
       <ActionGroup label="Actions">
-        <ActionGroupItem
-          v-for="action in rowActionsFor(asRecord(record))"
-          :key="action.name"
-          :icon="action.icon"
-          :label="action.label"
-          :color="action.color"
-          :disabled="action.disabled ?? false"
-          :title="action.disabledReason ?? ''"
-          @click="runRowAction(action, asRecord(record))"
-        />
+        <template v-for="(action, index) in rowActionsFor(asRecord(record))" :key="action.name">
+          <!-- The first destructive item is set apart by a rule, so the split
+               is structural and its colour only confirms it. -->
+          <ActionGroupSeparator v-if="index > 0 && isFirstDanger(rowActionsFor(asRecord(record)), index)" />
+          <ActionGroupItem
+            :icon="action.icon"
+            :label="action.label"
+            :color="action.color"
+            :disabled="action.disabled ?? false"
+            :title="action.disabledReason ?? ''"
+            @click="runRowAction(action, asRecord(record))"
+          />
+        </template>
       </ActionGroup>
     </template>
 
@@ -189,6 +192,7 @@ import SchemaFilterPanel from './SchemaFilterPanel.vue'
 import Action from '../Actions/Action.vue'
 import ActionGroup from '../Actions/ActionGroup.vue'
 import ActionGroupItem from '../Actions/ActionGroupItem.vue'
+import ActionGroupSeparator from '../Actions/ActionGroupSeparator.vue'
 import ConfirmDialog from '../Dialogs/ConfirmDialog.vue'
 import ActionFormDialog from '../Dialogs/ActionFormDialog.vue'
 import DeleteConfirmDialog from '../Dialogs/DeleteConfirmDialog.vue'
@@ -209,6 +213,7 @@ import {
   type CellActionHandler,
   type RowActionHandler,
   type BulkActionHandler,
+  type SchemaRowAction,
 } from './tableSchema'
 import type { TableRecord } from './tableTypes'
 
@@ -368,6 +373,11 @@ const passthroughSlots = computed(() =>
 )
 
 /** Table.vue passes its slot scope untyped; every use narrows through here. */
+/** True for the first danger-coloured action in the list, and only that one. */
+function isFirstDanger(actions: SchemaRowAction[], index: number): boolean {
+  return actions[index]?.color === 'danger' && actions.findIndex((a) => a.color === 'danger') === index
+}
+
 function asRecord(record: unknown): TableRecord {
   return (record ?? {}) as TableRecord
 }
